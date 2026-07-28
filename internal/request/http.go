@@ -13,14 +13,15 @@ type HttpSettings struct {
 }
 type HttpRequest struct {
 	RequestMeta
-	Method   string       `toml:"mothod"`
-	Url      string       `toml:"url"`
-	Params   [][2]string  `toml:"params,omitempty,multiline"`
-	Headers  [][2]string  `toml:"headers,omitempty,multiline"`
-	BodyType string       `toml:"body_type,omitempty"`
-	Body     string       `toml:"body,omitempty,multiline"`
-	Settings HttpSettings `toml:"settings"`
-	Docs     string       `toml:"docs,omitempty,multiline"`
+	Method      string       `toml:"mothod"`
+	Url         string       `toml:"url"`
+	QueryParams [][2]string  `toml:"query_params,omitempty,multiline"`
+	PathParams  [][2]string  `toml:"path_params,omitempty,multiline"`
+	Headers     [][2]string  `toml:"headers,omitempty,multiline"`
+	BodyType    string       `toml:"body_type,omitempty"`
+	Body        string       `toml:"body,omitempty,multiline"`
+	Settings    HttpSettings `toml:"settings"`
+	Docs        string       `toml:"docs,omitempty,multiline"`
 }
 
 func (r *HttpRequest) Send() error {

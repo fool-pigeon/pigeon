@@ -13,7 +13,8 @@ func TestHttpRequestType(t *testing.T) {
 	assert.Equal(1, 1, "should be qual")
 	req := request.HttpRequest{
 		RequestMeta: request.RequestMeta{Name: "req", Protocol: "http"},
-		Params:      [][2]string{{"pk", "pv1"}, {"pk", "pv2"}},
+		QueryParams: [][2]string{{"pk", "pv1"}, {"pk", "pv2"}},
+		PathParams:  [][2]string{{"pk", "pv1"}, {"pk", "pv2"}},
 		Method:      "post",
 		Url:         "localhost",
 		BodyType:    "json",
