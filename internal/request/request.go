@@ -1,7 +1,8 @@
 package request
 
+type Response interface{}
 type Request interface {
-	Send() error
+	Send() (Response, error)
 }
 
 type RequestMeta struct {

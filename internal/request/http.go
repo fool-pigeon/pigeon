@@ -1,8 +1,10 @@
 package request
 
 import (
-	"os"
-	"text/template"
+	"net/http"
+	"net/url"
+
+	"resty.dev/v3"
 )
 
 type HttpSettings struct {
@@ -24,12 +26,47 @@ type HttpRequest struct {
 	Docs        string       `toml:"docs,omitempty,multiline"`
 }
 
-func (r *HttpRequest) Send() error {
-	tplStr := "name:{{.Meta.Name}} sended!\n"
-	tpl, err := template.New("req").Parse(tplStr)
-	if err != nil {
-		return err
+var (
+	Methods = []string{
+		http.MethodConnect,
+		http.MethodDelete,
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodOptions,
+		http.MethodPatch,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodTrace,
 	}
-	tpl.Execute(os.Stdout, r)
-	return nil
+)
+
+func params2Map(params [][2]string) map[string]string {
+	res := make(map[string]string)
+	for _, v := range params {
+		res[v[0]] = v[1]
+	}
+	return res
+}
+
+func params2Values(params [][2]string) url.Values {
+	values := make(url.Values)
+	for _, v := range params {
+		values.Add(v[0], v[1])
+	}
+	return values
+}
+
+func (r *HttpRequest) Send() (*resty.Response, error) {
+	client := resty.New()
+	defer client.Close()
+	res, err := client.R().
+		SetMethod(r.Method).
+		SetURL(r.Url).
+		SetQueryParamsFromValues(params2Values(r.QueryParams)).
+		SetPathParams(params2Map(r.PathParams)).
+		SetHeaders(params2Map(r.Headers)).
+		SetBody(r.Body).
+		Send()
+
+	return res, err
 }

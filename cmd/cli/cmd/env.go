@@ -4,8 +4,11 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
+	"errors"
+	"os"
 
+	"github.com/homoarea/pigeon/internal/env"
+	"github.com/knadh/koanf/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -26,19 +29,14 @@ var (
 		Aliases: []string{"s"},
 		Short:   "alias s,Add or reset var in the .env",
 		Args:    cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println(args)
-			return nil
-		},
+		RunE:    setEnv,
 	}
 	removeCmd = &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm"},
 		Short:   "alias rm,Remove vars from .env",
 		Args:    cobra.ArbitraryArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
+		RunE:    removeEnvs,
 	}
 	listCmd = &cobra.Command{
 		Use:     "list",
@@ -58,6 +56,34 @@ func init() {
 }
 
 func listEnvs(cmd *cobra.Command, args []string) error {
-	fmt.Println("listEnvs called!")
+	envs, err := env.Load(".")
+	if err != nil {
+		return err
+	}
+	envs.Print()
+	return nil
+}
+func setEnv(cmd *cobra.Command, args []string) error {
+	k := koanf.New(".")
+	if err := env.LoadFromFile(k, env.EnvFileName); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	k.Set(args[0], args[1])
+	if err := env.Store(k, env.EnvFileName); err != nil {
+		return err
+	}
+	return nil
+}
+func removeEnvs(cmd *cobra.Command, args []string) error {
+	k := koanf.New(".")
+	if err := env.LoadFromFile(k, env.EnvFileName); err != nil {
+		return err
+	}
+	for _, envKey := range args {
+		k.Delete(envKey)
+	}
+	if err := env.Store(k, env.EnvFileName); err != nil {
+		return err
+	}
 	return nil
 }

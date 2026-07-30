@@ -1,6 +1,7 @@
-package test
+package request_test
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/homoarea/pigeon/internal/request"
@@ -15,8 +16,8 @@ func TestHttpRequestType(t *testing.T) {
 		RequestMeta: request.RequestMeta{Name: "req", Protocol: "http"},
 		QueryParams: [][2]string{{"pk", "pv1"}, {"pk", "pv2"}},
 		PathParams:  [][2]string{{"pk", "pv1"}, {"pk", "pv2"}},
-		Method:      "post",
-		Url:         "localhost",
+		Method:      http.MethodPost,
+		Url:         "http://localhost:8080/echo",
 		BodyType:    "json",
 		Body: `
 {
@@ -40,5 +41,6 @@ func TestHttpRequestType(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+
 	assert.Equal("http", meta.Protocol, "protocol is http")
 }
