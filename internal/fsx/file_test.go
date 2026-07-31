@@ -74,3 +74,34 @@ func TestStoreKoanf(t *testing.T) {
 	}
 	require.Equal(t, k, k1)
 }
+
+func TestRDWRToml(t *testing.T) {
+	tmpDir, err := os.MkdirTemp(os.TempDir(), "pg-fsx-test-*")
+	defer os.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type Data struct {
+		Version int      `toml:"version"`
+		K1      string   `toml:"k1"`
+		K2      string   `toml:"K2"`
+		Tags    []string `toml:"tags"`
+	}
+
+	data := Data{
+		Version: 1,
+		K1:      "hello",
+		K2:      "world",
+		Tags:    []string{"go", "pg"},
+	}
+	name := filepath.Join(tmpDir, "toml_file")
+	if err := fsx.WriteToml(name, &data); err != nil {
+		t.Fatal(err)
+	}
+	var v Data
+	if err := fsx.ReadToml(name, &v); err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, data, v)
+}

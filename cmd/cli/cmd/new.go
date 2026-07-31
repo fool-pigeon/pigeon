@@ -16,8 +16,9 @@ var newCmd = &cobra.Command{
 	GroupID: GROUP_ID_REQUEST,
 	Short:   "alias n, Create a request into a new .toml file",
 	Example: `pg new example_get -t rest -m get -u localhost`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("new called")
+		return nil
 	},
 }
 
