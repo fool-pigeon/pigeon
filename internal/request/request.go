@@ -9,3 +9,10 @@ type RequestMeta struct {
 	Name     string `toml:"name"`
 	Protocol string `toml:"protocol"`
 }
+
+const (
+	HTTP = "http"
+	GRPC = "grpc"
+	WS   = "ws"
+	GQL  = "graphql"
+)

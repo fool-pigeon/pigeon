@@ -1,5 +1,5 @@
 /*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
+Copyright © 2026 homoarea homoarea114@gmail.com
 */
 package cmd
 
