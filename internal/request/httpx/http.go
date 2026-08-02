@@ -1,8 +1,8 @@
 package httpx
 
 import (
+	"errors"
 	"net/http"
-	"net/url"
 
 	"github.com/homoarea/pigeon/internal/request"
 	"resty.dev/v3"
@@ -18,25 +18,40 @@ type Settings struct {
 }
 type Request struct {
 	request.RequestMeta
-	Method      string      `toml:"mothod"`
-	Url         string      `toml:"url"`
-	QueryParams [][2]string `toml:"query_params,omitempty,multiline"`
-	PathParams  [][2]string `toml:"path_params,omitempty,multiline"`
-	Headers     [][2]string `toml:"headers,omitempty,multiline"`
-	BodyType    string      `toml:"body_type,omitempty"`
-	Body        any         `toml:"body,omitempty,multiline"`
-	Settings    Settings    `toml:"settings"`
-	Docs        string      `toml:"docs,omitempty,multiline"`
+	Method string `toml:"mothod"`
+	// like http://localhost:8080/v1/{userId}/post
+	Url         string              `toml:"url"`
+	PathParams  map[string]string   `toml:"path_params,omitempty,multiline"`
+	QueryParams map[string][]string `toml:"query_params,omitempty,multiline"`
+	Headers     map[string][]string `toml:"headers,omitempty,multiline"`
+	Body        Body                `toml:"body,omitempty"`
+	Settings    Settings            `toml:"settings"`
+	Docs        string              `toml:"docs,omitempty,multiline"`
+}
+type Body struct {
+	Type string `toml:"type,omitempty"`
+	Data any    `toml:"data,omitempty,multiline"`
+}
+type MultipartField struct {
+	Name        string   `toml:"name,omitempty"`
+	Values      []string `toml:"values,omitempty"`
+	FileName    string   `toml:"file_name,omitempty"`
+	FilePath    string   `toml:"file_path,omitempty"`
+	ContentType string   `toml:"content_type,omitempty"`
 }
 
 const (
 	// HTTP body type
-	BodyJSON      = "json"
-	BodyXML       = "xml"
-	BodyText      = "text"
-	BodyMultiForm = "multipart-form"
-	BodyForm      = "form-data"
-	BodyFile      = "file/binary"
+	// raw: string
+	BodyJSON = "json"
+	BodyXML  = "xml"
+	BodyText = "text"
+	BodyRaw  = "raw"
+	// []MultipartField
+	BodyMultiForm = "multipart/form-data"
+	//[][2]string
+	BodyFormUrlEncoded = "x-www-form-urlencoded"
+	BodyBinary         = "file/binary"
 )
 
 var (
@@ -54,32 +69,30 @@ var (
 	BodyTypes = []string{}
 )
 
-func params2Map(params [][2]string) map[string]string {
-	res := make(map[string]string)
-	for _, v := range params {
-		res[v[0]] = v[1]
-	}
-	return res
-}
-
-func params2Values(params [][2]string) url.Values {
-	values := make(url.Values)
-	for _, v := range params {
-		values.Add(v[0], v[1])
-	}
-	return values
-}
-
 func (r *Request) Send() (Response, error) {
 	client := resty.New()
 	defer client.Close()
-	res, err := client.R().
-		SetMethod(r.Method).
+	req := client.R().
 		SetURL(r.Url).
-		SetQueryParamsFromValues(params2Values(r.QueryParams)).
-		SetPathParams(params2Map(r.PathParams)).
-		SetHeaders(params2Map(r.Headers)).
-		SetBody(r.Body).
-		Send()
+		SetMethod(r.Method)
+	if r.QueryParams != nil {
+		req.SetQueryParamsFromValues(r.QueryParams)
+	}
+	if r.PathParams != nil {
+		req.SetPathParams(r.PathParams)
+	}
+	if r.Headers != nil {
+		req.SetHeaderMultiValues(r.Headers)
+	}
+	if bt := r.Body.Type; len(bt) > 0 {
+		// TODO: impl handle the body
+		switch bt {
+		case BodyJSON, BodyXML, BodyText, BodyRaw:
+			req.SetBody(r.Body)
+		case BodyMultiForm:
+			return nil, errors.New("the multiform not impl yet.")
+		}
+	}
+	res, err := req.Send()
 	return res, err
 }

@@ -55,6 +55,7 @@ func createRequest(cmd *cobra.Command, args []string) error {
 	return nil
 }
 func createHttpReq(req *request.Request) error {
+	// TODO: use the form to create a http request
 	// form := huh.NewGroup()
 
 	return nil

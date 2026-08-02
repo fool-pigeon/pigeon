@@ -16,21 +16,22 @@ func TestHttpRequestType(t *testing.T) {
 	assert.Equal(1, 1, "should be qual")
 	req := httpx.Request{
 		RequestMeta: request.RequestMeta{Name: "req", Protocol: "http"},
-		QueryParams: [][2]string{{"pk", "pv1"}, {"pk", "pv2"}},
-		PathParams:  [][2]string{{"pk", "pv1"}, {"pk", "pv2"}},
+		QueryParams: map[string][]string{"q1": {"v1"}, "q2": {"v2.1", "v2.2"}},
+		PathParams:  map[string]string{"k1": "v1"},
 		Method:      http.MethodPost,
 		Url:         "http://localhost:8080/echo",
-		BodyType:    "json",
-		Body: `
-		{
-			"key": "value",
-			"arr":[1,2,3]
-		}
-		`,
+		Body: httpx.Body{
+			Type: "json",
+			Data: map[string]map[string]string{
+				"K1": {"k1": "v1"},
+				"K2": {"k1": "v1", "k2": "v2"},
+			},
+		},
 		Settings: httpx.Settings{EncodeUrl: false, AutoRedirects: true, MaxRedirects: 5},
 		Docs:     "this is docs",
 	}
 	b, err := toml.Marshal(req)
+	fmt.Println(string(b))
 	if err != nil {
 		panic(err)
 	}
