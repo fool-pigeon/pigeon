@@ -1,30 +1,43 @@
-package request
+package httpx
 
 import (
 	"net/http"
 	"net/url"
 
+	"github.com/homoarea/pigeon/internal/request"
 	"resty.dev/v3"
 )
 
-type HttpSettings struct {
+type Response = *resty.Response
+
+type Settings struct {
 	EncodeUrl     bool `toml:"encode_url,omitempty"`
 	Timeout       uint `toml:"timeout,omitempty"`
 	AutoRedirects bool `toml:"auto_redirects"`
 	MaxRedirects  uint `toml:"max_redirects,omitempty"`
 }
-type HttpRequest struct {
-	RequestMeta
-	Method      string       `toml:"mothod"`
-	Url         string       `toml:"url"`
-	QueryParams [][2]string  `toml:"query_params,omitempty,multiline"`
-	PathParams  [][2]string  `toml:"path_params,omitempty,multiline"`
-	Headers     [][2]string  `toml:"headers,omitempty,multiline"`
-	BodyType    string       `toml:"body_type,omitempty"`
-	Body        string       `toml:"body,omitempty,multiline"`
-	Settings    HttpSettings `toml:"settings"`
-	Docs        string       `toml:"docs,omitempty,multiline"`
+type Request struct {
+	request.RequestMeta
+	Method      string      `toml:"mothod"`
+	Url         string      `toml:"url"`
+	QueryParams [][2]string `toml:"query_params,omitempty,multiline"`
+	PathParams  [][2]string `toml:"path_params,omitempty,multiline"`
+	Headers     [][2]string `toml:"headers,omitempty,multiline"`
+	BodyType    string      `toml:"body_type,omitempty"`
+	Body        any         `toml:"body,omitempty,multiline"`
+	Settings    Settings    `toml:"settings"`
+	Docs        string      `toml:"docs,omitempty,multiline"`
 }
+
+const (
+	// HTTP body type
+	BodyJSON      = "json"
+	BodyXML       = "xml"
+	BodyText      = "text"
+	BodyMultiForm = "multipart-form"
+	BodyForm      = "form-data"
+	BodyFile      = "file/binary"
+)
 
 var (
 	Methods = []string{
@@ -38,6 +51,7 @@ var (
 		http.MethodPut,
 		http.MethodTrace,
 	}
+	BodyTypes = []string{}
 )
 
 func params2Map(params [][2]string) map[string]string {
@@ -56,7 +70,7 @@ func params2Values(params [][2]string) url.Values {
 	return values
 }
 
-func (r *HttpRequest) Send() (*resty.Response, error) {
+func (r *Request) Send() (Response, error) {
 	client := resty.New()
 	defer client.Close()
 	res, err := client.R().
@@ -67,6 +81,5 @@ func (r *HttpRequest) Send() (*resty.Response, error) {
 		SetHeaders(params2Map(r.Headers)).
 		SetBody(r.Body).
 		Send()
-
 	return res, err
 }

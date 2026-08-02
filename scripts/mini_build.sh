@@ -1,0 +1,1 @@
+cd cmd/cli/ && CGO_ENABLE=0 go build -o $GOPATH/bin/pg -ldflags="-s -w"

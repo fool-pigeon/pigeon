@@ -1,9 +1,7 @@
 package request
 
 type Response interface{}
-type Request interface {
-	Send() (Response, error)
-}
+type Request interface{}
 
 type RequestMeta struct {
 	Name     string `toml:"name"`
@@ -11,8 +9,13 @@ type RequestMeta struct {
 }
 
 const (
-	HTTP = "http"
-	GRPC = "grpc"
-	WS   = "ws"
-	GQL  = "graphql"
+	// kinds of protocol
+	P_HTTP = "http"
+	P_GRPC = "grpc"
+	P_WS   = "ws"
+	P_GQL  = "gql"
+)
+
+var (
+	Protocols = []string{P_HTTP, P_GRPC, P_WS, P_GQL}
 )
