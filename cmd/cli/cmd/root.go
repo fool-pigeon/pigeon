@@ -22,6 +22,7 @@ var rootCmd = &cobra.Command{
 		HiddenDefaultCmd: true,
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		initFormKeyMap()
 		return nil
 	},
 }
