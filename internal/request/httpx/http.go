@@ -61,14 +61,14 @@ const (
 
 var (
 	Methods = []string{
-		http.MethodConnect,
-		http.MethodDelete,
 		http.MethodGet,
-		http.MethodHead,
-		http.MethodOptions,
-		http.MethodPatch,
 		http.MethodPost,
 		http.MethodPut,
+		http.MethodDelete,
+		http.MethodHead,
+		http.MethodOptions,
+		http.MethodConnect,
+		http.MethodPatch,
 		http.MethodTrace,
 	}
 	BodyTypes = []string{}
@@ -93,6 +93,9 @@ func (r *Request) AddHeaders(values map[string][]string) *Request {
 	return r
 }
 func (r *Request) ParseRawURL(rawURL string) error {
+	if rawURL == "" {
+		return errors.New("rawURL is empty.")
+	}
 	if !strings.HasPrefix(rawURL, "http://") || !strings.HasPrefix(rawURL, "https://") {
 		rawURL = "http://" + rawURL
 	}

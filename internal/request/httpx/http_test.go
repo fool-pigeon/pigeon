@@ -63,9 +63,16 @@ func TestRawURL(t *testing.T) {
 	}
 	require.Equal("http://"+rawURL, req.RawURL())
 
-	err := req.ParseRawURL("{{{/")
-	fmt.Println(err.Error())
-	require.Error(err)
+	{
+		err := req.ParseRawURL("{{{/")
+		require.Error(err)
+	}
+	{
+		rawURL := ""
+		err := req.ParseRawURL(rawURL)
+		require.Error(err)
+	}
+
 }
 func TestResty(t *testing.T) {
 

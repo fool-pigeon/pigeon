@@ -5,10 +5,12 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 
 	"charm.land/huh/v2"
 	"github.com/homoarea/pigeon/internal/request"
+	"github.com/homoarea/pigeon/internal/request/httpx"
 	"github.com/spf13/cobra"
 )
 
@@ -77,6 +79,7 @@ func createRequest(cmd *cobra.Command, args []string) error {
 }
 func createHttpReq(req *request.Request) error {
 	// TODO: use the form to create a http request
+	var r httpx.Request
 	const (
 		shouldSetPathParams  = "PathParams"
 		shouldSetQueryParams = "QueryParams"
@@ -85,6 +88,25 @@ func createHttpReq(req *request.Request) error {
 		shouldSetSettings    = "Settings"
 		shouldSetDesc        = "Description"
 	)
+
+	// var nextActions []string
+	basicInfoForm := formWrap(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Input URL:").
+				Validate(func(s string) error {
+					return r.ParseRawURL(s)
+				}),
+			huh.NewSelect[string]().
+				Title("Select Method").
+				Options(huh.NewOptions(httpx.Methods...)...).
+				Value(&r.Method),
+		),
+	)
+	if err := basicInfoForm.Run(); err != nil {
+		return err
+	}
+	fmt.Println(r)
 
 	return nil
 }
