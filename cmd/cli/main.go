@@ -1,5 +1,5 @@
 /*
-Copyright © 2026 homoarea homoarea114@gmail.com
+Copyright © 2026 homoarea <homoarea114@gmail.com>
 */
 package main
 
