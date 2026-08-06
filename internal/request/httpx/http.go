@@ -68,8 +68,6 @@ const (
 	BodyJSON = "application/json"
 	// body is type string
 	BodyXML = "xml"
-	// body is type string
-	BodyText = "text"
 	// body is []MultipartField
 	BodyMultiForm = "multipart/form-data"
 	// body is map[string][]string
@@ -90,9 +88,30 @@ const (
 	MethodTrace   = http.MethodTrace
 )
 
+const (
+	// this field is type string
+	FieldURL = "URL"
+	// this field is type string
+	FieldMethod = "Method"
+	// this field is type map[string]string
+	FieldPathParams = "PathParams"
+	// this field is type map[string][]string
+	FieldQueryParams = "QueryParams"
+	// this field is type map[string][]string
+	FieldHeaders = "Headers"
+	// this field is type httpx.Body
+	FieldBody = "Body"
+	// this field is type string
+	FieldDesc = "Description"
+	// this field is type httpx.Settings
+	FieldSettings = "Settings"
+)
+
 var (
 	Methods   = []string{MethodGet, MethodPost, MethodPut, MethodDelete, MethodHead, MethodOptions, MethodConnect, MethodPatch, MethodTrace}
-	BodyTypes = []string{BodyRaw, BodyJSON, BodyXML, BodyText, BodyMultiForm, BodyFormUrlEncoded, BodyBinary}
+	BodyTypes = []string{BodyRaw, BodyJSON, BodyXML, BodyMultiForm, BodyFormUrlEncoded, BodyBinary}
+	// FieldNames of Request
+	Fields = []string{FieldURL, FieldMethod, FieldPathParams, FieldQueryParams, FieldHeaders, FieldBody, FieldDesc, FieldSettings}
 )
 
 func mergeMapValues(dist *map[string][]string, src *map[string][]string) {
@@ -224,8 +243,6 @@ func (r *Request) Send() (Response, error) {
 			req.SetBody(r.Body.Data.Raw).SetContentType("application/json")
 		case BodyXML:
 			req.SetBody(r.Body.Data.Raw).SetContentType("application/xml")
-		case BodyText:
-			req.SetBody(r.Body.Data.Raw).SetContentType("text/plain")
 		case BodyRaw:
 			req.SetBody(r.Body.Data.Raw)
 		case BodyMultiForm:
