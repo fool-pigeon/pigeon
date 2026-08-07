@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/homoarea/pigeon/internal/form"
+	"github.com/homoarea/pigeon/internal/fsx"
 	"github.com/homoarea/pigeon/internal/request"
 	"github.com/homoarea/pigeon/internal/request/httpx"
 	"github.com/spf13/cobra"
@@ -53,8 +54,7 @@ func createRequest(cmd *cobra.Command, args []string) error {
 		return errors.New("not impl this protocol yet.")
 	}
 
-	// TODO: Write to the new .toml file
-	return nil
+	return fsx.WriteToml(meta.Name+".toml", r)
 }
 
 func fillHttpReq(req *request.Request) error {
