@@ -20,6 +20,11 @@ func (e *ErrUnkownBodyType) Error() string {
 	return "the body type " + e.BodyType + " is unkown."
 }
 
+var (
+	ErrEmptyRawURL = errors.New("RawURL is empty.")
+	ErrEmptyHost   = errors.New("Host is empty.")
+)
+
 type Response = resty.Response
 
 type Settings struct {
@@ -136,7 +141,7 @@ func (r *Request) AddHeaders(values map[string][]string) *Request {
 
 func (r *Request) ParseRawURL(rawURL string) error {
 	if rawURL == "" {
-		return errors.New("rawURL is empty.")
+		return ErrEmptyRawURL
 	}
 
 	// TODO: add env swap system here
@@ -151,7 +156,7 @@ func (r *Request) ParseRawURL(rawURL string) error {
 		return err
 	}
 	if u.Host == "" {
-		return errors.New("host is empty.")
+		return ErrEmptyHost
 	}
 
 	// set URL

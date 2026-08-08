@@ -50,84 +50,81 @@ func TestHttpRequestType(t *testing.T) {
 			fmt.Printf("%v\n%+v\n\n", req.Body.Type, rp)
 		}
 	}
-	{
+	t.Run("send file with the wrong file path", func(t *testing.T) {
 		req.Body.Type = httpx.BodyBinary
 		req.Body.Data.BinaryPath = "./the_file_not_exist"
 		_, err := req.Send()
 		require.Error(err)
-	}
+	})
 }
 
 func TestRawURL(t *testing.T) {
-	require := require.New(t)
-	req := httpx.Request{}
-	require.Equal("", req.RawURL())
-	// http normal
-	{
-		u := "http://localhost"
-		req.ParseRawURL(u)
-		require.Equal(u, req.RawURL())
-	}
-	// https normal
-	{
-		u := "https://example.com"
-		req.ParseRawURL(u)
-		require.Equal(u, req.RawURL())
-	}
-	// has no protocol with query params
-	{
-		rawURL := "localhost:8888/mm/id?h=114&x=y"
-		err := req.ParseRawURL(rawURL)
-		if err != nil {
+	testParse := func(t *testing.T, rawURL string, expected ...string) {
+		t.Helper()
+		var r httpx.Request
+		ans := rawURL
+		if len(expected) > 0 {
+			ans = expected[0]
+		}
+		if err := r.ParseRawURL(rawURL); err != nil {
 			t.Fatal(err)
 		}
-		require.Equal("http://"+rawURL, req.RawURL())
+		require.Equal(t, ans, r.RawURL())
 	}
-	// query string has the character needed to URL encoded
-	{
-		rawURL := "https://localhost:8888/mm/id?h=114&x=y&{=}"
-		req.ParseRawURL(rawURL)
-		require.Equal(rawURL, req.RawURL())
+	testParseErr := func(t *testing.T, rawURL string, expected ...error) {
+		t.Helper()
+		var r httpx.Request
+		err := r.ParseRawURL(rawURL)
+		if len(expected) > 0 {
+			require.ErrorIs(t, err, expected[0])
+		} else {
+			require.Error(t, err)
+		}
 	}
-	// path has the character needed to URL encoded
-	{
-		rawURL := "https://localhost:8888/{mm}/id?h=114&x=y"
-		req.ParseRawURL(rawURL)
-		require.Equal(rawURL, req.RawURL())
-	}
-	// has username field
-	{
-		rawURL := "https://user@localhost:8888/{mm}/id?h=114&x=y"
-		req.ParseRawURL(rawURL)
-		require.Equal(rawURL, req.RawURL())
-	}
-	// has password field
-	{
-		rawURL := "https://user:pwd@localhost:8888/{mm}/id?h=114&x=y"
-		req.ParseRawURL(rawURL)
-		require.Equal(rawURL, req.RawURL())
-	}
-	// username has char need to URL encoded,cause error
-	{
-		rawURL := "https://use{}r:pwd@localhost:8888/{mm}/id?h=114&x=y"
-		err := req.ParseRawURL(rawURL)
-		require.Error(err)
-	}
-	{
-		err := req.ParseRawURL("{{{/")
-		require.Error(err)
-	}
-	// err:rawURL is empty.
-	{
-		rawURL := ""
-		err := req.ParseRawURL(rawURL)
-		require.Error(err)
-	}
-	// err:host is empty.
-	{
-		err := req.ParseRawURL("http://")
-		require.Error(err)
-	}
+
+	t.Run("the default", func(t *testing.T) {
+		var r httpx.Request
+		require.Equal(t, "", r.RawURL())
+	})
+	t.Run("http normal", func(t *testing.T) {
+		testParse(t, "http://localhost")
+	})
+	t.Run("https normal", func(t *testing.T) {
+		testParse(t, "https://example.com")
+	})
+	t.Run("has no protocol with query params", func(t *testing.T) {
+		u := "localhost:8888/mm/id?h=114&x=y"
+		testParse(t, u, "http://"+u)
+	})
+	t.Run("uery string has the character needed to URL encoded", func(t *testing.T) {
+		testParse(t, "https://localhost:8888/mm/id?h=114&x=y&{=}")
+	})
+	t.Run("path has the character needed to URL encoded", func(t *testing.T) {
+		testParse(t, "https://localhost:8888/{mm}/id?h=114&x=y")
+	})
+	t.Run("has username field", func(t *testing.T) {
+		testParse(t, "https://user@localhost:8888/{mm}/id?h=114&x=y")
+	})
+	t.Run("has password field", func(t *testing.T) {
+		testParse(t, "https://user:pwd@localhost:8888/{mm}/id?h=114&x=y")
+	})
+	t.Run("has password field", func(t *testing.T) {
+		testParse(t, "https://user:pwd@localhost:8888/{mm}/id?h=114&x=y")
+	})
+	t.Run("username has char need to URL encoded,cause error", func(t *testing.T) {
+		testParseErr(t, "https://use{}r:pwd@localhost:8888/{mm}/id?h=114&x=y")
+	})
+	t.Run("wrong format", func(t *testing.T) {
+		testParseErr(t, "{{{/")
+	})
+	t.Run("err:rawURL is empty.", func(t *testing.T) {
+		testParseErr(t, "", httpx.ErrEmptyRawURL)
+	})
+
+	t.Run("err:host is empty.", func(t *testing.T) {
+		testParseErr(t, "http://", httpx.ErrEmptyHost)
+	})
+
 	//TODO: test parse path params
 	{
 
