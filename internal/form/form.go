@@ -11,14 +11,29 @@ import (
 	"github.com/pterm/pterm"
 )
 
+type TextInput = pterm.InteractiveTextInputPrinter
+type Select = pterm.InteractiveSelectPrinter
+type MultiSelect = pterm.InteractiveMultiselectPrinter
+
+func NewInput() *TextInput {
+	return pterm.DefaultInteractiveTextInput.WithMask("")
+}
+func NewMultiInput() *TextInput {
+	return pterm.DefaultInteractiveTextInput.WithMultiLine()
+}
+func NewSelect() *Select {
+	return &pterm.DefaultInteractiveSelect
+}
+func NewMultiSelect() *MultiSelect {
+	return &pterm.DefaultInteractiveMultiselect
+}
+
 // Reqeust form
 
 // For all request,name is not allowed be empty.
 func RequestName(name *string) error {
 	var err error
-	*name, err = pterm.DefaultInteractiveTextInput.
-		WithDefaultText("Input name of request").
-		Show()
+	*name, err = NewInput().Show("Input request's name")
 	if err != nil {
 		return err
 	}
@@ -31,10 +46,7 @@ func RequestName(name *string) error {
 // pick the kind of protocols for request
 func ReqeustProtocol(protocol *string) error {
 	var err error
-	*protocol, err = pterm.DefaultInteractiveSelect.
-		WithDefaultText("Pick a protocol").
-		WithOptions(request.Protocols).
-		Show()
+	*protocol, err = NewSelect().WithOptions(request.Protocols).Show("Pick a protocol")
 	if err != nil {
 		return err
 	}
@@ -85,7 +97,7 @@ func (t *validTextInput[T]) Run() error {
 		pterm.Println(pterm.LightGreen(desc))
 	}
 
-	text := pterm.DefaultInteractiveTextInput.WithDefaultText(pterm.Sprintf("%T", t.ptr))
+	text := NewInput().WithDefaultText(pterm.Sprintf("%T", t.ptr))
 	if t.isMultiLine {
 		text = text.WithMultiLine()
 	}
@@ -125,11 +137,9 @@ func multiLineStringText(v *string, desc ...string) error {
 		pterm.Println(pterm.LightGreen(d))
 	}
 
-	s, err := pterm.DefaultInteractiveTextInput.
-		WithMultiLine().
-		WithDefaultText("*string").
+	s, err := NewMultiInput().
 		WithDefaultValue(*v).
-		Show()
+		Show("*string")
 	if err != nil {
 		return err
 	}
@@ -204,14 +214,13 @@ func HttpForm(r *httpx.Request) error {
 		httpx.FieldDesc:        HttpDesc,
 		httpx.FieldSettings:    HttpSetting,
 	}
-	nextActions, err := pterm.DefaultInteractiveMultiselect.
-		WithDefaultText("What's next?").
+	nextActions, err := NewMultiSelect().
 		WithOptions(httpx.Fields).
 		WithDefaultOptions([]string{httpx.FieldURL, httpx.FieldMethod}).
 		WithMaxHeight(8).
 		WithFilter(false).
 		WithKeySelect(keys.Space).
-		Show()
+		Show("What's next?")
 	if err != nil {
 		return err
 	}
@@ -234,10 +243,7 @@ func HttpURL(r *httpx.Request) error {
 		Run()
 }
 func HttpMethod(r *httpx.Request) error {
-	method, err := pterm.DefaultInteractiveSelect.
-		WithDefaultText(helpMethod).
-		WithOptions(httpx.Methods).
-		Show()
+	method, err := NewSelect().WithOptions(httpx.Methods).Show(helpMethod)
 	if err != nil {
 		return err
 	}
@@ -263,10 +269,7 @@ func HttpBody(r *httpx.Request) error {
 	b := &r.Body
 	var err error
 
-	b.Type, err = pterm.DefaultInteractiveSelect.
-		WithDefaultText(helpBodyType).
-		WithOptions(httpx.BodyTypes).
-		Show()
+	b.Type, err = NewSelect().WithOptions(httpx.BodyTypes).Show(helpBodyType)
 	if err != nil {
 		return err
 	}
