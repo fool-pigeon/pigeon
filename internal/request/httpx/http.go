@@ -20,7 +20,7 @@ func (e *ErrUnkownBodyType) Error() string {
 	return "the body type " + e.BodyType + " is unkown."
 }
 
-type Response = *resty.Response
+type Response = resty.Response
 
 type Settings struct {
 	EncodeUrl     bool `toml:"encode_url,omitempty"`
@@ -227,7 +227,7 @@ func toQueryString(v map[string][]string) string {
 	return buf.String()
 }
 
-func (r *Request) Send() (Response, error) {
+func (r *Request) Send() (*Response, error) {
 	client := resty.New()
 	defer client.Close()
 	req := client.R().
