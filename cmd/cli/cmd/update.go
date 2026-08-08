@@ -4,33 +4,54 @@ Copyright © 2026 homoarea <homoarea114@gmail.com>
 package cmd
 
 import (
-	"fmt"
+	"errors"
 
+	"github.com/homoarea/pigeon/internal/form"
+	"github.com/homoarea/pigeon/internal/fsx"
+	"github.com/homoarea/pigeon/internal/request"
+	"github.com/homoarea/pigeon/internal/request/httpx"
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
 
 // updateCmd represents the update command
 var updateCmd = &cobra.Command{
-	Use:     "update [file]",
+	Use:     "update [file_path]",
 	Aliases: []string{"u"},
 	GroupID: GROUP_ID_REQUEST,
 	Short:   "alias u, Update a request's config",
-
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("update called")
-	},
+	Args:    cobra.ExactArgs(1),
+	RunE:    updateRequest,
 }
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
+}
 
-	// Here you will define your flags and configuration settings.
+func updateRequest(cmd *cobra.Command, args []string) error {
+	filepath := args[0]
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// updateCmd.PersistentFlags().String("foo", "", "A help for foo")
+	var meta request.RequestMeta
+	if err := fsx.ReadToml(filepath, &meta); err != nil {
+		return err
+	}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// updateCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	var req request.Request
+	switch meta.Protocol {
+	case request.P_HTTP:
+		var r httpx.Request
+		if err := fsx.ReadToml(filepath, &r); err != nil {
+			return err
+		}
+		if err := form.HttpForm(&r); err != nil {
+			return err
+		}
+
+		req = r
+
+	default:
+		return errors.New(pterm.Sprintf("not impl %q protocol yet.", meta.Protocol))
+	}
+
+	return fsx.WriteToml(filepath, &req)
 }

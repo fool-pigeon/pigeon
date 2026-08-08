@@ -10,6 +10,7 @@ import (
 	"github.com/homoarea/pigeon/internal/fsx"
 	"github.com/homoarea/pigeon/internal/request"
 	"github.com/homoarea/pigeon/internal/request/httpx"
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
 
@@ -44,24 +45,18 @@ func createRequest(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	var r request.Request
+	var req request.Request
 	switch meta.Protocol {
 	case request.P_HTTP:
-		if err := fillHttpReq(&r); err != nil {
+		r := httpx.Request{RequestMeta: meta}
+		if err := form.HttpForm(&r, httpx.FieldURL, httpx.FieldMethod); err != nil {
 			return err
 		}
+		req = r
+
 	default:
-		return errors.New("not impl this protocol yet.")
+		return errors.New(pterm.Sprintf("not impl %q protocol yet.", meta.Protocol))
 	}
 
-	return fsx.WriteToml(meta.Name+".toml", r)
-}
-
-func fillHttpReq(req *request.Request) error {
-	r := httpx.Request{RequestMeta: meta}
-	if err := form.HttpForm(&r); err != nil {
-		return err
-	}
-	*req = r
-	return nil
+	return fsx.WriteToml(meta.Name+".toml", req)
 }

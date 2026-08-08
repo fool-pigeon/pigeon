@@ -136,7 +136,7 @@ example:
 )
 
 // For httpx.Request
-func HttpForm(r *httpx.Request) error {
+func HttpForm(r *httpx.Request, defaultOptions ...string) error {
 	actions := map[string]func(r *httpx.Request) error{
 		httpx.FieldURL:         HttpURL,
 		httpx.FieldMethod:      HttpMethod,
@@ -149,7 +149,7 @@ func HttpForm(r *httpx.Request) error {
 	}
 	nextActions, err := NewMultiSelect().
 		WithOptions(httpx.Fields).
-		WithDefaultOptions([]string{httpx.FieldURL, httpx.FieldMethod}).
+		WithDefaultOptions(defaultOptions).
 		WithMaxHeight(8).
 		WithFilter(false).
 		WithKeySelect(keys.Space).
