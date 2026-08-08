@@ -41,4 +41,4 @@ require (
 	github.com/stretchr/testify v1.11.1
 )
 
-replace github.com/pterm/pterm => github.com/Homoarea/pterm v0.0.0-20260807172222-c6d2637de2e4
+replace github.com/pterm/pterm => github.com/Homoarea/pterm v0.0.0-20260808134844-20581a015aee
