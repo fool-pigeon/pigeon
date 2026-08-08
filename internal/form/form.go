@@ -33,13 +33,16 @@ func NewMultiSelect() *MultiSelect {
 // For all request,name is not allowed be empty.
 func RequestName(name *string) error {
 	var err error
-	*name, err = NewInput().Show("Input request's name")
+	*name, err = NewInput().WithOnValidateFunc(func(s string) error {
+		if s == "" {
+			return errors.New("name inputed is empty.")
+		}
+		return nil
+	}).Show("Input request's name")
 	if err != nil {
 		return err
 	}
-	if *name == "" {
-		return errors.New("name inputed is empty.")
-	}
+
 	return nil
 }
 
@@ -53,89 +56,15 @@ func ReqeustProtocol(protocol *string) error {
 	return nil
 }
 
-// interactive a value util the value can be validated or the interactive casue a err
-// exec sequence: InitFunc -> Validate -> EndFuc
-type validTextInput[T any] struct {
-	ptr         *T
-	InitFunc    func(v *T) (string, error)
-	Validate    func(s string, v *T) error
-	EndFunc     func(s string, v *T)
-	Desc        []string
-	isMultiLine bool
-}
-
-func NewValidText[T any]() *validTextInput[T] {
-	return &validTextInput[T]{}
-}
-func (t *validTextInput[T]) SetDesc(desc ...string) *validTextInput[T] {
-	t.Desc = desc
-	return t
-}
-func (t *validTextInput[T]) Value(v *T) *validTextInput[T] {
-	t.ptr = v
-	return t
-}
-func (t *validTextInput[T]) WithInitFunc(f func(v *T) (string, error)) *validTextInput[T] {
-	t.InitFunc = f
-	return t
-}
-func (t *validTextInput[T]) WithValidate(f func(s string, v *T) error) *validTextInput[T] {
-	t.Validate = f
-	return t
-}
-
-func (t *validTextInput[T]) WithEndFunc(f func(s string, v *T)) *validTextInput[T] {
-	t.EndFunc = f
-	return t
-}
-func (t *validTextInput[T]) WithMultiLine() *validTextInput[T] {
-	t.isMultiLine = true
-	return t
-}
-func (t *validTextInput[T]) Run() error {
-	for _, desc := range t.Desc {
-		pterm.Println(pterm.LightGreen(desc))
-	}
-
-	text := NewInput().WithDefaultText(pterm.Sprintf("%T", t.ptr))
-	if t.isMultiLine {
-		text = text.WithMultiLine()
-	}
-	// init
-	if t.InitFunc != nil {
-		initValue, err := t.InitFunc(t.ptr)
-		if err != nil {
-			return err
-		}
-		text = text.WithDefaultValue(initValue)
-	}
-	for {
-		value, err := text.Show()
-		if err != nil {
-			return err
-		}
-
-		// validate
-		if valid := t.Validate; valid != nil {
-			if err := valid(value, t.ptr); err != nil {
-				pterm.Error.Println(err)
-				continue
-			}
-		}
-
-		// end
-		if t.EndFunc != nil {
-			t.EndFunc(value, t.ptr)
-		}
-		return nil
+func printlns(s ...string) {
+	for _, v := range s {
+		pterm.Println(pterm.LightGreen(v))
 	}
 }
 
 // bind the v with a multiLineText
 func multiLineStringText(v *string, desc ...string) error {
-	for _, d := range desc {
-		pterm.Println(pterm.LightGreen(d))
-	}
+	printlns(desc...)
 
 	s, err := NewMultiInput().
 		WithDefaultValue(*v).
@@ -150,18 +79,22 @@ func multiLineStringText(v *string, desc ...string) error {
 
 // v is a pointer
 func validTomlValueText[T any](v *T, desc ...string) error {
-	return NewValidText[T]().
-		WithMultiLine().
-		SetDesc(desc...).
-		Value(v).
-		WithInitFunc(func(v *T) (string, error) {
-			b, err := toml.Marshal(v)
-			return string(b), err
-		}).
-		WithValidate(func(s string, v *T) error {
+	printlns(desc...)
+
+	b, err := toml.Marshal(v)
+	if err != nil {
+		return err
+	}
+	text := NewMultiInput().
+		WithDefaultValue(string(b)).
+		WithOnValidateFunc(func(s string) error {
 			return toml.Unmarshal([]byte(s), v)
-		}).
-		Run()
+		})
+	if _, err := text.Show(pterm.Sprintf("%T", v)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // help description of field forms
@@ -235,18 +168,20 @@ func HttpForm(r *httpx.Request) error {
 	return nil
 }
 func HttpURL(r *httpx.Request) error {
-	return NewValidText[string]().
-		SetDesc(helpURL).
-		WithValidate(func(s string, v *string) error {
-			return r.ParseRawURL(s)
-		}).
-		Run()
+	text := NewInput().WithDefaultValue(r.RawURL()).WithOnValidateFunc(func(s string) error {
+		return r.ParseRawURL(s)
+	})
+	if _, err := text.Show(helpURL); err != nil {
+		return err
+	}
+	return nil
 }
 func HttpMethod(r *httpx.Request) error {
-	method, err := NewSelect().WithOptions(httpx.Methods).Show(helpMethod)
+	method, err := NewSelect().WithOptions(httpx.Methods).WithDefaultOption(r.Method).Show(helpMethod)
 	if err != nil {
 		return err
 	}
+
 	r.Method = method
 	return nil
 }
@@ -269,40 +204,29 @@ func HttpBody(r *httpx.Request) error {
 	b := &r.Body
 	var err error
 
-	b.Type, err = NewSelect().WithOptions(httpx.BodyTypes).Show(helpBodyType)
+	b.Type, err = NewSelect().WithOptions(httpx.BodyTypes).WithDefaultOption(b.Type).Show(helpBodyType)
 	if err != nil {
 		return err
 	}
-	var desc string
 	switch b.Type {
 	default:
-		desc = helpBodyRaw
+		return multiLineStringText(&b.Data.Raw, helpBodyRaw)
 	case httpx.BodyBinary:
-		desc = helpBodyBinary
+		return multiLineStringText(&b.Data.Raw, helpBodyBinary)
 	case httpx.BodyJSON:
-		desc = helpBodyJSON
+		return multiLineStringText(&b.Data.Raw, helpBodyJSON)
 	case httpx.BodyXML:
-		desc = helpBodyXML
+		return multiLineStringText(&b.Data.Raw, helpBodyXML)
 	case httpx.BodyFormUrlEncoded:
-		desc = helpBodyFormUrlEncoded
-	case httpx.BodyMultiForm:
-		desc = helpBodyMultiForm
-
-	}
-
-	switch b.Type {
-	default:
-		return multiLineStringText(&b.Data.Raw, desc)
-	case httpx.BodyFormUrlEncoded:
-		return validTomlValueText(&b.Data.FormUrlEncoded, desc)
+		return validTomlValueText(&b.Data.FormUrlEncoded, helpBodyFormUrlEncoded)
 	case httpx.BodyMultiForm:
 		fds := struct {
-			Field []httpx.MultipartField `toml:"field"`
+			Field []httpx.MultipartField `toml:"field,omitempty"`
 		}{}
-		if err := validTomlValueText(&fds, desc); err != nil {
+		if err := validTomlValueText(&fds, helpBodyMultiForm); err != nil {
 			return err
 		}
 		b.Data.MultiForm = fds.Field
+		return nil
 	}
-	return nil
 }
