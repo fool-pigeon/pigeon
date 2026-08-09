@@ -1,7 +1,6 @@
 package httpx_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/homoarea/pigeon/internal/request"
@@ -32,8 +31,8 @@ func TestHttpRequestType(t *testing.T) {
 		Desc:     "this is desc",
 	}
 	b, err := toml.Marshal(req)
-	fmt.Println(string(b))
-	fmt.Printf("%+v\n", req)
+	t.Log(string(b))
+	t.Logf("%+v\n", req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +46,7 @@ func TestHttpRequestType(t *testing.T) {
 		for _, v := range bts {
 			req.Body.Type = v
 			rp, _ := req.Send()
-			fmt.Printf("%v\n%+v\n\n", req.Body.Type, rp)
+			t.Logf("%v\n%+v\n\n", req.Body.Type, rp)
 		}
 	}
 	t.Run("send file with the wrong file path", func(t *testing.T) {
@@ -96,37 +95,22 @@ func TestRawURL(t *testing.T) {
 		u := "localhost:8888/mm/id?h=114&x=y"
 		testParse(t, u, "http://"+u)
 	})
-	t.Run("uery string has the character needed to URL encoded", func(t *testing.T) {
+	t.Run("query string has the character needed to URL encoded", func(t *testing.T) {
 		testParse(t, "https://localhost:8888/mm/id?h=114&x=y&{=}")
 	})
 	t.Run("path has the character needed to URL encoded", func(t *testing.T) {
 		testParse(t, "https://localhost:8888/{mm}/id?h=114&x=y")
 	})
-	t.Run("has username field", func(t *testing.T) {
-		testParse(t, "https://user@localhost:8888/{mm}/id?h=114&x=y")
+	t.Run("err: empty url", func(t *testing.T) {
+		testParseErr(t, "")
 	})
-	t.Run("has password field", func(t *testing.T) {
-		testParse(t, "https://user:pwd@localhost:8888/{mm}/id?h=114&x=y")
-	})
-	t.Run("has password field", func(t *testing.T) {
-		testParse(t, "https://user:pwd@localhost:8888/{mm}/id?h=114&x=y")
-	})
-	t.Run("username has char need to URL encoded,cause error", func(t *testing.T) {
-		testParseErr(t, "https://use{}r:pwd@localhost:8888/{mm}/id?h=114&x=y")
-	})
-	t.Run("wrong format", func(t *testing.T) {
-		testParseErr(t, "{{{/")
-	})
-	t.Run("err:rawURL is empty.", func(t *testing.T) {
-		testParseErr(t, "", httpx.ErrEmptyRawURL)
-	})
+	t.Run("parse path params", func(t *testing.T) {
+		r := httpx.Request{}
+		r.PathParams = map[string]string{"p2": "114"}
 
-	t.Run("err:host is empty.", func(t *testing.T) {
-		testParseErr(t, "http://", httpx.ErrEmptyHost)
+		rawURL := "{host}/{p1}/{p2}/{}/${}/{${}}/${{}}/{{x}}/{${x}}/{${x}}"
+		r.ParseRawURL(rawURL)
+		expected := map[string]string{"host": "", "p1": "", "p2": "114"}
+		require.Equal(t, expected, r.PathParams)
 	})
-
-	//TODO: test parse path params
-	{
-
-	}
 }

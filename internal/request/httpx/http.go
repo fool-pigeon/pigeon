@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -23,6 +24,10 @@ func (e *ErrUnkownBodyType) Error() string {
 var (
 	ErrEmptyRawURL = errors.New("RawURL is empty.")
 	ErrEmptyHost   = errors.New("Host is empty.")
+)
+
+var (
+	pathParamRe = regexp.MustCompile(`(?:^|/){([^${}/]+)}`)
 )
 
 type Response = resty.Response
@@ -151,47 +156,28 @@ func (r *Request) ParseRawURL(rawURL string) error {
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
 		rawURL = "http://" + rawURL
 	}
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return err
-	}
-	if u.Host == "" {
-		return ErrEmptyHost
-	}
 
+	s := strings.SplitN(rawURL, "?", 2)
 	// set URL
-	var buf strings.Builder
-	n := len(u.Scheme)
-	if ui := u.User; ui != nil {
-		username := ui.Username()
-		password, _ := ui.Password()
-		n += len(username) + len(password)
+	r.Url = s[0]
+	// Set PathParams
+	if r.PathParams == nil {
+		r.PathParams = make(map[string]string)
 	}
-	n += len(u.Host) + len(u.Path)
-	n += len("://" + "//" + ":" + "@" + "/")
-	buf.Grow(n)
-
-	buf.WriteString(u.Scheme)
-	buf.WriteString("://")
-	if ui := u.User; ui != nil {
-		buf.WriteString(ui.Username())
-		if pwd, ok := ui.Password(); ok {
-			buf.WriteByte(':')
-			buf.WriteString(pwd)
+	for _, matched := range pathParamRe.FindAllStringSubmatch(r.Url, -1) {
+		name := matched[1]
+		if _, ok := r.PathParams[name]; !ok {
+			r.PathParams[name] = ""
 		}
-		buf.WriteByte('@')
 	}
-	if h := u.Host; h != "" {
-		buf.WriteString(h)
+	// set QueryParams
+	if len(s) > 1 {
+		query, err := url.ParseQuery(s[1])
+		if err != nil {
+			return err
+		}
+		r.QueryParams = query
 	}
-	if p := u.Path; p != "" {
-		buf.WriteString(p)
-	}
-
-	r.Url = buf.String()
-	// Set QueryParams
-	r.QueryParams = u.Query()
-	// TODO: Parse PathParmas here
 
 	return nil
 }
