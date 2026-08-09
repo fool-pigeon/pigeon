@@ -46,8 +46,7 @@ func updateRequest(cmd *cobra.Command, args []string) error {
 		if err := form.HttpForm(&r); err != nil {
 			return err
 		}
-
-		req = r
+		req = &r
 
 	default:
 		return errors.New(pterm.Sprintf("not impl %q protocol yet.", meta.Protocol))

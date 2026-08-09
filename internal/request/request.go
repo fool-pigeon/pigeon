@@ -1,7 +1,9 @@
 package request
 
 type Response interface{}
-type Request interface{}
+type Request interface {
+	Run() (Response, error)
+}
 
 type RequestMeta struct {
 	Name     string `toml:"name"`

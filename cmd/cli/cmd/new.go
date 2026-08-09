@@ -48,12 +48,10 @@ func createRequest(cmd *cobra.Command, args []string) error {
 	var req request.Request
 	switch meta.Protocol {
 	case request.P_HTTP:
-		r := httpx.Request{RequestMeta: meta}
-		if err := form.HttpForm(&r, httpx.FieldURL, httpx.FieldMethod); err != nil {
+		req := &httpx.Request{RequestMeta: meta}
+		if err := form.HttpForm(req, httpx.FieldURL, httpx.FieldMethod); err != nil {
 			return err
 		}
-		req = r
-
 	default:
 		return errors.New(pterm.Sprintf("not impl %q protocol yet.", meta.Protocol))
 	}

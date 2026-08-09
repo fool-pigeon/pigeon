@@ -83,6 +83,7 @@ var (
 
 type Response = resty.Response
 
+// TODO: the http request's setting
 type Settings struct {
 	EncodeUrl     bool `toml:"encode_url,omitempty"`
 	Timeout       uint `toml:"timeout,omitempty"`
@@ -101,6 +102,12 @@ type Request struct {
 	Settings    Settings            `toml:"settings"`
 	Desc        string              `toml:"desc,omitempty,multiline"`
 }
+
+// Run implements [request.Request].
+func (r *Request) Run() (request.Response, error) {
+	return r.Send()
+}
+
 type Body struct {
 	Type string   `toml:"type,omitempty"`
 	Data BodyData `toml:"data,omitempty,multiline"`
