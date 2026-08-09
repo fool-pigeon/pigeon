@@ -26,7 +26,58 @@ var (
 	ErrEmptyHost   = errors.New("Host is empty.")
 )
 
+const (
+	// HTTP Body Types
+	// body is type string
+	BodyRaw = "raw"
+	// body is type string
+	BodyJSON = "application/json"
+	// body is type string
+	BodyXML = "xml"
+	// body is []MultipartField
+	BodyMultiForm = "multipart/form-data"
+	// body is map[string][]string
+	BodyFormUrlEncoded = "x-www-form-urlencoded"
+	// body is map[string]string
+	BodyBinary = "file/binary"
+)
+
+const (
+	MethodGet     = http.MethodGet
+	MethodPost    = http.MethodPost
+	MethodPut     = http.MethodPut
+	MethodDelete  = http.MethodDelete
+	MethodHead    = http.MethodHead
+	MethodOptions = http.MethodOptions
+	MethodConnect = http.MethodConnect
+	MethodPatch   = http.MethodPatch
+	MethodTrace   = http.MethodTrace
+
+	// this field is type string
+	FieldURL = "URL"
+	// this field is type string
+	FieldMethod = "Method"
+	// this field is type map[string]string
+	FieldPathParams = "PathParams"
+	// this field is type map[string][]string
+	FieldQueryParams = "QueryParams"
+	// this field is type map[string][]string
+	FieldHeaders = "Headers"
+	// this field is type httpx.Body
+	FieldBody = "Body"
+	// this field is type string
+	FieldDesc = "Description"
+	// this field is type httpx.Settings
+	FieldSettings = "Settings"
+)
+
 var (
+	Methods   = []string{MethodGet, MethodPost, MethodPut, MethodDelete, MethodHead, MethodOptions, MethodConnect, MethodPatch, MethodTrace}
+	BodyTypes = []string{BodyRaw, BodyJSON, BodyXML, BodyMultiForm, BodyFormUrlEncoded, BodyBinary}
+	// FieldNames of Request
+	Fields = []string{FieldURL, FieldMethod, FieldPathParams, FieldQueryParams, FieldHeaders, FieldBody, FieldDesc, FieldSettings}
+
+	// regex pattern
 	pathParamRe = regexp.MustCompile(`(?:^|/){([^${}/]+)}`)
 )
 
@@ -69,60 +120,6 @@ type MultipartField struct {
 	FilePath    string   `toml:"file_path,omitempty"`
 	ContentType string   `toml:"content_type,omitempty"`
 }
-
-const (
-	// HTTP Body Types
-	// body is type string
-	BodyRaw = "raw"
-	// body is type string
-	BodyJSON = "application/json"
-	// body is type string
-	BodyXML = "xml"
-	// body is []MultipartField
-	BodyMultiForm = "multipart/form-data"
-	// body is map[string][]string
-	BodyFormUrlEncoded = "x-www-form-urlencoded"
-	// body is map[string]string
-	BodyBinary = "file/binary"
-)
-
-const (
-	MethodGet     = http.MethodGet
-	MethodPost    = http.MethodPost
-	MethodPut     = http.MethodPut
-	MethodDelete  = http.MethodDelete
-	MethodHead    = http.MethodHead
-	MethodOptions = http.MethodOptions
-	MethodConnect = http.MethodConnect
-	MethodPatch   = http.MethodPatch
-	MethodTrace   = http.MethodTrace
-)
-
-const (
-	// this field is type string
-	FieldURL = "URL"
-	// this field is type string
-	FieldMethod = "Method"
-	// this field is type map[string]string
-	FieldPathParams = "PathParams"
-	// this field is type map[string][]string
-	FieldQueryParams = "QueryParams"
-	// this field is type map[string][]string
-	FieldHeaders = "Headers"
-	// this field is type httpx.Body
-	FieldBody = "Body"
-	// this field is type string
-	FieldDesc = "Description"
-	// this field is type httpx.Settings
-	FieldSettings = "Settings"
-)
-
-var (
-	Methods   = []string{MethodGet, MethodPost, MethodPut, MethodDelete, MethodHead, MethodOptions, MethodConnect, MethodPatch, MethodTrace}
-	BodyTypes = []string{BodyRaw, BodyJSON, BodyXML, BodyMultiForm, BodyFormUrlEncoded, BodyBinary}
-	// FieldNames of Request
-	Fields = []string{FieldURL, FieldMethod, FieldPathParams, FieldQueryParams, FieldHeaders, FieldBody, FieldDesc, FieldSettings}
-)
 
 func mergeMapValues(dist *map[string][]string, src *map[string][]string) {
 	for k, v := range *src {
