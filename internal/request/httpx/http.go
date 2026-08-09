@@ -165,15 +165,18 @@ func (r *Request) ParseRawURL(rawURL string) error {
 	// set URL
 	r.Url = s[0]
 	// Set PathParams
-	if r.PathParams == nil {
-		r.PathParams = make(map[string]string)
-	}
+	pathMap := make(map[string]string)
 	for _, matched := range pathParamRe.FindAllStringSubmatch(r.Url, -1) {
 		name := matched[1]
-		if _, ok := r.PathParams[name]; !ok {
-			r.PathParams[name] = ""
+		pathMap[name] = ""
+		if r.PathParams == nil {
+			continue
+		}
+		if v, ok := r.PathParams[name]; ok {
+			pathMap[name] = v
 		}
 	}
+	r.PathParams = pathMap
 	// set QueryParams
 	if len(s) > 1 {
 		query, err := url.ParseQuery(s[1])
@@ -181,6 +184,8 @@ func (r *Request) ParseRawURL(rawURL string) error {
 			return err
 		}
 		r.QueryParams = query
+	} else {
+		r.QueryParams = map[string][]string{}
 	}
 
 	return nil
