@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/homoarea/pigeon/internal/config"
+	"github.com/homoarea/pigeon/internal/fsx"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +31,7 @@ var initCmd = &cobra.Command{
 				return err
 			}
 		}
-		name = filepath.Join(name, config.RootTagName)
+		name = filepath.Join(name, fsx.RootTagName)
 		f, err := os.Create(name)
 		if err != nil {
 			return err

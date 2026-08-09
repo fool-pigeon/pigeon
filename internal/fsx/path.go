@@ -1,11 +1,9 @@
-package config
+package fsx
 
 import (
 	"errors"
 	"path/filepath"
 	"slices"
-
-	"github.com/homoarea/pigeon/internal/fsx"
 )
 
 var (
@@ -22,7 +20,7 @@ func RootDir(path string) (string, error) {
 		return "", err
 	}
 	for {
-		isFileExist, err := fsx.IsFileExist(filepath.Join(absPath, RootTagName))
+		isFileExist, err := IsFileExist(filepath.Join(absPath, RootTagName))
 		if err != nil {
 			return "", err
 		}
@@ -46,7 +44,7 @@ func PathsToRoot(path string) ([]string, error) {
 	}
 	res := make([]string, 0)
 	for {
-		isFileExist, err := fsx.IsFileExist(filepath.Join(absPath, RootTagName))
+		isFileExist, err := IsFileExist(filepath.Join(absPath, RootTagName))
 		if err != nil {
 			return nil, err
 		}

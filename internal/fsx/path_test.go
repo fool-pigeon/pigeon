@@ -1,22 +1,18 @@
-package config_test
+package fsx_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/homoarea/pigeon/internal/config"
+	"github.com/homoarea/pigeon/internal/fsx"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoad(t *testing.T) {
 	// create tmpDir for test
-	tmpDir, err := os.MkdirTemp("", "pg-test-dir-*")
-	tmpDir, _ = filepath.Abs(tmpDir)
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		t.Fatal("create tmpDir failed", err)
-	}
+	tmpDir := t.TempDir()
+
 	dir1, dir2 := filepath.Join(tmpDir, "dir1"), filepath.Join(tmpDir, "dir2")
 	os.Mkdir(dir1, os.ModePerm)
 	os.Mkdir(dir2, os.ModePerm)
@@ -33,17 +29,17 @@ func TestLoad(t *testing.T) {
 
 	require := require.New(t)
 	// test dir1
-	r, err := config.RootDir(dir1)
+	r, err := fsx.RootDir(dir1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	require.Equal(tmpDir, r, "match the root from dir1")
-	paths, err := config.PathsToRoot(dir1)
+	paths, err := fsx.PathsToRoot(dir1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	require.Equal([]string{dir1, tmpDir}, paths)
-	paths, err = config.PathsFromRoot(dir1)
+	paths, err = fsx.PathsFromRoot(dir1)
 	if err != nil {
 		t.Fatal(err)
 	}

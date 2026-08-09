@@ -3,7 +3,6 @@ package env
 import (
 	"path/filepath"
 
-	"github.com/homoarea/pigeon/internal/config"
 	"github.com/homoarea/pigeon/internal/fsx"
 	"github.com/knadh/koanf/parsers/dotenv"
 	"github.com/knadh/koanf/providers/file"
@@ -22,7 +21,7 @@ func LoadFromFile(e *koanf.Koanf, name string) error {
 }
 
 func Load(path string) (*koanf.Koanf, error) {
-	paths, err := config.PathsFromRoot(path)
+	paths, err := fsx.PathsFromRoot(path)
 	if err != nil {
 		return nil, err
 	}
