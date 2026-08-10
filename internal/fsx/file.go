@@ -21,6 +21,10 @@ func IsFileExist(name string) (bool, error) {
 	}
 	return false, nil
 }
+func IsFile(name string) bool {
+	f, _ := os.Lstat(name)
+	return f.Mode().IsRegular()
+}
 
 func StoreKoanf(k *koanf.Koanf, parser koanf.Parser, name string) error {
 	b, err := k.Marshal(parser)
