@@ -27,8 +27,7 @@ func TestHttpRequestType(t *testing.T) {
 			Type: httpx.BodyBinary,
 			Data: bd,
 		},
-		Settings: httpx.Settings{EncodeUrl: false, AutoRedirects: true, MaxRedirects: 5},
-		Desc:     "this is desc",
+		Desc: "this is desc",
 	}
 	b, err := toml.Marshal(req)
 	t.Log(string(b))

@@ -82,35 +82,77 @@ var (
 )
 
 type Response = resty.Response
+type Client = resty.Client
 
-// TODO: the http request's setting
-type Settings struct {
-	EncodeUrl     bool `toml:"encode_url,omitempty"`
-	Timeout       uint `toml:"timeout,omitempty"`
-	AutoRedirects bool `toml:"auto_redirects"`
-	MaxRedirects  uint `toml:"max_redirects,omitempty"`
+const (
+	AuthTypeBasic  = "basic"
+	AuthTypeDigest = "digest"
+	AuthTypeToken  = "token"
+)
+
+type Auth struct {
+	Type string   `toml:"type" comment:"'basic'|'digest'|'token'|'oauth'"`
+	Data AuthData `toml:"data"`
 }
-type Request struct {
-	request.RequestMeta
-	Method string `toml:"mothod"`
-	// URL without query string, like http://localhost:8080/v1/{userId}/post
-	Url         string              `toml:"url"`
-	PathParams  map[string]string   `toml:"path_params,omitempty,multiline"`
-	QueryParams map[string][]string `toml:"query_params,omitempty,multiline"`
-	Headers     map[string][]string `toml:"headers,omitempty,multiline"`
-	Body        Body                `toml:"body,omitempty"`
-	Settings    Settings            `toml:"settings"`
-	Desc        string              `toml:"desc,omitempty,multiline"`
+type AuthData struct {
+	Token AuthToken `toml:"token"`
+	Creds AuthCreds `toml:"creds"`
+}
+type AuthToken struct {
+	Scheme string `toml:"scheme"`
+	Token  string `toml:"token"`
+	Header string `toml:"header"`
+}
+type AuthCreds struct {
+	Username string `toml:"username"`
+	Password string `toml:"password"`
 }
 
-// Run implements [request.Request].
-func (r *Request) Run() (request.Response, error) {
-	return r.Send()
+// TODO OAuth2.0 and OAuth1.0
+
+type Redirect struct {
+	MaxCount int      `toml:"max_count"`
+	Domains  []string `toml:"domains"`
+}
+type Retry struct {
+	Count                int   `toml:"count"`
+	WaitTime             int64 `toml:"wait_time"`
+	MaxWaitTime          int64 `toml:"max_wait_time"`
+	IsAllowNonIdempotent bool  `toml:"is_allow_non_idempotent"`
+}
+
+type HttpSetting struct {
+	Auth Auth `toml:"auth"`
+
+	Timeout int64 `toml:"timeout"`
+	Retry   Retry `toml:"retry"`
+
+	CookieString      string `toml:"cookies"`
+	UnescapeQuery     bool   `toml:"unescape_query"`
+	JsonEscapeHTML    bool   `toml:"json_escape_html"`
+	ResponseBodyLimit int64  `toml:"response_body_limit"`
+}
+type ClientData struct {
+	BaseURL  string `toml:"base_url,commented"`
+	ProxyURL string `toml:"proxy_url,commented"`
+
+	PathParams  map[string]string `toml:"path_params,commented"`
+	QueryParams url.Values        `toml:"query_params,commented"`
+	Headers     http.Header       `toml:"headers,commented"`
+
+	Redirect Redirect    `toml:"redirect,commented"`
+	Setting  HttpSetting `toml:"setting,commented"`
+}
+
+func NewClient() *Client {
+	client := resty.New()
+	// TODO: create a client
+	return client
 }
 
 type Body struct {
-	Type string   `toml:"type,omitempty"`
-	Data BodyData `toml:"data,omitempty,multiline"`
+	Type string   `toml:"type"`
+	Data BodyData `toml:"data,multiline"`
 }
 type BodyData struct {
 	Raw            string              `toml:"raw,omitempty,multiline"`
@@ -127,25 +169,21 @@ type MultipartField struct {
 	FilePath    string   `toml:"file_path,omitempty"`
 	ContentType string   `toml:"content_type,omitempty"`
 }
-
-func mergeMapValues(dist *map[string][]string, src *map[string][]string) {
-	for k, v := range *src {
-		if (*dist)[k] != nil {
-			(*dist)[k] = append((*dist)[k], v...)
-		} else {
-			(*dist)[k] = (*src)[k]
-		}
-	}
+type Request struct {
+	request.RequestMeta
+	Method      string            `toml:"mothod"`
+	Url         string            `toml:"url"`
+	PathParams  map[string]string `toml:"path_params,omitempty,multiline"`
+	QueryParams url.Values        `toml:"query_params,omitempty,multiline"`
+	Headers     http.Header       `toml:"headers,omitempty,multiline"`
+	Body        Body              `toml:"body,omitempty"`
+	Desc        string            `toml:"desc,omitempty,multiline"`
+	Settings    HttpSetting       `toml:"setting,omitempty"`
 }
 
-func (r *Request) AddQueryParams(values map[string][]string) *Request {
-	mergeMapValues(&r.QueryParams, &values)
-	return r
-}
-
-func (r *Request) AddHeaders(values map[string][]string) *Request {
-	mergeMapValues(&r.Headers, &values)
-	return r
+// Run implements [request.Request].
+func (r *Request) Run() (request.Response, error) {
+	return r.Send()
 }
 
 func (r *Request) ParseRawURL(rawURL string) error {
@@ -228,8 +266,11 @@ func toQueryString(v map[string][]string) string {
 }
 
 func (r *Request) Send() (*Response, error) {
-	client := resty.New()
+	client := resty.New().SetHeader("User-Agent", "pigeon/http")
 	defer client.Close()
+	return r.SendWithClient(client)
+}
+func (r *Request) SendWithClient(client *Client) (*Response, error) {
 	req := client.R().
 		SetURL(r.Url).
 		SetMethod(r.Method).
