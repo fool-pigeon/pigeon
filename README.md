@@ -7,7 +7,6 @@ Project Structure
 ├── .conf
 ├── .env
 ├── f1
-│   ├── .conf
 │   ├── r1.toml
 │   └── r2.toml
 ├── f2
@@ -22,3 +21,9 @@ Project Structure
 └── r2.toml
 
 ```
+
+cli functions
+new - create a request
+config - create a config for root project
+env - set the env of collection
+run - run the collections,requests
