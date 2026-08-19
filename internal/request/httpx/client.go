@@ -127,21 +127,44 @@ func (c *ClientData) ToCommentedData() CommentedClientData {
 	return CommentedClientData(*c)
 }
 
-func (c *ClientData) InstancedClient() *Client {
+func (c *ClientData) InstancedClient() (*Client, error) {
 	client := resty.New()
 	client.SetHeader("User-Agent", defaultUserAgent)
-	// TODO: instanced client
-	return client
-}
 
-// set redirect for client
-func (c *ClientData) convertRedirect(client *Client) {
+	if baseURL := c.BaseURL; baseURL != "" {
+		client.SetBaseURL(baseURL)
+	}
+	if proxyURL := c.ProxyURL; proxyURL != "" {
+		client.SetProxy(proxyURL)
+	}
+	if pathParams := c.PathParams; pathParams != nil {
+		client.SetPathParams(pathParams)
+	}
+	if queryParams := c.QueryParams; queryParams != nil {
+		for name, values := range queryParams {
+			for _, value := range values {
+				client.SetQueryParam(name, value)
+			}
+		}
+	}
+	if headers := c.Headers; headers != nil {
+		for name, values := range headers {
+			for _, value := range values {
+				client.SetHeader(name, value)
+			}
+		}
+	}
 	if redirect := c.Redirect; redirect.MaxCount != 0 {
 		client.SetRedirectPolicy(
 			resty.RedirectFlexiblePolicy(redirect.MaxCount),
 			resty.RedirectDomainCheckPolicy(redirect.Domains...),
 		)
 	}
+	if err := c.convertSetting(client); err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
 
 // set settings for client

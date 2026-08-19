@@ -230,8 +230,12 @@ func (r *RequestData) Send() (*Response, error) {
 func (r *RequestData) InstancedRequest() (*Request, error) {
 	client := r.client
 	if client == nil {
-		c := NewClientData()
-		client = c.InstancedClient()
+		cData := NewClientData()
+		c, err := cData.InstancedClient()
+		if err != nil {
+			return nil, err
+		}
+		client = c
 	}
 
 	req := client.R().
@@ -244,7 +248,10 @@ func (r *RequestData) InstancedRequest() (*Request, error) {
 	if err := r.convertBody(req); err != nil {
 		return nil, err
 	}
-	// todo: finish instanced request
+
+	if err := r.convertSetting(req); err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
