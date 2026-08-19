@@ -56,7 +56,7 @@ func readRequest(path string) (request.Request, error) {
 	}
 	switch meta.Protocol {
 	case request.P_HTTP:
-		var r httpx.Request
+		var r httpx.RequestData
 		if err := toml.Unmarshal(b, &r); err != nil {
 			return nil, err
 		}
@@ -70,7 +70,7 @@ func readRequest(path string) (request.Request, error) {
 func execRequest[T any](r request.Request, cache *Cache[T]) (string, error) {
 	var msg string
 	switch r := r.(type) {
-	case *httpx.Request:
+	case *httpx.RequestData:
 		rp, err := r.Send()
 		if err != nil {
 			return "", err

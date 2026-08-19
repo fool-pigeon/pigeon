@@ -1,8 +1,8 @@
 package request
 
-type Response interface{}
+type Result interface{}
 type Request interface {
-	Run() (Response, error)
+	Run() (Result, error)
 }
 
 type RequestMeta struct {
