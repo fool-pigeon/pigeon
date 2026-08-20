@@ -23,7 +23,7 @@ var configCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		name = filepath.Join(name, fsx.RootTagName)
+		name = filepath.Join(name, fsx.RootTagDirName)
 		f, err := os.Create(name)
 		if err != nil {
 			return err

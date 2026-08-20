@@ -26,12 +26,23 @@ func IsFile(name string) bool {
 	return f.Mode().IsRegular()
 }
 
+func ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name)
+}
+func ReadFileAsString(name string) (string, error) {
+	b, err := os.ReadFile(name)
+	return string(b), err
+}
+func WriteFile(name string, data []byte) error {
+	return os.WriteFile(name, data, os.FileMode(0666))
+}
+
 func StoreKoanf(k *koanf.Koanf, parser koanf.Parser, name string) error {
 	b, err := k.Marshal(parser)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(name, b, os.FileMode(0666)); err != nil {
+	if err := WriteFile(name, b); err != nil {
 		return err
 	}
 
@@ -39,7 +50,7 @@ func StoreKoanf(k *koanf.Koanf, parser koanf.Parser, name string) error {
 }
 
 func ReadToml(name string, v interface{}) error {
-	b, err := os.ReadFile(name)
+	b, err := ReadFile(name)
 	if err != nil {
 		return err
 	}
@@ -53,7 +64,7 @@ func WriteToml(name string, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(name, b, os.FileMode(0666)); err != nil {
+	if err := WriteFile(name, b); err != nil {
 		return err
 	}
 	return nil

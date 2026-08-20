@@ -11,23 +11,31 @@ import (
 
 var Envs = koanf.New(".")
 
-const EnvFileName = ".env"
+const DefaultFileName = ".env"
 
-func LoadFromFile(e *koanf.Koanf, name string) error {
+type Env = koanf.Koanf
+
+func FileName(suffix ...string) string {
+	if len(suffix) > 0 {
+		return DefaultFileName + "-" + suffix[0]
+	}
+	return DefaultFileName
+}
+func LoadFromFile(e *Env, name string) error {
 	if err := e.Load(file.Provider(name), dotenv.Parser()); err != nil {
 		return err
 	}
 	return nil
 }
 
-func Load(path string) (*koanf.Koanf, error) {
+func Load(path string) (*Env, error) {
 	paths, err := fsx.PathsFromRoot(path)
 	if err != nil {
 		return nil, err
 	}
 	k := koanf.New(".")
 	for _, path := range paths {
-		fileName := filepath.Join(path, EnvFileName)
+		fileName := filepath.Join(path, DefaultFileName)
 		isExist, err := fsx.IsFileExist(fileName)
 		if err != nil {
 			return nil, err
@@ -39,6 +47,6 @@ func Load(path string) (*koanf.Koanf, error) {
 	return k, nil
 }
 
-func Store(k *koanf.Koanf, name string) error {
-	return fsx.StoreKoanf(k, dotenv.Parser(), name)
+func Store(e *Env, name string) error {
+	return fsx.StoreKoanf(e, dotenv.Parser(), name)
 }

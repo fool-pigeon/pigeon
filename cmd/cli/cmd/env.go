@@ -65,24 +65,24 @@ func listEnvs(cmd *cobra.Command, args []string) error {
 }
 func setEnv(cmd *cobra.Command, args []string) error {
 	k := koanf.New(".")
-	if err := env.LoadFromFile(k, env.EnvFileName); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := env.LoadFromFile(k, env.DefaultFileName); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	k.Set(args[0], args[1])
-	if err := env.Store(k, env.EnvFileName); err != nil {
+	if err := env.Store(k, env.DefaultFileName); err != nil {
 		return err
 	}
 	return nil
 }
 func removeEnvs(cmd *cobra.Command, args []string) error {
 	k := koanf.New(".")
-	if err := env.LoadFromFile(k, env.EnvFileName); err != nil {
+	if err := env.LoadFromFile(k, env.DefaultFileName); err != nil {
 		return err
 	}
 	for _, envKey := range args {
 		k.Delete(envKey)
 	}
-	if err := env.Store(k, env.EnvFileName); err != nil {
+	if err := env.Store(k, env.DefaultFileName); err != nil {
 		return err
 	}
 	return nil

@@ -10,7 +10,7 @@ var (
 	ErrRootNotExist = errors.New("Not found root tag file")
 )
 
-const RootTagName = ".pg"
+const RootTagDirName = ".pg"
 
 // find the dir contains .pg file in dirs from path to os' root dir
 // (not include os' root dir and permission denied)
@@ -20,7 +20,7 @@ func RootDir(path string) (string, error) {
 		return "", err
 	}
 	for {
-		isFileExist, err := IsFileExist(filepath.Join(absPath, RootTagName))
+		isFileExist, err := IsFileExist(filepath.Join(absPath, RootTagDirName))
 		if err != nil {
 			return "", err
 		}
@@ -44,7 +44,7 @@ func PathsToRoot(path string) ([]string, error) {
 	}
 	res := make([]string, 0)
 	for {
-		isFileExist, err := IsFileExist(filepath.Join(absPath, RootTagName))
+		isFileExist, err := IsFileExist(filepath.Join(absPath, RootTagDirName))
 		if err != nil {
 			return nil, err
 		}
