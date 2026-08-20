@@ -15,18 +15,13 @@ func IsFileExist(name string) (bool, error) {
 	return f.Mode().IsRegular(), nil
 }
 
-func IsDirExist(name string) (bool, error) {
-	f, err := os.Lstat(name)
-	if err != nil {
-		return false, err
-	}
-
-	return f.IsDir(), nil
-}
-
 func IsFile(name string) bool {
 	f, _ := os.Lstat(name)
 	return f.Mode().IsRegular()
+}
+
+func WriteFile(name string, data []byte) error {
+	return os.WriteFile(name, data, os.FileMode(0664))
 }
 
 func ReadFile(name string) ([]byte, error) {
@@ -35,9 +30,6 @@ func ReadFile(name string) ([]byte, error) {
 func ReadFileAsString(name string) (string, error) {
 	b, err := os.ReadFile(name)
 	return string(b), err
-}
-func WriteFile(name string, data []byte) error {
-	return os.WriteFile(name, data, os.FileMode(0666))
 }
 
 func StoreKoanf(k *koanf.Koanf, parser koanf.Parser, name string) error {

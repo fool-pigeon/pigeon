@@ -1,7 +1,6 @@
 package fsx_test
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -169,13 +168,13 @@ func TestToml(t *testing.T) {
 	if err := toml.Unmarshal(b, &m); err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(string(b))
-	fmt.Println(m)
+	t.Log(string(b))
+	t.Log(m)
 	require := require.New(t)
 	require.Equal(data, m)
 	err = toml.Unmarshal([]byte(`k1='v1`), &m)
 	require.Error(err)
-	fmt.Println(err)
+	t.Log(err)
 
 	mfs := []httpx.MultipartField{
 		{Name: "name1", Values: []string{"v1", "v2"}},
@@ -185,7 +184,7 @@ func TestToml(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(string(b))
+	t.Log(string(b))
 
 	type Inner struct {
 		F1 int    `toml:"f1"`
@@ -199,10 +198,10 @@ func TestToml(t *testing.T) {
 			{F1: 2, F2: "514"},
 		},
 	}
-	fmt.Println(d)
+	t.Log(d)
 	b, err = toml.Marshal(d)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(string(b))
+	t.Log(string(b))
 }

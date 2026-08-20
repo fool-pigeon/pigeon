@@ -2,13 +2,12 @@ package fsx
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 )
 
-var (
-	ErrRootNotExist = errors.New("Not found root tag file")
-)
+var ErrRootNotExist = errors.New("Not found root tag directory.")
 
 const RootTagDirName = ".pg"
 
@@ -20,19 +19,21 @@ func RootDir(path string) (string, error) {
 		return "", err
 	}
 	for {
-		isFileExist, err := IsFileExist(filepath.Join(absPath, RootTagDirName))
-		if err != nil {
+		isExist, err := IsDirExist(filepath.Join(absPath, RootTagDirName))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return "", err
 		}
-		if isFileExist {
+		if isExist {
 			return absPath, nil
 		}
 
+		// arrived the root dir of OS
 		if filepath.Dir(absPath) == absPath {
 			return "", ErrRootNotExist
 		}
 
 		absPath = filepath.Dir(absPath)
+		absPath = filepath.Clean(absPath)
 	}
 }
 
@@ -44,13 +45,13 @@ func PathsToRoot(path string) ([]string, error) {
 	}
 	res := make([]string, 0)
 	for {
-		isFileExist, err := IsFileExist(filepath.Join(absPath, RootTagDirName))
-		if err != nil {
+		isExist, err := IsDirExist(filepath.Join(absPath, RootTagDirName))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
 
 		res = append(res, absPath)
-		if isFileExist {
+		if isExist {
 			return res, nil
 		}
 
@@ -65,8 +66,9 @@ func PathsToRoot(path string) ([]string, error) {
 // return []string of paths form rootDir to this path
 func PathsFromRoot(path string) ([]string, error) {
 	paths, err := PathsToRoot(path)
-	if err == nil {
-		slices.Reverse(paths)
+	if err != nil {
+		return nil, err
 	}
-	return paths, err
+	slices.Reverse(paths)
+	return paths, nil
 }

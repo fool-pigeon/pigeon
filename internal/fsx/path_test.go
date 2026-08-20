@@ -9,40 +9,55 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLoad(t *testing.T) {
-	// create tmpDir for test
-	tmpDir := t.TempDir()
+func TestRootDir(t *testing.T) {
+	t.Run("the tagDir in current dir", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tagDir := filepath.Join(tmpDir, fsx.RootTagDirName)
+		fsx.Mkdir(tagDir)
+		rootDir, err := fsx.RootDir(tmpDir)
+		require.Equal(t, tmpDir, rootDir)
+		require.Nil(t, err)
+	})
 
-	dir1, dir2 := filepath.Join(tmpDir, "dir1"), filepath.Join(tmpDir, "dir2")
-	os.Mkdir(dir1, os.ModePerm)
-	os.Mkdir(dir2, os.ModePerm)
-	// create .pg/ and .pg
-	os.Mkdir(filepath.Join(dir1, ".pg"), os.ModePerm)
-	os.Create(filepath.Join(dir2, ".pg"))
-	os.Create(filepath.Join(tmpDir, ".pg"))
-	// .
-	// ├── dir1
-	// │   └── .pg/ # this is dir,no match
-	// ├── dir2
-	// │   └── .pg  # match this
-	// └── .pg  	# match this
+	t.Run("the tagDir in the parent dir", func(t *testing.T) {
+		parentDir := t.TempDir()
+		tagDir := filepath.Join(parentDir, fsx.RootTagDirName)
+		fsx.Mkdir(tagDir)
+		sonDir, _ := os.MkdirTemp(parentDir, "son")
+		rootDir, err := fsx.RootDir(sonDir)
+		require.Equal(t, parentDir, rootDir)
+		require.Nil(t, err)
+	})
 
-	require := require.New(t)
-	// test dir1
-	r, err := fsx.RootDir(dir1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	require.Equal(tmpDir, r, "match the root from dir1")
-	paths, err := fsx.PathsToRoot(dir1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	require.Equal([]string{dir1, tmpDir}, paths)
-	paths, err = fsx.PathsFromRoot(dir1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	require.Equal([]string{tmpDir, dir1}, paths)
-
+	t.Run("not exist tag dir", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		sonDir, _ := os.MkdirTemp(tmpDir, "son")
+		rootDir, err := fsx.RootDir(sonDir)
+		require.Equal(t, rootDir, "")
+		require.ErrorIs(t, err, fsx.ErrRootNotExist)
+	})
+}
+func TestPathsToRoot(t *testing.T) {
+	t.Run("not exist tag dir", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		sonDir, _ := os.MkdirTemp(tmpDir, "son")
+		paths, err := fsx.PathsToRoot(sonDir)
+		require.Nil(t, paths)
+		require.ErrorIs(t, err, fsx.ErrRootNotExist)
+	})
+	t.Run("tag dir in current dir", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		fsx.Mkdir(filepath.Join(tmpDir, fsx.RootTagDirName))
+		paths, err := fsx.PathsToRoot(tmpDir)
+		require.Equal(t, []string{tmpDir}, paths)
+		require.Nil(t, err)
+	})
+	t.Run("tag dir in parent dir", func(t *testing.T) {
+		parentDir := t.TempDir()
+		fsx.Mkdir(filepath.Join(parentDir, fsx.RootTagDirName))
+		sonDir, _ := os.MkdirTemp(parentDir, "son")
+		paths, err := fsx.PathsToRoot(sonDir)
+		require.Equal(t, []string{sonDir, parentDir}, paths)
+		require.Nil(t, err)
+	})
 }
