@@ -1,5 +1,5 @@
 /*
-Copyright © 2026 homoarea <homoarea114@gmail.com>
+Copyright © 2026 Homoarea <homoarea114@gmail.com>
 */
 package cmd
 
@@ -21,27 +21,26 @@ var envCmd = &cobra.Command{
 	Long: `The env vars will be stored in the dotenv file named .env
 Env vars will be loaded from the root directory to current directory and will be overwritten by new ones.
 `,
-	RunE: listEnvs,
 }
 var (
-	setCmd = &cobra.Command{
+	setEnvCmd = &cobra.Command{
 		Use:     "set [var_name] [var_value]",
 		Aliases: []string{"s"},
-		Short:   "alias s,Add or reset var in the .env",
+		Short:   "alias s, Add or reset var in the .env",
 		Args:    cobra.ExactArgs(2),
 		RunE:    setEnv,
 	}
-	removeCmd = &cobra.Command{
-		Use:     "remove",
-		Aliases: []string{"rm"},
-		Short:   "alias rm,Remove vars from .env",
+	removeEnvCmd = &cobra.Command{
+		Use:     "rm",
+		Aliases: []string{"r"},
+		Short:   "alias r, Remove vars from .env",
 		Args:    cobra.ArbitraryArgs,
 		RunE:    removeEnvs,
 	}
 	listCmd = &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"ls"},
-		Short:   "alias ls,List env vars",
+		Use:     "ls",
+		Aliases: []string{"l"},
+		Short:   "alias ls, List env vars",
 		RunE:    listEnvs,
 	}
 )
@@ -49,7 +48,7 @@ var (
 var global bool
 
 func init() {
-	envCmd.AddCommand(setCmd, removeCmd, listCmd)
+	envCmd.AddCommand(setEnvCmd, removeEnvCmd, listCmd)
 	rootCmd.AddCommand(envCmd)
 
 	envCmd.PersistentFlags().BoolVarP(&global, "global", "g", false, "manage the gobal env of collection")
