@@ -16,53 +16,103 @@ import (
 )
 
 func TestIsFileExist(t *testing.T) {
-	tmpDir, err := os.MkdirTemp(os.TempDir(), "pg-fsx-test-*")
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := t.TempDir()
 
-	require := require.New(t)
-	// test a file
-	f, err := os.CreateTemp(tmpDir, "tmp_file")
-	isFileExist, err := fsx.IsFileExist(f.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	require.Equal(true, isFileExist)
+	t.Run("test normal file", func(t *testing.T) {
+		f, err := os.CreateTemp(tmpDir, "tmp_file")
+		isFileExist, err := fsx.IsFileExist(f.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		require.Equal(t, true, isFileExist)
+	})
 
-	// test a dir
-	d, err := os.MkdirTemp(tmpDir, "tmp_dir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	isFileExist, err = fsx.IsFileExist(d)
-	require.Equal(false, isFileExist)
+	t.Run("test a file not exist", func(t *testing.T) {
+		name := filepath.Join(tmpDir, "the_file_not_exist")
+		isExist, err := fsx.IsFileExist(name)
+		require.Equal(t, false, isExist)
+		require.ErrorIs(t, err, os.ErrNotExist)
+	})
 
-	// test a file has no perm
-	d = filepath.Join(tmpDir, "no_perm_dir")
-	err = os.Mkdir(filepath.Join(tmpDir, "no_perm_dir"), os.FileMode(0o755))
-	if err != nil {
-		t.Fatal(err)
-	}
-	f, err = os.OpenFile(filepath.Join(d, "no_perm"), os.O_CREATE|os.O_RDWR, os.FileMode(0o755))
-	if err != nil {
-		t.Fatal(err)
-	}
-	// change permssion of dir,the file can't be accessed
-	os.Chmod(d, os.FileMode(0o000))
-	isFileExist, err = fsx.IsFileExist(f.Name())
-	require.ErrorIs(err, os.ErrPermission)
-	// reset for cleaning tmpDir
-	os.Chmod(d, os.FileMode(0o755))
+	t.Run("test a dir", func(t *testing.T) {
+		d, err := os.MkdirTemp(tmpDir, "tmp_dir")
+		if err != nil {
+			t.Fatal(err)
+		}
+		isFileExist, err := fsx.IsFileExist(d)
+		require.Equal(t, false, isFileExist)
+	})
+
+	t.Run("test a file has no perm", func(t *testing.T) {
+		d := filepath.Join(tmpDir, "no_perm_dir")
+		err := os.Mkdir(filepath.Join(tmpDir, "no_perm_dir"), os.FileMode(0o755))
+		if err != nil {
+			t.Fatal(err)
+		}
+		f, err := os.OpenFile(filepath.Join(d, "no_perm"), os.O_CREATE|os.O_RDWR, os.FileMode(0o755))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// change permssion of dir,the file can't be accessed
+		os.Chmod(d, os.FileMode(0o000))
+		defer os.Chmod(d, os.FileMode(0o755))
+
+		isFileExist, err := fsx.IsFileExist(f.Name())
+		require.ErrorIs(t, err, os.ErrPermission)
+		require.Equal(t, false, isFileExist)
+	})
+}
+func TestIsDirExist(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	t.Run("test normal dir", func(t *testing.T) {
+		dir, err := os.MkdirTemp(tmpDir, "tmp_file")
+		if err != nil {
+			t.Fatal(err)
+		}
+		isExist, err := fsx.IsDirExist(dir)
+		require.Equal(t, true, isExist)
+		require.Nil(t, err)
+	})
+
+	t.Run("test a dir not exist", func(t *testing.T) {
+		name := filepath.Join(tmpDir, "the_dir_not_exist")
+		isExist, err := fsx.IsDirExist(name)
+		require.Equal(t, false, isExist)
+		require.ErrorIs(t, err, os.ErrNotExist)
+	})
+
+	t.Run("test a file", func(t *testing.T) {
+		f, err := os.CreateTemp(tmpDir, "tmp_dir")
+		if err != nil {
+			t.Fatal(err)
+		}
+		isExist, err := fsx.IsDirExist(f.Name())
+		require.Equal(t, false, isExist)
+		require.Nil(t, err)
+	})
+
+	t.Run("test a dir has no perm", func(t *testing.T) {
+		parent, err := os.MkdirTemp(tmpDir, "no_perm_dir")
+		if err != nil {
+			t.Fatal(err)
+		}
+		d, err := os.MkdirTemp(parent, "son")
+		if err != nil {
+			t.Fatal(err)
+		}
+		// change permssion of dir,the file can't be accessed
+		os.Chmod(parent, os.FileMode(0o000))
+		defer os.Chmod(parent, os.FileMode(0o755))
+
+		isExist, err := fsx.IsDirExist(d)
+		require.ErrorIs(t, err, os.ErrPermission)
+		require.Equal(t, false, isExist)
+	})
 }
 
 func TestStoreKoanf(t *testing.T) {
-	tmpDir, err := os.MkdirTemp(os.TempDir(), "pg-fsx-test-*")
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := t.TempDir()
 
 	name := filepath.Join(tmpDir, "test_file")
 	k := koanf.New(".")
@@ -79,11 +129,7 @@ func TestStoreKoanf(t *testing.T) {
 }
 
 func TestRDWRToml(t *testing.T) {
-	tmpDir, err := os.MkdirTemp(os.TempDir(), "pg-fsx-test-*")
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := t.TempDir()
 
 	type Data struct {
 		Version int      `toml:"version"`

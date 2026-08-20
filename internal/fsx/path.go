@@ -12,7 +12,7 @@ var (
 
 const RootTagDirName = ".pg"
 
-// find the dir contains .pg file in dirs from path to os' root dir
+// find the dir contains .pg dir in dirs from path to os' root dir
 // (not include os' root dir and permission denied)
 func RootDir(path string) (string, error) {
 	absPath, err := filepath.Abs(path)

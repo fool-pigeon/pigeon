@@ -1,7 +1,6 @@
 package fsx
 
 import (
-	"errors"
 	"os"
 
 	"github.com/knadh/koanf/v2"
@@ -10,17 +9,21 @@ import (
 
 func IsFileExist(name string) (bool, error) {
 	f, err := os.Lstat(name)
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
 	if err != nil {
 		return false, err
 	}
-	if f.Mode().IsRegular() {
-		return true, nil
-	}
-	return false, nil
+	return f.Mode().IsRegular(), nil
 }
+
+func IsDirExist(name string) (bool, error) {
+	f, err := os.Lstat(name)
+	if err != nil {
+		return false, err
+	}
+
+	return f.IsDir(), nil
+}
+
 func IsFile(name string) bool {
 	f, _ := os.Lstat(name)
 	return f.Mode().IsRegular()
