@@ -3,7 +3,7 @@ package httpx_test
 import (
 	"testing"
 
-	"github.com/homoarea/pigeon/internal/request/httpx"
+	"github.com/fool-pigeon/pigeon/internal/request/httpx"
 	"github.com/stretchr/testify/require"
 )
 

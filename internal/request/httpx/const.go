@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/homoarea/pigeon/internal/request"
+	"github.com/fool-pigeon/pigeon/internal/request"
 )
 
 const (

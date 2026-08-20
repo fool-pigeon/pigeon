@@ -1,4 +1,4 @@
-module github.com/homoarea/pigeon
+module github.com/fool-pigeon/pigeon
 
 go 1.26.5
 

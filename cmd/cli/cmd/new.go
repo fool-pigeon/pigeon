@@ -6,10 +6,10 @@ package cmd
 import (
 	"errors"
 
-	"github.com/homoarea/pigeon/internal/form"
-	"github.com/homoarea/pigeon/internal/fsx"
-	"github.com/homoarea/pigeon/internal/request"
-	"github.com/homoarea/pigeon/internal/request/httpx"
+	"github.com/fool-pigeon/pigeon/internal/form"
+	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/internal/request"
+	"github.com/fool-pigeon/pigeon/internal/request/httpx"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )

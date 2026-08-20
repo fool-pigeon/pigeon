@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/homoarea/pigeon/internal/config"
+	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/stretchr/testify/require"
 )
 

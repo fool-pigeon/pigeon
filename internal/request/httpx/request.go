@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/homoarea/pigeon/internal/request"
+	"github.com/fool-pigeon/pigeon/internal/request"
 	"resty.dev/v3"
 )
 

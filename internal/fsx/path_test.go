@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/homoarea/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/stretchr/testify/require"
 )
 

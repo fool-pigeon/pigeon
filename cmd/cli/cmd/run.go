@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/homoarea/pigeon/internal/request"
-	"github.com/homoarea/pigeon/internal/request/httpx"
+	"github.com/fool-pigeon/pigeon/internal/request"
+	"github.com/fool-pigeon/pigeon/internal/request/httpx"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"

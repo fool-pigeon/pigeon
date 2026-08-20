@@ -3,7 +3,7 @@ package env
 import (
 	"path/filepath"
 
-	"github.com/homoarea/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/knadh/koanf/parsers/dotenv"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"

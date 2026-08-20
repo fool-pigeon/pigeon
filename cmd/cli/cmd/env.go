@@ -7,7 +7,7 @@ import (
 	"errors"
 	"os"
 
-	"github.com/homoarea/pigeon/internal/env"
+	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/knadh/koanf/v2"
 	"github.com/spf13/cobra"
 )

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/homoarea/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/spf13/cobra"
 )
 
