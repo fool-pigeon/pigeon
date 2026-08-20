@@ -19,6 +19,15 @@ func TestRootDir(t *testing.T) {
 		require.Nil(t, err)
 	})
 
+	t.Run("find the tag dir", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tagDir := filepath.Join(tmpDir, fsx.RootTagDirName)
+		fsx.Mkdir(tagDir)
+		rootTag, err := fsx.RootTagDir(tmpDir)
+		require.Equal(t, tagDir, rootTag)
+		require.Nil(t, err)
+	})
+
 	t.Run("the tagDir in the parent dir", func(t *testing.T) {
 		parentDir := t.TempDir()
 		tagDir := filepath.Join(parentDir, fsx.RootTagDirName)

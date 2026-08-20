@@ -37,6 +37,15 @@ func RootDir(path string) (string, error) {
 	}
 }
 
+// find the tag dir
+func RootTagDir(path string) (string, error) {
+	rootDir, err := RootDir(path)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(rootDir, RootTagDirName), nil
+}
+
 // return []string of paths form this path to RootDir
 func PathsToRoot(path string) ([]string, error) {
 	absPath, err := filepath.Abs(path)
