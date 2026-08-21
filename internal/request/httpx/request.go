@@ -91,7 +91,17 @@ type (
 
 // Run implements [request.Request].
 func (r *RequestData) Run() (request.Result, error) {
-	return r.Send()
+	response, err := r.Send()
+	result := request.Result{Raw: response}
+	if err != nil {
+		return result, err
+	}
+	// TODO: run tests here
+
+	result.Success = true
+	result.Status = response.Status()
+
+	return result, nil
 }
 
 func NewRequestData() RequestData {
