@@ -36,6 +36,7 @@ var (
 		FormUrlEncoded: map[string][]string{"name": {"value"}},
 	}
 	ExampleAuth    = Auth{}
+	ExampleValues  = map[string][]string{"": {""}}
 	ExampleSetting = Setting{
 		Auth: ExampleAuth,
 	}
@@ -43,5 +44,8 @@ var (
 	ExampleRequestData = CommentedRequestData{
 		RequestMeta: request.RequestMeta{Protocol: request.P_HTTP},
 		Body:        ExampleBody,
+		PathParams:  map[string]string{"": ""},
+		QueryParams: ExampleValues,
+		Headers:     ExampleValues,
 	}
 )
