@@ -3,7 +3,6 @@ module github.com/fool-pigeon/pigeon
 go 1.26.5
 
 require (
-	atomicgo.dev/keyboard v0.2.10
 	github.com/knadh/koanf/parsers/dotenv v1.1.1
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/v2 v2.3.5
@@ -14,6 +13,7 @@ require (
 
 require (
 	atomicgo.dev/cursor v0.2.0 // indirect
+	atomicgo.dev/keyboard v0.2.10 // indirect
 	atomicgo.dev/schedule v0.1.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/containerd/console v1.0.5 // indirect
