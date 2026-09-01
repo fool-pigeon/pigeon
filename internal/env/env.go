@@ -27,8 +27,7 @@ func LoadFromFile(e *Env, name string) error {
 	}
 	return nil
 }
-
-func Load(path string, tag ...string) (*Env, error) {
+func LoadFromPath(path string, tag ...string) (*Env, error) {
 	paths, err := fsx.PathsFromRoot(path)
 	if err != nil {
 		return nil, err

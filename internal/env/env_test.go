@@ -34,21 +34,21 @@ func Test(t *testing.T) {
 	// └── .pg
 
 	require := require.New(t)
-	k1, err := env.Load(dir1)
+	k1, err := env.LoadFromPath(dir1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	require.Equal("you", k1.Get("hello"))
 	require.Equal("v1", k1.String("e2"))
 
-	k2, err := env.Load(dir2)
+	k2, err := env.LoadFromPath(dir2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	require.Equal("world", k2.Get("hello"))
 	require.Nil(k2.Get("e2"))
 
-	k, err := env.Load(tmpDir)
+	k, err := env.LoadFromPath(tmpDir)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -52,7 +52,7 @@ var (
 			if len(args) > 0 {
 				path = args[0]
 			}
-			envs, err := env.Load(path)
+			envs, err := env.LoadFromPath(path)
 			if err != nil {
 				return err
 			}
