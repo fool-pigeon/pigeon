@@ -2,7 +2,6 @@ package fsx
 
 import (
 	"errors"
-	"os"
 	"path/filepath"
 	"slices"
 )
@@ -20,7 +19,7 @@ func RootDir(path string) (string, error) {
 	}
 	for {
 		isExist, err := IsDirExist(filepath.Join(absPath, RootTagDirName))
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
+		if err != nil {
 			return "", err
 		}
 		if isExist {
@@ -55,7 +54,7 @@ func PathsToRoot(path string) ([]string, error) {
 	res := make([]string, 0)
 	for {
 		isExist, err := IsDirExist(filepath.Join(absPath, RootTagDirName))
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
+		if err != nil {
 			return nil, err
 		}
 

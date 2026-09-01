@@ -30,7 +30,7 @@ func TestIsFileExist(t *testing.T) {
 		name := filepath.Join(tmpDir, "the_file_not_exist")
 		isExist, err := fsx.IsFileExist(name)
 		require.Equal(t, false, isExist)
-		require.ErrorIs(t, err, os.ErrNotExist)
+		require.Nil(t, err)
 	})
 
 	t.Run("test a dir", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestIsDirExist(t *testing.T) {
 		name := filepath.Join(tmpDir, "the_dir_not_exist")
 		isExist, err := fsx.IsDirExist(name)
 		require.Equal(t, false, isExist)
-		require.ErrorIs(t, err, os.ErrNotExist)
+		require.Nil(t, err)
 	})
 
 	t.Run("test a file", func(t *testing.T) {

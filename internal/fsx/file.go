@@ -1,14 +1,26 @@
 package fsx
 
 import (
+	"errors"
 	"os"
 
 	"github.com/knadh/koanf/v2"
 	"github.com/pelletier/go-toml/v2"
 )
 
+var (
+	ErrInvalid    = os.ErrInvalid    // "invalid argument"
+	ErrPermission = os.ErrPermission // "permission denied"
+	ErrExist      = os.ErrExist      // "file already exists"
+	ErrNotExist   = os.ErrNotExist   // "file does not exist"
+	ErrClosed     = os.ErrClosed     // "file already closed"
+)
+
 func IsFileExist(name string) (bool, error) {
 	f, err := os.Lstat(name)
+	if errors.Is(err, ErrNotExist) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}

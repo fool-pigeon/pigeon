@@ -1,29 +1,44 @@
 [![Go Reference](https://pkg.go.dev/badge/example.com.svg)](https://pkg.go.dev/example.com)
 
-Project Structure
+Example Project Structure
 
 ```
 .
-├── .conf
-├── .env
-├── f1
-│   ├── r1.toml
-│   └── r2.toml
-├── f2
-│   ├── .env
-│   ├── f2_1
-│   │   ├── .env
-│   │   ├── r1.toml
-│   │   └── r2.toml
-│   └── {r1.toml}
 ├── .pg
+│   ├── config-dev.toml
+│   ├── config.toml
+│   ├── .env
+│   └── .env-dev
+├── .env
+├── dir1
+│   ├── .env
+│   └── r1.toml
+├── dir2
+│   ├── dir2.1
+│   └── dir2.2
+│       ├── r1.toml
+│       └── r2.toml
 ├── r1.toml
 └── r2.toml
-
 ```
 
-cli functions
-new - create a request
-config - create a config for root project
-env - set the env of collection
-run - run the collections,requests
+pg-cli commands
+* config
+  * init
+    * --tags, Set additional configuration with name suffix tags
+  * ls
+    * --tag, Print config with name suffix tag
+* env
+  * init
+    * --tags, Set additional configuration with name suffix tags
+  * ls
+    * args: directory(default current directory)
+    * --tag, Print env with name suffix tag
+* new
+  * args: rName...
+  * --protocol,-p
+* run
+  * args: paths...
+  * --tag
+* info
+  * args: fName

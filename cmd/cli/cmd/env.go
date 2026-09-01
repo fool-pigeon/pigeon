@@ -4,11 +4,10 @@ Copyright © 2026 Homoarea <homoarea114@gmail.com>
 package cmd
 
 import (
-	"errors"
-	"os"
+	"fmt"
 
 	"github.com/fool-pigeon/pigeon/internal/env"
-	"github.com/knadh/koanf/v2"
+	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/spf13/cobra"
 )
 
@@ -19,70 +18,55 @@ var envCmd = &cobra.Command{
 	GroupID: GROUP_ID_MANAGE,
 	Short:   "alias e, Manage the env vars",
 	Long: `The env vars will be stored in the dotenv file named .env
-Env vars will be loaded from the root directory to current directory and will be overwritten by new ones.
+Env vars will be loaded from the root .pg/ directory to current directory and will be overwritten by new ones.
 `,
 }
 var (
-	setEnvCmd = &cobra.Command{
-		Use:     "set [var_name] [var_value]",
-		Aliases: []string{"s"},
-		Short:   "alias s, Add or reset var in the .env",
-		Args:    cobra.ExactArgs(2),
-		RunE:    setEnv,
+	initEnvCmd = &cobra.Command{
+		Use:     "init",
+		Aliases: []string{"i"},
+		Short:   "alias i, Add or reset .env file in current directory",
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			tags, _ := cmd.Flags().GetStringSlice("tags")
+			if len(tags) == 0 {
+				tags = []string{""}
+			}
+			for _, tag := range tags {
+				fName := env.FileName(tag)
+				if err := fsx.WriteFile(fName, []byte{}); err != nil {
+					return err
+				}
+				fmt.Println("Created:", fName)
+			}
+			return nil
+		},
 	}
-	removeEnvCmd = &cobra.Command{
-		Use:     "rm",
-		Aliases: []string{"r"},
-		Short:   "alias r, Remove vars from .env",
-		Args:    cobra.ArbitraryArgs,
-		RunE:    removeEnvs,
-	}
-	listCmd = &cobra.Command{
+	listEnvCmd = &cobra.Command{
 		Use:     "ls",
 		Aliases: []string{"l"},
 		Short:   "alias ls, List env vars",
-		RunE:    listEnvs,
+		Args:    cobra.RangeArgs(0, 1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			path := "."
+			if len(args) > 0 {
+				path = args[0]
+			}
+			envs, err := env.Load(path)
+			if err != nil {
+				return err
+			}
+			envs.Print()
+			return nil
+		},
 	}
 )
 
-var global bool
-
 func init() {
-	envCmd.AddCommand(setEnvCmd, removeEnvCmd, listCmd)
+	envCmd.AddCommand(initEnvCmd, listEnvCmd)
 	rootCmd.AddCommand(envCmd)
 
-	envCmd.PersistentFlags().BoolVarP(&global, "global", "g", false, "manage the gobal env of collection")
-}
+	initEnvCmd.Flags().StringSliceP("tags", "t", nil, "init the env file named .env-tag")
 
-func listEnvs(cmd *cobra.Command, args []string) error {
-	envs, err := env.Load(".")
-	if err != nil {
-		return err
-	}
-	envs.Print()
-	return nil
-}
-func setEnv(cmd *cobra.Command, args []string) error {
-	k := koanf.New(".")
-	if err := env.LoadFromFile(k, env.DefaultFileName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	k.Set(args[0], args[1])
-	if err := env.Store(k, env.DefaultFileName); err != nil {
-		return err
-	}
-	return nil
-}
-func removeEnvs(cmd *cobra.Command, args []string) error {
-	k := koanf.New(".")
-	if err := env.LoadFromFile(k, env.DefaultFileName); err != nil {
-		return err
-	}
-	for _, envKey := range args {
-		k.Delete(envKey)
-	}
-	if err := env.Store(k, env.DefaultFileName); err != nil {
-		return err
-	}
-	return nil
+	listEnvCmd.Flags().StringP("tag", "t", "", "switch the config file named .env-tag")
 }
