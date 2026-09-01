@@ -2,6 +2,7 @@ package env
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/knadh/koanf/parsers/dotenv"
@@ -9,12 +10,13 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
-var Envs = koanf.New(".")
-
 const DefaultFileName = ".env"
 
 type Env = koanf.Koanf
 
+func New() *Env {
+	return koanf.New(".")
+}
 func FileName(suffix ...string) string {
 	if len(suffix) > 0 && suffix[0] != "" {
 		return DefaultFileName + "-" + suffix[0]
@@ -47,6 +49,51 @@ func LoadFromPath(path string, tag ...string) (*Env, error) {
 		LoadFromFile(k, name)
 	}
 	return k, nil
+}
+
+// Expand replaces ${var} in the string based on Env
+// replace it if var in Env,else keep original value
+func Expand(s string, e *Env) string {
+	var sb strings.Builder
+	i := 0
+	for j := 0; j < len(s); j++ {
+		if s[j] == '$' && j+1 < len(s) && s[j+1] == '{' {
+			if sb.Cap() == 0 {
+				sb.Grow(2 * len(s))
+			}
+			sb.WriteString(s[i:j])
+			name, w := getVarName(s[j+1:])
+			if name == "" && w > 0 {
+				// Encountered invalid syntax; keep origin
+				sb.WriteString(s[j : j+1+w])
+			} else if !e.Exists(name) {
+				// var is not exist in Env; keep origin
+				sb.WriteString(s[j : j+1+w])
+			} else {
+				sb.WriteString(e.String(name))
+			}
+			j += w
+			i = j + 1
+		}
+	}
+	if sb.Cap() == 0 {
+		return s
+	}
+	return sb.String() + s[i:]
+}
+
+// s like {var}
+func getVarName(s string) (string, int) {
+	// Scan to closing brace
+	for i := 1; i < len(s); i++ {
+		if s[i] == '}' {
+			if i == 1 {
+				return "", 2 // Bad syntax;  "${}"
+			}
+			return s[1:i], i + 1
+		}
+	}
+	return "", 1 // Bad syntax;  "${"
 }
 
 func Store(e *Env, name string) error {

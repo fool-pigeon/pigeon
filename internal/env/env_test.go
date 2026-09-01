@@ -7,6 +7,7 @@ import (
 
 	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/knadh/koanf/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,4 +62,45 @@ func Test(t *testing.T) {
 		require.ErrorIs(err, os.ErrNotExist)
 	}
 
+}
+
+func TestExpand(t *testing.T) {
+	t.Run("normal", func(t *testing.T) {
+		s := "hhh${abc}"
+		e := env.New()
+		e.Set("abc", 114)
+		assert.Equal(t, "hhh114", env.Expand(s, e))
+	})
+	t.Run("no ${var} in string", func(t *testing.T) {
+		s := "hhh"
+		e := env.New()
+		e.Set("abc", 114)
+		assert.Equal(t, "hhh", env.Expand(s, e))
+	})
+	t.Run("the key-value not exist in Env", func(t *testing.T) {
+		s := "hhh${abc}"
+		e := env.New()
+		assert.Equal(t, "hhh${abc}", env.Expand(s, e))
+	})
+	t.Run("Variable of secondary path", func(t *testing.T) {
+		s := "hhh${a.b.c}"
+		e := env.New()
+		e.Set("a.b.c", 114)
+		e.Print()
+		assert.Equal(t, "hhh114", env.Expand(s, e))
+	})
+	t.Run("bad syntax; ${", func(t *testing.T) {
+		s := "hhh${abc"
+		e := env.New()
+		e.Set("abc", 114)
+		e.Print()
+		assert.Equal(t, "hhh${abc", env.Expand(s, e))
+	})
+	t.Run("bad syntax; ${}", func(t *testing.T) {
+		s := "hhh${}"
+		e := env.New()
+		e.Set("abc", 114)
+		e.Print()
+		assert.Equal(t, "hhh${}", env.Expand(s, e))
+	})
 }
