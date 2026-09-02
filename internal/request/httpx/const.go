@@ -4,8 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
-
-	"github.com/fool-pigeon/pigeon/internal/request"
 )
 
 const (
@@ -28,24 +26,4 @@ var (
 	Methods = []string{MethodGet, MethodPost, MethodPut, MethodDelete, MethodHead, MethodOptions, MethodConnect, MethodPatch, MethodTrace}
 	// regex pattern
 	pathParamRe = regexp.MustCompile(`(?:^|/){([^${}/]+)}`)
-
-	ExampleBody = Body{
-		Type:           BodyNone,
-		Raw:            "",
-		MultiForm:      []MultipartField{{Name: "", Values: []string{""}, FileName: "", FilePath: "", ContentType: ""}},
-		FormUrlEncoded: map[string][]string{"name": {"value"}},
-	}
-	ExampleAuth    = Auth{}
-	ExampleValues  = map[string][]string{"": {""}}
-	ExampleSetting = Setting{
-		Auth: ExampleAuth,
-	}
-	ExampleClientData  = CommentedClientData{}
-	ExampleRequestData = CommentedRequestData{
-		RequestMeta: request.RequestMeta{Protocol: request.P_HTTP},
-		Body:        ExampleBody,
-		PathParams:  map[string]string{"": ""},
-		QueryParams: ExampleValues,
-		Headers:     ExampleValues,
-	}
 )

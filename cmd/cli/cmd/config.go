@@ -46,7 +46,7 @@ var (
 			}
 			for _, tag := range tags {
 				fName := filepath.Join(tagDir, config.FileName(tag))
-				if err := fsx.WriteToml(fName, config.ExampleConfig); err != nil {
+				if err := fsx.WriteToml(fName, config.New()); err != nil {
 					return err
 				}
 				fmt.Println("Created:", fName)

@@ -60,20 +60,6 @@ type (
 	Response = resty.Response
 	Request  = resty.Request
 
-	CommentedRequestData struct {
-		request.RequestMeta
-		Method      string            `toml:"mothod,commented"`
-		URL         string            `toml:"url,commented"`
-		PathParams  map[string]string `toml:"path_params,commented,multiline"`
-		QueryParams url.Values        `toml:"query_params,commented,multiline"`
-		Headers     http.Header       `toml:"headers,commented,multiline"`
-		Body        Body              `toml:"body,commented"`
-		Desc        string            `toml:"desc,commented,multiline"`
-		Setting     Setting           `toml:"setting,commented"`
-
-		client *Client
-	}
-
 	RequestData struct {
 		request.RequestMeta
 		Method      string            `toml:"mothod"`
@@ -104,8 +90,11 @@ func (r *RequestData) Run() (request.Result, error) {
 	return result, nil
 }
 
-func NewRequestData() RequestData {
-	return RequestData{}
+func NewRequestData(requestName string) RequestData {
+	return RequestData{RequestMeta: request.RequestMeta{
+		Name:     requestName,
+		Protocol: request.P_HTTP,
+	}}
 }
 
 // Setters
@@ -173,10 +162,6 @@ func (r *RequestData) SetResponseBodyLimit(limit int64) *RequestData {
 func (r *RequestData) SetClient(client *Client) *RequestData {
 	r.client = client
 	return r
-}
-
-func (r *RequestData) ToCommentedData() CommentedRequestData {
-	return CommentedRequestData(*r)
 }
 
 func (r *RequestData) ParseRawURL(rawURL string) error {

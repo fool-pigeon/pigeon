@@ -38,7 +38,7 @@ func createRequest(cmd *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("not impl %q protocol yet.", protocol)
 	case request.P_HTTP, "":
-		protocol = p
+		protocol = request.P_HTTP
 	}
 
 	errs := make([]error, 0, len(args))
@@ -59,9 +59,7 @@ func createRequest(cmd *cobra.Command, args []string) error {
 		// skip if error
 		switch protocol {
 		case request.P_HTTP:
-			r := httpx.ExampleRequestData
-			r.Name = rName
-			if err := fsx.WriteToml(fName, r); err != nil {
+			if err := fsx.WriteToml(fName, httpx.NewRequestData(rName)); err != nil {
 				errs = append(errs, fmt.Errorf("%w", err))
 				continue
 			}
