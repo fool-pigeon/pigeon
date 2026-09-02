@@ -110,7 +110,7 @@ func Run(paths []string, handle func(request.Result), tag ...string) error {
 			case d.IsDir():
 				// override load for update env
 				ctx.path = p
-				env.LoadFromFile(ctx.env, filepath.Join(p, env.FileName(tag...)))
+				env.LoadFile(ctx.env, filepath.Join(p, env.FileName(tag...)))
 				// into the next walk
 				ctxs = append(ctxs, ctx)
 

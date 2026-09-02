@@ -2,6 +2,7 @@ package env
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
@@ -23,21 +24,31 @@ func FileName(suffix ...string) string {
 	}
 	return DefaultFileName
 }
-func LoadFromFile(e *Env, name string) error {
+func LoadFile(e *Env, name string) error {
 	if err := e.Load(file.Provider(name), dotenv.Parser()); err != nil {
 		return err
 	}
 	return nil
 }
+func LoadFromFile(name string) (*Env, error) {
+	e := New()
+	if err := e.Load(file.Provider(name), dotenv.Parser()); err != nil {
+		return nil, err
+	}
+	return e, nil
+}
 func LoadFromPath(path string, tag ...string) (*Env, error) {
 	// FIXME : env should load the root env, .pg/.env
-	paths, err := fsx.PathsFromRoot(path)
+	paths, err := fsx.PathsToRoot(path)
 	if err != nil {
 		return nil, err
 	}
 
+	// add the root tag dir for load the root env
 	fName := FileName(tag...)
-	k := koanf.New(".")
+	paths = append(paths, filepath.Join(paths[len(paths)-1], fsx.RootTagDirName))
+	slices.Reverse(paths)
+	e := New()
 	for _, path := range paths {
 		name := filepath.Join(path, fName)
 		isExist, err := fsx.IsFileExist(name)
@@ -47,9 +58,9 @@ func LoadFromPath(path string, tag ...string) (*Env, error) {
 		if !isExist {
 			continue
 		}
-		LoadFromFile(k, name)
+		LoadFile(e, name)
 	}
-	return k, nil
+	return e, nil
 }
 
 // Expand replaces ${var} in the string based on Env
