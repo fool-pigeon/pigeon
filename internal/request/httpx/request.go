@@ -184,8 +184,6 @@ func (r *RequestData) ParseRawURL(rawURL string) error {
 		return &rDataError{Msg: "rawURL", Err: ErrEmptyValue}
 	}
 
-	// TODO: add env swap system here
-
 	// if not has http scheme
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
 		rawURL = "http://" + rawURL
