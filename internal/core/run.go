@@ -66,7 +66,7 @@ func execTask(name string, ctx *Context, resCh chan request.Result) {
 	}
 	resCh <- res
 }
-func Run(paths []string, handle func(request.Result), tag ...string) error {
+func Run(paths []string, handle func(res request.Result), tag ...string) error {
 	// load startEnv in current directory
 	startEnv, err := env.LoadFromPath(".", tag...)
 	if err != nil {

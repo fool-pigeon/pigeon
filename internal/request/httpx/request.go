@@ -78,7 +78,7 @@ type (
 // Run implements [request.Request].
 func (r *RequestData) Run() (request.Result, error) {
 	response, err := r.Send()
-	result := request.Result{Raw: response}
+	result := request.Result{ReqName: r.Name, Raw: response}
 	if err != nil {
 		return result, err
 	}

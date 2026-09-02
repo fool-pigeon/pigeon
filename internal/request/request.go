@@ -13,6 +13,7 @@ type TestResult struct {
 // As the View Result of [Request.Run]
 type Result struct {
 	Success bool
+	ReqName string
 	// this means the tag of status,such as "2xx","4xx","5xx","err","failed"
 	Status string
 	Msg    string
