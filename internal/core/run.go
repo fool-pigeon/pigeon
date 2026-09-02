@@ -26,7 +26,7 @@ func readRequest(name string, ctx *Context) (request.Request, error) {
 		return nil, err
 	}
 	// Expand Env
-	b = []byte(env.Expand(string(b), ctx.env))
+	b = []byte(ctx.env.Expand(string(b)))
 
 	var meta request.RequestMeta
 	if err := toml.Unmarshal(b, &meta); err != nil {
@@ -110,10 +110,9 @@ func Run(paths []string, handle func(request.Result), tag ...string) error {
 			case d.IsDir():
 				// override load for update env
 				ctx.path = p
-				env.LoadFile(ctx.env, filepath.Join(p, env.FileName(tag...)))
+				ctx.env.LoadFile(filepath.Join(p, env.FileName(tag...)))
 				// into the next walk
 				ctxs = append(ctxs, ctx)
-
 			}
 
 			return nil
