@@ -30,6 +30,7 @@ func LoadFromFile(e *Env, name string) error {
 	return nil
 }
 func LoadFromPath(path string, tag ...string) (*Env, error) {
+	// FIXME : env should load the root env, .pg/.env
 	paths, err := fsx.PathsFromRoot(path)
 	if err != nil {
 		return nil, err
