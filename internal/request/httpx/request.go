@@ -11,6 +11,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/fool-pigeon/pigeon/internal/request"
+	"github.com/jaswdr/faker/v2"
 	"resty.dev/v3"
 )
 
@@ -93,7 +94,8 @@ func (r *RequestData) Run() request.Result {
 	// exec PreReq script
 	if r.PreReq != "" {
 		env := map[string]any{
-			"req": &req,
+			"req":   &req,
+			"faker": faker.New(),
 		}
 		code := r.PreReq
 		program, err := expr.Compile(code, expr.Env(env))
@@ -121,7 +123,8 @@ func (r *RequestData) Run() request.Result {
 		for name, code := range r.Tests {
 			tRes := request.TestRes{Name: name}
 			env := map[string]any{
-				"res": res,
+				"res":   res,
+				"faker": faker.New(),
 			}
 
 			program, err := expr.Compile(code, expr.Env(env), expr.AsBool())
