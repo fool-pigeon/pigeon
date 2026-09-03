@@ -1,13 +1,244 @@
 package httpx_test
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestHttpRequestType(t *testing.T) {
+type EchoReq struct {
+	Method      string              `json:"method"`
+	URL         string              `json:"url"`
+	Proto       string              `json:"proto"`
+	Headers     map[string][]string `json:"headers"`
+	Query       map[string][]string `json:"query"`
+	Form        map[string][]string `json:"form"`
+	Multipart   map[string][]string `json:"multipart"`
+	Body        string              `json:"body"`
+	BodyBase64  string              `json:"body_base64"`
+	ContentType string              `json:"content_type"`
+}
+
+func EchoHandler(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		_ = r.ParseMultipartForm(32 << 20)
+	} else {
+		_ = r.ParseForm()
+	}
+
+	b, _ := io.ReadAll(r.Body)
+	bstr := string(b)
+	bBase64 := base64.StdEncoding.EncodeToString(b)
+
+	var multipart map[string][]string
+	if form := r.MultipartForm; form != nil {
+		multipart = form.Value
+	}
+	echoReq := EchoReq{
+		Method:      r.Method,
+		URL:         r.URL.String(),
+		Proto:       r.Proto,
+		Headers:     r.Header,
+		Query:       r.URL.Query(),
+		Form:        r.Form,
+		Multipart:   multipart,
+		Body:        bstr,
+		BodyBase64:  bBase64,
+		ContentType: r.Header.Get("Content-Type"),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(echoReq)
+
+}
+func ParseEchoResp(res []byte) EchoReq {
+	var e EchoReq
+	json.Unmarshal(res, &e)
+	return e
+}
+func NewEchoServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(EchoHandler))
+}
+
+func TestRun(t *testing.T) {
+	server := NewEchoServer(t)
+	defer server.Close()
+
+	newReqData := func() *httpx.RequestData {
+		return httpx.NewRequestData("r").SetURL(server.URL)
+	}
+	t.Run("only send request", func(t *testing.T) {
+		result := newReqData().SetMethod(httpx.MethodPost).SetBody(httpx.Body{Type: httpx.BodyRaw, Raw: "abc"}).Run()
+		raw := result.Raw.(*httpx.Response)
+		assert.Equal(t, true, result.Success)
+		assert.Equal(t, "r", result.ReqName)
+		assert.Equal(t, "200 OK", result.Status)
+		assert.Nil(t, result.Tests)
+		assert.Equal(t, "abc", ParseEchoResp(raw.Bytes()).Body)
+		assert.Equal(t, "POST", ParseEchoResp(raw.Bytes()).Method)
+		assert.Nil(t, result.Err)
+	})
+	t.Run("send bad request", func(t *testing.T) {
+		result := newReqData().SetURL("http://127.0.0.1:1145141919").Run()
+		assert.Equal(t, false, result.Success)
+		assert.Equal(t, "r", result.ReqName)
+		assert.Error(t, result.Err)
+	})
+	t.Run("run success with tests expression", func(t *testing.T) {
+		tName := "t1"
+		tExpr := `res.StatusCode()==200`
+		result := newReqData().SetTest(tName, tExpr).Run()
+		assert.Equal(t, true, result.Success)
+
+		tRes := result.Tests[0]
+		assert.Equal(t, tName, tRes.Name)
+		assert.Equal(t, true, tRes.Passed)
+		assert.Nil(t, tRes.Err)
+	})
+	t.Run("handle json body in tests", func(t *testing.T) {
+		tName := "t1"
+		tExpr := `fromJSON(res.String()).method=="GET"`
+		result := newReqData().SetTest(tName, tExpr).Run()
+		assert.Equal(t, true, result.Success)
+
+		tRes := result.Tests[0]
+		assert.Equal(t, true, tRes.Passed)
+		assert.Nil(t, tRes.Err)
+	})
+	t.Run("bad syntax in tests", func(t *testing.T) {
+		tName := "t1"
+		tExpr := `fromJson(res.String()).method=="GET"`
+		result := newReqData().SetTest(tName, tExpr).Run()
+		assert.Equal(t, false, result.Success)
+
+		tRes := result.Tests[0]
+		assert.Equal(t, false, tRes.Passed)
+		assert.Error(t, tRes.Err)
+		t.Log(tRes.Err)
+	})
+}
+func TestPreReq(t *testing.T) {
+	t.Run("add a header", func(t *testing.T) {
+		req, _ := httpx.NewRequestData("t").
+			SetPreReq(`req.SetHeader("a","2")`).
+			InstancedRequest()
+		assert.Equal(t, "2", req.Header.Get("a"))
+	})
+	t.Run("modify the method", func(t *testing.T) {
+		req, _ := httpx.NewRequestData("t").
+			SetPreReq(`req.SetMethod("POST")`).
+			InstancedRequest()
+		assert.Equal(t, "POST", req.Method)
+	})
+	t.Run("compile error because bad syntax", func(t *testing.T) {
+		_, err := httpx.NewRequestData("t").
+			SetPreReq(`req.SetMethod("POST"`).
+			InstancedRequest()
+		t.Log(err)
+		assert.Error(t, err)
+	})
+
+	t.Run("test faker generator", func(t *testing.T) {
+		req, _ := httpx.NewRequestData("t").
+			SetPreReq(`req.SetBody(faker.Internet().Email())`).
+			InstancedRequest()
+		assert.Contains(t, req.Body, "@", "faker email should has '@'")
+	})
+}
+
+func TestReqDataConverts(t *testing.T) {
+	t.Run("Convert Body", func(t *testing.T) {
+		rBody := func(t *testing.T, b httpx.Body) (*httpx.Request, error) {
+			t.Helper()
+			return httpx.NewRequestData("t").SetMethod(httpx.MethodPost).SetBody(b).InstancedRequest()
+		}
+		t.Run("none body", func(t *testing.T) {
+			req, _ := rBody(t, httpx.Body{Type: httpx.BodyNone})
+			assert.Nil(t, req.Body)
+		})
+		t.Run("raw", func(t *testing.T) {
+			req, _ := rBody(t, httpx.Body{Type: httpx.BodyRaw, Raw: "abc"})
+			assert.Equal(t, "abc", req.Body)
+		})
+		t.Run("JSON String", func(t *testing.T) {
+			jstr := `{"a":"1"}`
+			req, _ := rBody(t, httpx.Body{Type: httpx.BodyJSON, Raw: jstr})
+			assert.Equal(t, jstr, req.Body)
+			assert.Equal(t, "application/json", req.Header.Get("Content-Type"))
+		})
+		t.Run("Xml String", func(t *testing.T) {
+			xstr := `<?xml version="1.0" encoding="UTF-8"?>
+<note>
+<to>George</to>
+<from>John</from>
+<heading>Reminder</heading>
+<body>Don't forget the meeting!</body>
+</note>`
+			req, _ := rBody(t, httpx.Body{Type: httpx.BodyXML, Raw: xstr})
+			assert.Equal(t, xstr, req.Body)
+			assert.Equal(t, "application/xml", req.Header.Get("Content-Type"))
+		})
+		t.Run("multipart-form", func(t *testing.T) {
+			server := NewEchoServer(t)
+			defer server.Close()
+
+			req, _ := rBody(t, httpx.Body{
+				Type: httpx.BodyMultiForm,
+				MultiForm: []httpx.MultipartField{{
+					Name:   "a",
+					Values: []string{"1"},
+				}},
+			})
+			res, _ := req.SetURL(server.URL).Send()
+			assert.Equal(t, map[string][]string{"a": {"1"}}, ParseEchoResp(res.Bytes()).Multipart)
+		})
+		t.Run("x-www-url-encoded", func(t *testing.T) {
+			req, _ := rBody(t, httpx.Body{
+				Type: httpx.BodyFormUrlEncoded,
+				FormUrlEncoded: url.Values{
+					"a": {"1", "2"},
+				},
+			})
+			assert.Equal(t, url.Values{"a": {"1", "2"}}, req.FormData)
+		})
+		t.Run("invalid body type", func(t *testing.T) {
+			_, err := rBody(t, httpx.Body{Type: -1})
+			assert.ErrorIs(t, err, httpx.ErrInvalidValue)
+		})
+	})
+	t.Run("Convert Setting", func(t *testing.T) {
+		t.Run("Convert Retry", func(t *testing.T) {
+			t.Run("full set", func(t *testing.T) {
+				rData := httpx.NewRequestData("t").SetRetry(httpx.Retry{
+					Count:                3,
+					WaitTime:             "100ms",
+					MaxWaitTime:          "1s",
+					IsAllowNonIdempotent: true,
+				})
+				req, _ := rData.InstancedRequest()
+				assert.Equal(t, 3, req.RetryCount)
+				assert.Equal(t, 100*time.Millisecond, req.RetryWaitTime)
+				assert.Equal(t, 1*time.Second, req.RetryMaxWaitTime)
+				assert.Equal(t, true, req.IsRetryAllowNonIdempotent)
+			})
+			t.Run("bad format for time", func(t *testing.T) {
+				_, err := httpx.NewRequestData("t").SetRetry(httpx.Retry{WaitTime: "1kg"}).InstancedRequest()
+				assert.Error(t, err)
+			})
+		})
+	})
 
 }
 

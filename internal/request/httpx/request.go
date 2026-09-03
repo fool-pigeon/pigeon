@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/expr-lang/expr"
+	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/fool-pigeon/pigeon/internal/request"
 	"github.com/jaswdr/faker/v2"
 	"resty.dev/v3"
@@ -133,8 +133,8 @@ func (r *RequestData) Run() request.Result {
 	return result
 }
 
-func NewRequestData(requestName string) RequestData {
-	return RequestData{RequestMeta: request.RequestMeta{
+func NewRequestData(requestName string) *RequestData {
+	return &RequestData{RequestMeta: request.RequestMeta{
 		Name:     requestName,
 		Protocol: request.P_HTTP,
 	}}
@@ -152,6 +152,13 @@ func (r *RequestData) SetURL(url string) *RequestData {
 }
 func (r *RequestData) SetPathParams(params map[string]string) *RequestData {
 	r.PathParams = params
+	return r
+}
+func (r *RequestData) SetPathParam(key string, val string) *RequestData {
+	if r.PathParams == nil {
+		r.PathParams = make(map[string]string)
+	}
+	r.PathParams[key] = val
 	return r
 }
 func (r *RequestData) SetQueryParams(params url.Values) *RequestData {
@@ -202,6 +209,22 @@ func (r *RequestData) SetResponseBodyLimit(limit int64) *RequestData {
 	r.Setting.ResponseBodyLimit = limit
 	return r
 }
+func (r *RequestData) SetPreReq(preReq string) *RequestData {
+	r.PreReq = preReq
+	return r
+}
+func (r *RequestData) SetTests(tests map[string]string) *RequestData {
+	r.Tests = tests
+	return r
+}
+func (r *RequestData) SetTest(name string, expression string) *RequestData {
+	if r.Tests == nil {
+		r.Tests = make(map[string]string)
+	}
+	r.Tests[name] = expression
+	return r
+}
+
 func (r *RequestData) SetClient(client *Client) *RequestData {
 	r.client = client
 	return r
@@ -292,7 +315,8 @@ func (r *RequestData) InstancedRequest() (*Request, error) {
 	// exec PreReq script
 	if r.PreReq != "" {
 		env := map[string]any{
-			"req":   &req,
+			// req is a pointer which we can modify its data
+			"req":   req,
 			"faker": faker.New(),
 		}
 		code := r.PreReq
@@ -340,7 +364,7 @@ func (r *RequestData) convertBody(req *Request) error {
 	case BodyFormUrlEncoded:
 		req.SetFormDataFromValues(r.Body.FormUrlEncoded)
 	case BodyBinary:
-		b, err := os.ReadFile(r.Body.BinaryPath)
+		b, err := fsx.ReadFile(r.Body.BinaryPath)
 		if err != nil {
 			return err
 		}
