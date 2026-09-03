@@ -87,35 +87,15 @@ type (
 
 // Run implements [request.Request].
 func (r *RequestData) Run() request.Result {
-	req, err := r.InstancedRequest()
-	result := request.NewResult()
-	result.SetReqName(r.ReqName())
-
-	// exec PreReq script
-	if r.PreReq != "" {
-		env := map[string]any{
-			"req":   &req,
-			"faker": faker.New(),
-		}
-		code := r.PreReq
-		program, err := expr.Compile(code, expr.Env(env))
-		if err != nil {
-			return request.ErrResult(r.Name, err)
-		}
-
-		if _, err := expr.Run(program, env); err != nil {
-			return request.ErrResult(r.Name, err)
-		}
-
-	}
 	// send request
-	res, err := req.Send()
+	res, err := r.Send()
 	if err != nil {
 		return request.ErrResult(r.Name, err)
 	}
 	// set raw response
-	result.Raw = res
-	result.Status = res.Status()
+	result := request.NewResult()
+	result.SetReqName(r.ReqName()).SetRaw(res).SetStatus(res.Status())
+
 	isSuccess := res.StatusCode() >= 200 && res.StatusCode() < 300
 
 	// run tests
@@ -142,14 +122,13 @@ func (r *RequestData) Run() request.Result {
 				continue
 			}
 
-			isPassed := output.(bool)
-			tRes.Passed = isPassed
-			isSuccess = isSuccess && isPassed
+			tRes.Passed = output.(bool)
+			isSuccess = isSuccess && tRes.Passed
 
 			result.AppendTestRes(tRes)
 		}
 	}
-	result.Success = isSuccess
+	result.SetSuccess(isSuccess)
 
 	return result
 }
@@ -308,6 +287,24 @@ func (r *RequestData) InstancedRequest() (*Request, error) {
 
 	if err := r.convertSetting(req); err != nil {
 		return nil, err
+	}
+
+	// exec PreReq script
+	if r.PreReq != "" {
+		env := map[string]any{
+			"req":   &req,
+			"faker": faker.New(),
+		}
+		code := r.PreReq
+		program, err := expr.Compile(code, expr.Env(env))
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := expr.Run(program, env); err != nil {
+			return nil, err
+		}
+
 	}
 
 	return req, nil
