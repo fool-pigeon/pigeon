@@ -1,9 +1,11 @@
 package httpx
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"time"
 
 	"resty.dev/v3"
@@ -11,6 +13,28 @@ import (
 
 const (
 	defaultUserAgent = "pigeon/http 0.1v"
+)
+
+const (
+	MethodGet     = http.MethodGet
+	MethodPost    = http.MethodPost
+	MethodPut     = http.MethodPut
+	MethodDelete  = http.MethodDelete
+	MethodHead    = http.MethodHead
+	MethodOptions = http.MethodOptions
+	MethodConnect = http.MethodConnect
+	MethodPatch   = http.MethodPatch
+	MethodTrace   = http.MethodTrace
+)
+
+var (
+	ErrEmptyValue   = errors.New("the value is empty.")
+	ErrInvalidValue = errors.New("the value is invalid.")
+)
+var (
+	Methods = []string{MethodGet, MethodPost, MethodPut, MethodDelete, MethodHead, MethodOptions, MethodConnect, MethodPatch, MethodTrace}
+	// regex pattern
+	pathParamRe = regexp.MustCompile(`(?:^|/){([^${}/]+)}`)
 )
 
 type (
