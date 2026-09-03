@@ -4,10 +4,9 @@ Copyright © 2026 Homoarea <homoarea114@gmail.com>
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/fool-pigeon/pigeon/internal/core"
 	"github.com/fool-pigeon/pigeon/internal/request"
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
 
@@ -30,9 +29,12 @@ var runCmd = &cobra.Command{
 		tag, _ := cmd.Flags().GetString("tag")
 		showRaw, _ := cmd.Flags().GetBool("raw")
 		core.Run(paths, func(res request.Result) {
+			if res.Err != nil {
+				pterm.Error.Println(res.ReqName, res.Err)
+				return
+			}
 			if showRaw {
-				fmt.Println(res.ReqName)
-				fmt.Println(res.Raw)
+				pterm.Success.Println(res.ReqName, res.Raw)
 			}
 		}, tag)
 		return nil

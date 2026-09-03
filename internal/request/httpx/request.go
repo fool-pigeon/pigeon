@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/expr-lang/expr"
 	"github.com/fool-pigeon/pigeon/internal/request"
 	"resty.dev/v3"
 )
@@ -71,23 +72,83 @@ type (
 		Desc        string            `toml:"desc,omitempty,multiline"`
 		Setting     Setting           `toml:"setting,omitempty"`
 
+		// the expr script before send request,could set random data for request
+		PreReq string `toml:"pre_req,omitempty,multiline"`
+
+		// the exprs whose the result value type is bool
+		// key is test's name
+		// value is expr expression
+		Tests map[string]string `toml:"tests,omitempty,multiline"`
+
 		client *Client
 	}
 )
 
 // Run implements [request.Request].
-func (r *RequestData) Run() (request.Result, error) {
-	response, err := r.Send()
-	result := request.Result{ReqName: r.Name, Raw: response}
-	if err != nil {
-		return result, err
+func (r *RequestData) Run() request.Result {
+	req, err := r.InstancedRequest()
+	result := request.NewResult()
+	result.SetReqName(r.ReqName())
+
+	// exec PreReq script
+	if r.PreReq != "" {
+		env := map[string]any{
+			"req": &req,
+		}
+		code := r.PreReq
+		program, err := expr.Compile(code, expr.Env(env))
+		if err != nil {
+			return request.ErrResult(r.Name, err)
+		}
+
+		if _, err := expr.Run(program, env); err != nil {
+			return request.ErrResult(r.Name, err)
+		}
+
 	}
-	// TODO: run tests here
+	// send request
+	res, err := req.Send()
+	if err != nil {
+		return request.ErrResult(r.Name, err)
+	}
+	// set raw response
+	result.Raw = res
+	result.Status = res.Status()
+	isSuccess := res.StatusCode() >= 200 && res.StatusCode() < 300
 
-	result.Success = true
-	result.Status = response.Status()
+	// run tests
+	if len(r.Tests) != 0 {
+		for name, code := range r.Tests {
+			tRes := request.TestRes{Name: name}
+			env := map[string]any{
+				"res": res,
+			}
 
-	return result, nil
+			program, err := expr.Compile(code, expr.Env(env), expr.AsBool())
+			if err != nil {
+				tRes.Err = err
+				isSuccess = false
+				result.AppendTestRes(tRes)
+				continue
+			}
+			output, err := expr.Run(program, env)
+			if err != nil {
+				tRes.Err = err
+				isSuccess = false
+				result.AppendTestRes(tRes)
+				continue
+			}
+
+			isPassed := output.(bool)
+			tRes.Passed = isPassed
+			isSuccess = isSuccess && isPassed
+
+			result.AppendTestRes(tRes)
+		}
+	}
+	result.Success = isSuccess
+
+	return result
 }
 
 func NewRequestData(requestName string) RequestData {

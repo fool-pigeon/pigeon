@@ -50,20 +50,13 @@ func isTomlExt(path string) bool {
 	return filepath.Ext(path) == ".toml"
 }
 
-func errResult(err error) request.Result {
-	return request.Result{Err: err}
-}
 func execTask(name string, ctx *Context, resCh chan request.Result) {
 	r, err := readRequest(name, ctx)
 	if err != nil {
-		resCh <- errResult(err)
+		resCh <- request.ErrResult(name, fmt.Errorf("ReadError:%w", err))
 		return
 	}
-	res, err := r.Run()
-	if err != nil {
-		resCh <- errResult(err)
-		return
-	}
+	res := r.Run()
 	resCh <- res
 }
 func Run(paths []string, handle func(res request.Result), tag ...string) error {
@@ -94,6 +87,10 @@ func Run(paths []string, handle func(res request.Result), tag ...string) error {
 
 		// recursive directory
 		filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if d.Name() == fsx.RootTagDirName {
+				return filepath.SkipDir
+			}
+
 			parentDir := filepath.Dir(p)
 			// pop the ctx if top ctx's path is not parent directory
 			for len(ctxs) > 1 && filepath.Clean(ctxs[len(ctxs)-1].path) != filepath.Clean(parentDir) {
