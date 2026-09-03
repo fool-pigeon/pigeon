@@ -59,7 +59,7 @@ func createRequest(cmd *cobra.Command, args []string) error {
 		// skip if error
 		switch protocol {
 		case request.P_HTTP:
-			if err := fsx.WriteToml(fName, httpx.NewRequestData(rName)); err != nil {
+			if err := fsx.WriteToml(fName, httpx.NewReqData(rName)); err != nil {
 				errs = append(errs, fmt.Errorf("%w", err))
 				continue
 			}

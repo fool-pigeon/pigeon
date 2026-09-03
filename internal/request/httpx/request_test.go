@@ -76,8 +76,8 @@ func TestRun(t *testing.T) {
 	server := NewEchoServer(t)
 	defer server.Close()
 
-	newReqData := func() *httpx.RequestData {
-		return httpx.NewRequestData("r").SetURL(server.URL)
+	newReqData := func() *httpx.ReqData {
+		return httpx.NewReqData("r").SetURL(server.URL)
 	}
 	t.Run("only send request", func(t *testing.T) {
 		result := newReqData().SetMethod(httpx.MethodPost).SetBody(httpx.Body{Type: httpx.BodyRaw, Raw: "abc"}).Run()
@@ -131,19 +131,19 @@ func TestRun(t *testing.T) {
 }
 func TestPreReq(t *testing.T) {
 	t.Run("add a header", func(t *testing.T) {
-		req, _ := httpx.NewRequestData("t").
+		req, _ := httpx.NewReqData("t").
 			SetPreReq(`req.SetHeader("a","2")`).
 			InstancedRequest()
 		assert.Equal(t, "2", req.Header.Get("a"))
 	})
 	t.Run("modify the method", func(t *testing.T) {
-		req, _ := httpx.NewRequestData("t").
+		req, _ := httpx.NewReqData("t").
 			SetPreReq(`req.SetMethod("POST")`).
 			InstancedRequest()
 		assert.Equal(t, "POST", req.Method)
 	})
 	t.Run("compile error because bad syntax", func(t *testing.T) {
-		_, err := httpx.NewRequestData("t").
+		_, err := httpx.NewReqData("t").
 			SetPreReq(`req.SetMethod("POST"`).
 			InstancedRequest()
 		t.Log(err)
@@ -151,7 +151,7 @@ func TestPreReq(t *testing.T) {
 	})
 
 	t.Run("test faker generator", func(t *testing.T) {
-		req, _ := httpx.NewRequestData("t").
+		req, _ := httpx.NewReqData("t").
 			SetPreReq(`req.SetBody(faker.Internet().Email())`).
 			InstancedRequest()
 		assert.Contains(t, req.Body, "@", "faker email should has '@'")
@@ -162,7 +162,7 @@ func TestReqDataConverts(t *testing.T) {
 	t.Run("Convert Body", func(t *testing.T) {
 		rBody := func(t *testing.T, b httpx.Body) (*httpx.Request, error) {
 			t.Helper()
-			return httpx.NewRequestData("t").SetMethod(httpx.MethodPost).SetBody(b).InstancedRequest()
+			return httpx.NewReqData("t").SetMethod(httpx.MethodPost).SetBody(b).InstancedRequest()
 		}
 		t.Run("none body", func(t *testing.T) {
 			req, _ := rBody(t, httpx.Body{Type: httpx.BodyNone})
@@ -221,7 +221,7 @@ func TestReqDataConverts(t *testing.T) {
 	t.Run("Convert Setting", func(t *testing.T) {
 		t.Run("Convert Retry", func(t *testing.T) {
 			t.Run("full set", func(t *testing.T) {
-				rData := httpx.NewRequestData("t").SetRetry(httpx.Retry{
+				rData := httpx.NewReqData("t").SetRetry(httpx.Retry{
 					Count:                3,
 					WaitTime:             "100ms",
 					MaxWaitTime:          "1s",
@@ -234,7 +234,7 @@ func TestReqDataConverts(t *testing.T) {
 				assert.Equal(t, true, req.IsRetryAllowNonIdempotent)
 			})
 			t.Run("bad format for time", func(t *testing.T) {
-				_, err := httpx.NewRequestData("t").SetRetry(httpx.Retry{WaitTime: "1kg"}).InstancedRequest()
+				_, err := httpx.NewReqData("t").SetRetry(httpx.Retry{WaitTime: "1kg"}).InstancedRequest()
 				assert.Error(t, err)
 			})
 		})
@@ -245,7 +245,7 @@ func TestReqDataConverts(t *testing.T) {
 func TestRawURL(t *testing.T) {
 	testParse := func(t *testing.T, rawURL string, expected ...string) {
 		t.Helper()
-		var r httpx.RequestData
+		var r httpx.ReqData
 		ans := rawURL
 		if len(expected) > 0 {
 			ans = expected[0]
@@ -257,7 +257,7 @@ func TestRawURL(t *testing.T) {
 	}
 	testParseErr := func(t *testing.T, rawURL string, expected ...error) {
 		t.Helper()
-		var r httpx.RequestData
+		var r httpx.ReqData
 		err := r.ParseRawURL(rawURL)
 		if len(expected) > 0 {
 			require.ErrorIs(t, err, expected[0])
@@ -267,7 +267,7 @@ func TestRawURL(t *testing.T) {
 	}
 
 	t.Run("the default", func(t *testing.T) {
-		var r httpx.RequestData
+		var r httpx.ReqData
 		require.Equal(t, "", r.RawURL())
 	})
 	t.Run("http normal", func(t *testing.T) {
@@ -290,7 +290,7 @@ func TestRawURL(t *testing.T) {
 		testParseErr(t, "")
 	})
 	t.Run("parse path params", func(t *testing.T) {
-		r := httpx.RequestData{}
+		r := httpx.ReqData{}
 		r.PathParams = map[string]string{"p2": "114"}
 
 		rawURL := "{host}/{p1}/{p2}/{}/${}/{${}}/${{}}/{{x}}/{${x}}/{${x}}"

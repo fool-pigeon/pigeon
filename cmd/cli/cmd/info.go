@@ -64,7 +64,7 @@ var infoCmd = &cobra.Command{
 			return values
 		}
 
-		var meta request.RequestMeta
+		var meta request.ReqMeta
 		b, err := fsx.ReadFile(args[0])
 		if err != nil {
 			return err
@@ -78,7 +78,7 @@ var infoCmd = &cobra.Command{
 			return fmt.Errorf("the protocol %q not implement yet.", meta.Protocol)
 			// TODO cmd/cli: pg info, more request type
 		case request.P_HTTP:
-			var r httpx.RequestData
+			var r httpx.ReqData
 			if err := toml.Unmarshal(b, &r); err != nil {
 				return err
 			}

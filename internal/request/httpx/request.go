@@ -62,8 +62,8 @@ type (
 	Response = resty.Response
 	Request  = resty.Request
 
-	RequestData struct {
-		request.RequestMeta
+	ReqData struct {
+		request.ReqMeta
 		Method      string            `toml:"mothod"`
 		URL         string            `toml:"url"`
 		PathParams  map[string]string `toml:"path_params,omitempty,multiline"`
@@ -86,7 +86,7 @@ type (
 )
 
 // Run implements [request.Request].
-func (r *RequestData) Run() request.Result {
+func (r *ReqData) Run() request.Result {
 	// send request
 	res, err := r.Send()
 	if err != nil {
@@ -133,8 +133,8 @@ func (r *RequestData) Run() request.Result {
 	return result
 }
 
-func NewRequestData(requestName string) *RequestData {
-	return &RequestData{RequestMeta: request.RequestMeta{
+func NewReqData(requestName string) *ReqData {
+	return &ReqData{ReqMeta: request.ReqMeta{
 		Name:     requestName,
 		Protocol: request.P_HTTP,
 	}}
@@ -142,82 +142,82 @@ func NewRequestData(requestName string) *RequestData {
 
 // Setters
 
-func (r *RequestData) SetMethod(m string) *RequestData {
+func (r *ReqData) SetMethod(m string) *ReqData {
 	r.Method = m
 	return r
 }
-func (r *RequestData) SetURL(url string) *RequestData {
+func (r *ReqData) SetURL(url string) *ReqData {
 	r.URL = url
 	return r
 }
-func (r *RequestData) SetPathParams(params map[string]string) *RequestData {
+func (r *ReqData) SetPathParams(params map[string]string) *ReqData {
 	r.PathParams = params
 	return r
 }
-func (r *RequestData) SetPathParam(key string, val string) *RequestData {
+func (r *ReqData) SetPathParam(key string, val string) *ReqData {
 	if r.PathParams == nil {
 		r.PathParams = make(map[string]string)
 	}
 	r.PathParams[key] = val
 	return r
 }
-func (r *RequestData) SetQueryParams(params url.Values) *RequestData {
+func (r *ReqData) SetQueryParams(params url.Values) *ReqData {
 	r.QueryParams = params
 	return r
 }
-func (r *RequestData) SetHeaders(headers http.Header) *RequestData {
+func (r *ReqData) SetHeaders(headers http.Header) *ReqData {
 	r.Headers = headers
 	return r
 }
-func (r *RequestData) SetBody(body Body) *RequestData {
+func (r *ReqData) SetBody(body Body) *ReqData {
 	r.Body = body
 	return r
 }
-func (r *RequestData) SetDesc(desc string) *RequestData {
+func (r *ReqData) SetDesc(desc string) *ReqData {
 	r.Desc = desc
 	return r
 }
-func (r *RequestData) SetSetting(setting Setting) *RequestData {
+func (r *ReqData) SetSetting(setting Setting) *ReqData {
 	r.Setting = setting
 	return r
 }
-func (r *RequestData) SetTimeout(timeStr string) *RequestData {
+func (r *ReqData) SetTimeout(timeStr string) *ReqData {
 	r.Setting.Timeout = timeStr
 	return r
 }
-func (r *RequestData) SetRetry(retry Retry) *RequestData {
+func (r *ReqData) SetRetry(retry Retry) *ReqData {
 	r.Setting.Retry = retry
 	return r
 }
-func (r *RequestData) SetAuth(auth Auth) *RequestData {
+func (r *ReqData) SetAuth(auth Auth) *ReqData {
 	r.Setting.Auth = auth
 	return r
 }
-func (r *RequestData) SetCookieString(cookieStr string) *RequestData {
+func (r *ReqData) SetCookieString(cookieStr string) *ReqData {
 	r.Setting.CookieString = cookieStr
 	return r
 }
-func (r *RequestData) SetUnescapeQuery(unescape bool) *RequestData {
+func (r *ReqData) SetUnescapeQuery(unescape bool) *ReqData {
 	r.Setting.UnescapeQuery = unescape
 	return r
 }
-func (r *RequestData) SetUnescapeJson(unescape bool) *RequestData {
+func (r *ReqData) SetUnescapeJson(unescape bool) *ReqData {
 	r.Setting.UnescapeJson = unescape
 	return r
 }
-func (r *RequestData) SetResponseBodyLimit(limit int64) *RequestData {
+func (r *ReqData) SetResponseBodyLimit(limit int64) *ReqData {
 	r.Setting.ResponseBodyLimit = limit
 	return r
 }
-func (r *RequestData) SetPreReq(preReq string) *RequestData {
+func (r *ReqData) SetPreReq(preReq string) *ReqData {
 	r.PreReq = preReq
 	return r
 }
-func (r *RequestData) SetTests(tests map[string]string) *RequestData {
+func (r *ReqData) SetTests(tests map[string]string) *ReqData {
 	r.Tests = tests
 	return r
 }
-func (r *RequestData) SetTest(name string, expression string) *RequestData {
+func (r *ReqData) SetTest(name string, expression string) *ReqData {
 	if r.Tests == nil {
 		r.Tests = make(map[string]string)
 	}
@@ -225,12 +225,12 @@ func (r *RequestData) SetTest(name string, expression string) *RequestData {
 	return r
 }
 
-func (r *RequestData) SetClient(client *Client) *RequestData {
+func (r *ReqData) SetClient(client *Client) *ReqData {
 	r.client = client
 	return r
 }
 
-func (r *RequestData) ParseRawURL(rawURL string) error {
+func (r *ReqData) ParseRawURL(rawURL string) error {
 	if rawURL == "" {
 		return &rDataError{Msg: "rawURL", Err: ErrEmptyValue}
 	}
@@ -270,14 +270,14 @@ func (r *RequestData) ParseRawURL(rawURL string) error {
 	return nil
 }
 
-func (r *RequestData) RawURL() string {
+func (r *ReqData) RawURL() string {
 	if len(r.QueryParams) > 0 {
 		return r.URL + "?" + toQueryString(r.QueryParams)
 	}
 	return r.URL
 }
 
-func (r *RequestData) Send() (*Response, error) {
+func (r *ReqData) Send() (*Response, error) {
 	req, err := r.InstancedRequest()
 	if err != nil {
 		return nil, err
@@ -285,8 +285,8 @@ func (r *RequestData) Send() (*Response, error) {
 	return req.Send()
 }
 
-// instanced the [Request] from [RequestData],if r.client is nil,then create a new client to use
-func (r *RequestData) InstancedRequest() (*Request, error) {
+// instanced the [Request] from [ReqData],if r.client is nil,then create a new client to use
+func (r *ReqData) InstancedRequest() (*Request, error) {
 	client := r.client
 	if client == nil {
 		cData := NewClientData()
@@ -333,7 +333,7 @@ func (r *RequestData) InstancedRequest() (*Request, error) {
 
 	return req, nil
 }
-func (r *RequestData) convertBody(req *Request) error {
+func (r *ReqData) convertBody(req *Request) error {
 
 	bt := r.Body.Type
 	switch bt {
@@ -383,7 +383,7 @@ func (r *RequestData) convertBody(req *Request) error {
 
 	return nil
 }
-func (r *RequestData) convertSetting(req *Request) error {
+func (r *ReqData) convertSetting(req *Request) error {
 	// timeout
 	if timeout := r.Setting.Timeout; timeout != "" {
 		dur, err := time.ParseDuration(timeout)
@@ -418,7 +418,7 @@ func (r *RequestData) convertSetting(req *Request) error {
 	req.SetResponseBodyLimit(r.Setting.ResponseBodyLimit)
 	return nil
 }
-func (r *RequestData) convertRetry(req *Request) error {
+func (r *ReqData) convertRetry(req *Request) error {
 	retry := r.Setting.Retry
 	if count := retry.Count; count > 0 {
 		req.SetRetryCount(count)
@@ -446,7 +446,7 @@ func (r *RequestData) convertRetry(req *Request) error {
 	}
 	return nil
 }
-func (r *RequestData) convertAuth(req *Request) error {
+func (r *ReqData) convertAuth(req *Request) error {
 	switch auth := r.Setting.Auth; auth.Type {
 	default:
 		return &rDataError{Msg: "auth_type", Err: ErrInvalidValue}

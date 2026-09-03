@@ -66,18 +66,18 @@ func ErrResult(reqName string, err error) Result {
 	return Result{ReqName: reqName, Err: err}
 }
 
-type RequestMeta struct {
+type ReqMeta struct {
 	Name     string `toml:"name"`
 	Protocol string `toml:"protocol"`
 }
 
 // ReqName implements [Request].
-func (r *RequestMeta) ReqName() string {
+func (r *ReqMeta) ReqName() string {
 	return r.Name
 }
 
 // ReqProtocol implements [Request].
-func (r *RequestMeta) ReqProtocol() string {
+func (r *ReqMeta) ReqProtocol() string {
 	return r.Protocol
 }
 
