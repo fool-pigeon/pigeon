@@ -11,27 +11,55 @@ import (
 	"resty.dev/v3"
 )
 
-const (
-	defaultUserAgent = "pigeon/http 0.1v"
-)
+const Version = "v0.1"
 
 const (
-	MethodGet     = http.MethodGet
-	MethodPost    = http.MethodPost
-	MethodPut     = http.MethodPut
-	MethodDelete  = http.MethodDelete
-	MethodHead    = http.MethodHead
+	// MethodGet is the HTTP GET method.
+	MethodGet = http.MethodGet
+	// MethodPost is the HTTP POST method.
+	MethodPost = http.MethodPost
+	// MethodPut is the HTTP PUT method.
+	MethodPut = http.MethodPut
+	// MethodDelete is the HTTP DELETE method.
+	MethodDelete = http.MethodDelete
+	// MethodPatch is the HTTP PATCH method.
+	MethodPatch = http.MethodPatch
+	// MethodHead is the HTTP HEAD method.
+	MethodHead = http.MethodHead
+	// MethodOptions is the HTTP OPTIONS method.
 	MethodOptions = http.MethodOptions
+	// MethodTrace is the HTTP TRACE method.
+	MethodTrace = http.MethodTrace
+	// MethodConnect is the HTTP CONNECT method.
 	MethodConnect = http.MethodConnect
-	MethodPatch   = http.MethodPatch
-	MethodTrace   = http.MethodTrace
 )
 
 var (
 	ErrEmptyValue   = errors.New("the value is empty.")
 	ErrInvalidValue = errors.New("the value is invalid.")
-)
-var (
+
+	hdrUserAgentKey       = http.CanonicalHeaderKey("User-Agent")
+	hdrAcceptKey          = http.CanonicalHeaderKey("Accept")
+	hdrAcceptEncodingKey  = http.CanonicalHeaderKey("Accept-Encoding")
+	hdrContentTypeKey     = http.CanonicalHeaderKey("Content-Type")
+	hdrContentLengthKey   = http.CanonicalHeaderKey("Content-Length")
+	hdrContentEncodingKey = http.CanonicalHeaderKey("Content-Encoding")
+	hdrContentDisposition = http.CanonicalHeaderKey("Content-Disposition")
+	hdrAuthorizationKey   = http.CanonicalHeaderKey("Authorization")
+	hdrWwwAuthenticateKey = http.CanonicalHeaderKey("WWW-Authenticate")
+	hdrRetryAfterKey      = http.CanonicalHeaderKey("Retry-After")
+	hdrCookieKey          = http.CanonicalHeaderKey("Cookie")
+
+	plainTextContentType = "text/plain; charset=utf-8"
+	jsonContentType      = "application/json"
+	xmlContentType       = "application/xml"
+
+	textKey = "text"
+	jsonKey = "json"
+	xmlKey  = "xml"
+
+	hdrUserAgentValue = "pg" + Version
+
 	Methods = []string{MethodGet, MethodPost, MethodPut, MethodDelete, MethodHead, MethodOptions, MethodConnect, MethodPatch, MethodTrace}
 	// regex pattern
 	pathParamRe = regexp.MustCompile(`(?:^|/){([^${}/]+)}`)
@@ -153,7 +181,7 @@ func (c *ClientData) ToCommentedData() CommentedClientData {
 
 func (c *ClientData) InstancedClient() (*Client, error) {
 	client := resty.New()
-	client.SetHeader("User-Agent", defaultUserAgent)
+	client.SetHeader(hdrUserAgentKey, hdrUserAgentValue)
 
 	if baseURL := c.BaseURL; baseURL != "" {
 		client.SetBaseURL(baseURL)

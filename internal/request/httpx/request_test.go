@@ -80,7 +80,7 @@ func TestRun(t *testing.T) {
 		return httpx.NewReqData("r").SetURL(server.URL)
 	}
 	t.Run("only send request", func(t *testing.T) {
-		result := newReqData().SetMethod(httpx.MethodPost).SetBody(httpx.Body{Type: httpx.BodyRaw, Raw: "abc"}).Run()
+		result := newReqData().SetMethod(httpx.MethodPost).SetBodyRaw("abc").Run()
 		raw := result.Raw.(*httpx.Response)
 		assert.Equal(t, true, result.Success)
 		assert.Equal(t, "r", result.ReqName)
@@ -160,21 +160,21 @@ func TestPreReq(t *testing.T) {
 
 func TestReqDataConverts(t *testing.T) {
 	t.Run("Convert Body", func(t *testing.T) {
-		rBody := func(t *testing.T, b httpx.Body) (*httpx.Request, error) {
+		rData := func(t *testing.T) *httpx.ReqData {
 			t.Helper()
-			return httpx.NewReqData("t").SetMethod(httpx.MethodPost).SetBody(b).InstancedRequest()
+			return httpx.NewReqData("t").SetMethod(httpx.MethodPost)
 		}
 		t.Run("none body", func(t *testing.T) {
-			req, _ := rBody(t, httpx.Body{Type: httpx.BodyNone})
+			req, _ := rData(t).InstancedRequest()
 			assert.Nil(t, req.Body)
 		})
 		t.Run("raw", func(t *testing.T) {
-			req, _ := rBody(t, httpx.Body{Type: httpx.BodyRaw, Raw: "abc"})
+			req, _ := rData(t).SetBodyRaw("abc").InstancedRequest()
 			assert.Equal(t, "abc", req.Body)
 		})
 		t.Run("JSON String", func(t *testing.T) {
 			jstr := `{"a":"1"}`
-			req, _ := rBody(t, httpx.Body{Type: httpx.BodyJSON, Raw: jstr})
+			req, _ := rData(t).SetBodyRaw(jstr).SetBodyContentType("json").InstancedRequest()
 			assert.Equal(t, jstr, req.Body)
 			assert.Equal(t, "application/json", req.Header.Get("Content-Type"))
 		})
@@ -186,36 +186,21 @@ func TestReqDataConverts(t *testing.T) {
 <heading>Reminder</heading>
 <body>Don't forget the meeting!</body>
 </note>`
-			req, _ := rBody(t, httpx.Body{Type: httpx.BodyXML, Raw: xstr})
+			req, _ := rData(t).SetBodyRaw(xstr).SetBodyContentType("xml").InstancedRequest()
 			assert.Equal(t, xstr, req.Body)
 			assert.Equal(t, "application/xml", req.Header.Get("Content-Type"))
 		})
-		t.Run("multipart-form", func(t *testing.T) {
+		t.Run("multipart/form-data", func(t *testing.T) {
 			server := NewEchoServer(t)
 			defer server.Close()
 
-			req, _ := rBody(t, httpx.Body{
-				Type: httpx.BodyMultiForm,
-				MultiForm: []httpx.MultipartField{{
-					Name:   "a",
-					Values: []string{"1"},
-				}},
-			})
+			req, _ := rData(t).SetBodyMultipart(httpx.MultiField{Name: "a", Values: []string{"1"}}).InstancedRequest()
 			res, _ := req.SetURL(server.URL).Send()
 			assert.Equal(t, map[string][]string{"a": {"1"}}, ParseEchoResp(res.Bytes()).Multipart)
 		})
 		t.Run("x-www-url-encoded", func(t *testing.T) {
-			req, _ := rBody(t, httpx.Body{
-				Type: httpx.BodyFormUrlEncoded,
-				FormUrlEncoded: url.Values{
-					"a": {"1", "2"},
-				},
-			})
+			req, _ := rData(t).SetBodyForm(url.Values{"a": {"1", "2"}}).InstancedRequest()
 			assert.Equal(t, url.Values{"a": {"1", "2"}}, req.FormData)
-		})
-		t.Run("invalid body type", func(t *testing.T) {
-			_, err := rBody(t, httpx.Body{Type: -1})
-			assert.ErrorIs(t, err, httpx.ErrInvalidValue)
 		})
 	})
 	t.Run("Convert Setting", func(t *testing.T) {

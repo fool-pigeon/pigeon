@@ -176,7 +176,7 @@ func TestToml(t *testing.T) {
 	require.Error(err)
 	t.Log(err)
 
-	mfs := []httpx.MultipartField{
+	mfs := []httpx.MultiField{
 		{Name: "name1", Values: []string{"v1", "v2"}},
 	}
 	mf := mfs[0]

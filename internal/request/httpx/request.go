@@ -15,20 +15,9 @@ import (
 	"resty.dev/v3"
 )
 
-const (
-	BodyNone BodyType = iota
-	BodyRaw
-	BodyJSON
-	BodyXML
-	BodyMultiForm
-	BodyFormUrlEncoded
-	BodyBinary
-)
-
 type (
-	BodyType = int
-	// type field of HTTP Multipart Form
-	MultipartField struct {
+	// type field of HTTP multipart/form-data
+	MultiField struct {
 		Name        string   `toml:"name"`
 		Values      []string `toml:"values"`
 		FileName    string   `toml:"file_name"`
@@ -36,12 +25,16 @@ type (
 		ContentType string   `toml:"content_type"`
 	}
 	Body struct {
-		Type BodyType `toml:"type" comment:"0:none,1:raw,2:json,3:xml,4:multiform,5:form-url-encoded,6:binary"`
-
-		Raw            string           `toml:"raw,multiline" comment:"raw data,also json,xml"`
-		MultiForm      []MultipartField `toml:"multiform,multiline" comment:"list of form-data"`
-		FormUrlEncoded url.Values       `toml:"form_url_encoded,multiline" comment:"key-values of form-url-encoded"`
-		BinaryPath     string           `toml:"binary_path,multiline" comment:"the file/binary path"`
+		// raw data
+		Raw string `toml:"raw,multiline" comment:"raw data"`
+		// multipart/form-data
+		Multipart []MultiField `toml:"multipart,multiline" comment:"list of multipart/form-data"`
+		// x-www-form-url-encoded
+		Form url.Values `toml:"form,multiline" comment:"key-values of x-www-form-url-encoded"`
+		// file/binary path
+		Binary string `toml:"binary,multiline" comment:"the file/binary path"`
+		// json,xml,text,or origin string value
+		ContentType string `toml:"content_type,omitempty" comment:"'json'|'xml'|'text',else keep origin"`
 	}
 
 	rDataError struct {
@@ -66,9 +59,9 @@ type (
 		request.ReqMeta
 		Method      string            `toml:"mothod"`
 		URL         string            `toml:"url"`
-		PathParams  map[string]string `toml:"path_params,omitempty,multiline"`
-		QueryParams url.Values        `toml:"query_params,omitempty,multiline"`
-		Headers     http.Header       `toml:"headers,omitempty,multiline"`
+		PathParams  map[string]string `toml:"path,omitempty,multiline"`
+		QueryParams url.Values        `toml:"query,omitempty,multiline"`
+		Headers     http.Header       `toml:"header,omitempty,multiline"`
 		Body        Body              `toml:"body,omitempty"`
 		Desc        string            `toml:"desc,omitempty,multiline"`
 		Setting     Setting           `toml:"setting,omitempty"`
@@ -171,6 +164,26 @@ func (r *ReqData) SetHeaders(headers http.Header) *ReqData {
 }
 func (r *ReqData) SetBody(body Body) *ReqData {
 	r.Body = body
+	return r
+}
+func (r *ReqData) SetBodyRaw(raw string) *ReqData {
+	r.Body.Raw = raw
+	return r
+}
+func (r *ReqData) SetBodyMultipart(multipart ...MultiField) *ReqData {
+	r.Body.Multipart = multipart
+	return r
+}
+func (r *ReqData) SetBodyForm(form url.Values) *ReqData {
+	r.Body.Form = form
+	return r
+}
+func (r *ReqData) SetBodyBinary(path string) *ReqData {
+	r.Body.Binary = path
+	return r
+}
+func (r *ReqData) SetBodyContentType(ct string) *ReqData {
+	r.Body.ContentType = ct
 	return r
 }
 func (r *ReqData) SetDesc(desc string) *ReqData {
@@ -335,23 +348,13 @@ func (r *ReqData) InstancedRequest() (*Request, error) {
 }
 func (r *ReqData) convertBody(req *Request) error {
 
-	bt := r.Body.Type
-	switch bt {
-	default:
-		return &rDataError{Msg: "body_type", Err: ErrInvalidValue}
-
-	case BodyNone:
-		// do nothing
-	case BodyJSON:
-		fallthrough
-	case BodyXML:
-		fallthrough
-	case BodyRaw:
+	switch b := r.Body; {
+	case b.Raw != "":
 		req.SetBody(r.Body.Raw)
 
-	case BodyMultiForm:
-		fields := make([]*resty.MultipartField, 0, len(r.Body.MultiForm))
-		for _, v := range r.Body.MultiForm {
+	case len(b.Multipart) > 0:
+		fields := make([]*resty.MultipartField, 0, len(r.Body.Multipart))
+		for _, v := range r.Body.Multipart {
 			fields = append(fields, &resty.MultipartField{
 				Name:        v.Name,
 				Values:      v.Values,
@@ -361,10 +364,12 @@ func (r *ReqData) convertBody(req *Request) error {
 			})
 		}
 		req.SetMultipartFields(fields...)
-	case BodyFormUrlEncoded:
-		req.SetFormDataFromValues(r.Body.FormUrlEncoded)
-	case BodyBinary:
-		b, err := fsx.ReadFile(r.Body.BinaryPath)
+
+	case len(b.Form) > 0:
+		req.SetFormDataFromValues(r.Body.Form)
+
+	case b.Binary != "":
+		b, err := fsx.ReadFile(r.Body.Binary)
 		if err != nil {
 			return err
 		}
@@ -372,13 +377,18 @@ func (r *ReqData) convertBody(req *Request) error {
 
 	}
 
-	// set Content-Type for json and xml type
-	switch bt {
-	case BodyJSON:
-		req.SetContentType("application/json")
-	case BodyXML:
-		req.SetContentType("application/xml")
-
+	// set Content-Type
+	switch ct := r.Body.ContentType; ct {
+	case textKey:
+		req.SetContentType(plainTextContentType)
+	case jsonKey:
+		req.SetContentType(jsonContentType)
+	case xmlKey:
+		req.SetContentType(xmlContentType)
+	default:
+		if ct != "" {
+			req.SetContentType(ct)
+		}
 	}
 
 	return nil

@@ -73,7 +73,9 @@ var infoCmd = &cobra.Command{
 			return err
 		}
 
-		switch meta.Protocol {
+		printField("Name", false, meta.ReqName())
+		printField("Protocol", false, meta.ReqProtocol())
+		switch meta.ReqProtocol() {
 		default:
 			return fmt.Errorf("the protocol %q not implement yet.", meta.Protocol)
 			// TODO cmd/cli: pg info, more request type
@@ -82,23 +84,19 @@ var infoCmd = &cobra.Command{
 			if err := toml.Unmarshal(b, &r); err != nil {
 				return err
 			}
-
 			printField("URL", false, r.RawURL())
+			printField("Method", false, r.Method)
 			if r.Headers != nil {
 				printField("Headers", true, formatValues(r.Headers)...)
 			}
-			switch r.Body.Type {
-			case httpx.BodyJSON:
-				printField("Body(JSON)", true, r.Body.Raw)
-			case httpx.BodyXML:
-				printField("Body(XML)", true, r.Body.Raw)
-			case httpx.BodyRaw:
-				printField("Body(Raw)", true, r.Body.Raw)
-			case httpx.BodyFormUrlEncoded:
-				printField("Body(Form-URL-Encoded)", true, flattenValues(r.Body.FormUrlEncoded)...)
-			case httpx.BodyMultiForm:
-				fields := make([]string, 0, len(r.Body.MultiForm))
-				for k, v := range r.Body.MultiForm {
+			switch b := r.Body; {
+			case b.Raw != "":
+				printField("Body(raw)", true, b.Raw)
+			case len(b.Form) > 0:
+				printField("Body(form-url-encoded)", true, flattenValues(b.Form)...)
+			case len(b.Multipart) > 0:
+				fields := make([]string, 0, len(b.Multipart))
+				for k, v := range b.Multipart {
 					var sb strings.Builder
 					if v.Name != "" {
 						sb.WriteString(pterm.Sprintln(pterm.LightBlue("Name:"), v.Name))
@@ -115,14 +113,14 @@ var infoCmd = &cobra.Command{
 					if v.ContentType != "" {
 						sb.WriteString(pterm.Sprintln(pterm.LightBlue("ContentType:"), v.ContentType))
 					}
-					if k < len(r.Body.MultiForm)-1 {
+					if k < len(r.Body.Multipart)-1 {
 						sb.WriteString("-------------")
 					}
 					fields = append(fields, sb.String())
 				}
-				printField("Body(Multiform)", true, fields...)
-			case httpx.BodyBinary:
-				printField("Body(Binary)", true, pterm.Sprint("File: ", r.Body.BinaryPath))
+				printField("Body(multipart/form-data)", true, fields...)
+			case b.Binary != "":
+				printField("Body(binary)", true, pterm.Sprint("File: ", b.Binary))
 			}
 
 		}
