@@ -68,7 +68,7 @@ func ErrResult(reqName string, err error) Result {
 
 type ReqMeta struct {
 	Name     string `toml:"name"`
-	Protocol string `toml:"protocol"`
+	Protocol string `toml:"protocol" comment:"'http'"`
 }
 
 // ReqName implements [Request].

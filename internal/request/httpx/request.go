@@ -57,7 +57,7 @@ type (
 
 	ReqData struct {
 		request.ReqMeta
-		Method      string            `toml:"mothod"`
+		Method      string            `toml:"mothod" comment:"GET(default),POST,PUT,DELETE,PATCH,HEAD,OPTIONS,TRACE,CONNECT"`
 		URL         string            `toml:"url"`
 		PathParams  map[string]string `toml:"path,omitempty,multiline"`
 		QueryParams url.Values        `toml:"query,omitempty,multiline"`
