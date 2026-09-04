@@ -107,6 +107,17 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, true, tRes.Passed)
 		assert.Nil(t, tRes.Err)
 	})
+	t.Run("run with a expression which will be failed", func(t *testing.T) {
+		tName := "t1"
+		tExpr := `res.StatusCode()==500`
+		result := newReqData().SetTest(tName, tExpr).Run()
+		assert.Equal(t, false, result.Success)
+
+		tRes := result.Tests[0]
+		assert.Equal(t, tName, tRes.Name)
+		assert.Equal(t, false, tRes.Passed)
+		assert.Nil(t, tRes.Err)
+	})
 	t.Run("handle json body in tests", func(t *testing.T) {
 		tName := "t1"
 		tExpr := `fromJSON(res.String()).method=="GET"`
