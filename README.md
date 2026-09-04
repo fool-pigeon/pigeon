@@ -23,11 +23,8 @@ Example Project Structure
 ```
 
 pg-cli commands
-* config
-  * init
-    * --tags, Set additional configuration with name suffix tags
-  * ls
-    * --tag, Print config with name suffix tag
+* init
+  * --tags, Set additional configuration with name suffix tags
 * env
   * init
     * --tags, Set additional configuration with name suffix tags

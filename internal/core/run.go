@@ -71,7 +71,7 @@ func execTask(name string, ctx *Context, c *config.Config, resCh chan request.Re
 func Run(paths []string, handle func(res request.Result), tag ...string) error {
 	startDir := "."
 	// load config
-	cfg, err := config.Load(startDir, tag...)
+	cfg, err := config.LoadFromPath(startDir, tag...)
 	if err != nil {
 		return err
 	}

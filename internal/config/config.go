@@ -42,20 +42,23 @@ func New() *Config {
 	return &Config{}
 }
 
+func LoadFromFile(name string) (*Config, error) {
+	c := New()
+	if err := fsx.ReadToml(name, c); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
 // load config from file in .pg/
 //
 // return error if not find the root tag dir .pg/
-func Load(path string, tag ...string) (*Config, error) {
+func LoadFromPath(path string, tag ...string) (*Config, error) {
 	parentDir, err := fsx.RootTagDir(path)
 	if err != nil {
 		return nil, err
 	}
-	c := New()
-	if err := fsx.ReadToml(filepath.Join(parentDir, FileName(tag...)), c); err != nil {
-		return nil, err
-	}
-
-	return c, nil
+	return LoadFromFile(filepath.Join(parentDir, FileName(tag...)))
 }
 
 // generate config's file name.
