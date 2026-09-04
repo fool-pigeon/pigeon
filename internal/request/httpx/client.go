@@ -8,10 +8,9 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/fool-pigeon/pigeon/internal/project"
 	"resty.dev/v3"
 )
-
-const Version = "v0.1"
 
 const (
 	// MethodGet is the HTTP GET method.
@@ -58,7 +57,7 @@ var (
 	jsonKey = "json"
 	xmlKey  = "xml"
 
-	hdrUserAgentValue = "pg" + Version
+	hdrUserAgentValue = "pg@" + project.Version
 
 	Methods = []string{MethodGet, MethodPost, MethodPut, MethodDelete, MethodHead, MethodOptions, MethodConnect, MethodPatch, MethodTrace}
 	// regex pattern
@@ -87,18 +86,6 @@ func (c *cDataError) Unwrap() error {
 type (
 	Client = resty.Client
 
-	CommentedClientData struct {
-		BaseURL  string `toml:"base_url,commented"`
-		ProxyURL string `toml:"proxy_url,commented"`
-
-		PathParams  map[string]string `toml:"path_params,commented"`
-		QueryParams url.Values        `toml:"query_params,commented"`
-		Headers     http.Header       `toml:"headers,commented"`
-
-		Redirect Redirect `toml:"redirect,commented"`
-		Setting  Setting  `toml:"setting,commented"`
-	}
-
 	ClientData struct {
 		BaseURL  string `toml:"base_url"`
 		ProxyURL string `toml:"proxy_url"`
@@ -112,8 +99,8 @@ type (
 	}
 )
 
-func NewClientData() ClientData {
-	return ClientData{}
+func NewClientData() *ClientData {
+	return &ClientData{}
 }
 
 // Setters
@@ -175,10 +162,6 @@ func (c *ClientData) SetResponseBodyLimit(limit int64) *ClientData {
 	return c
 }
 
-func (c *ClientData) ToCommentedData() CommentedClientData {
-	return CommentedClientData(*c)
-}
-
 func (c *ClientData) InstancedClient() (*Client, error) {
 	client := resty.New()
 	client.SetHeader(hdrUserAgentKey, hdrUserAgentValue)
@@ -202,7 +185,7 @@ func (c *ClientData) InstancedClient() (*Client, error) {
 	if headers := c.Headers; headers != nil {
 		for name, values := range headers {
 			for _, value := range values {
-				client.SetHeader(name, value)
+				client.SetHeaderVerbatim(name, value)
 			}
 		}
 	}
