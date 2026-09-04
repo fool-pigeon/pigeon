@@ -87,8 +87,8 @@ var infoCmd = &cobra.Command{
 			}
 			printField("URL", false, r.RawURL())
 			printField("Method", false, r.Method)
-			if r.Headers != nil {
-				printField("Headers", true, formatValues(r.Headers)...)
+			if r.Header != nil {
+				printField("Headers", true, formatValues(r.Header)...)
 			}
 			switch b := r.Body; {
 			case b.Raw != "":

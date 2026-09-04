@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -61,7 +62,7 @@ type (
 		URL         string            `toml:"url"`
 		PathParams  map[string]string `toml:"path,omitempty,multiline"`
 		QueryParams url.Values        `toml:"query,omitempty,multiline"`
-		Headers     http.Header       `toml:"header,omitempty,multiline"`
+		Header      http.Header       `toml:"header,omitempty,multiline"`
 		Body        Body              `toml:"body,omitempty"`
 		Desc        string            `toml:"desc,omitempty,multiline"`
 		Setting     Setting           `toml:"setting,omitempty"`
@@ -88,8 +89,7 @@ func (r *ReqData) Run() request.Result {
 	// set raw response
 	result := request.NewResult()
 	result.SetReqName(r.ReqName()).SetRaw(res).SetStatus(res.Status())
-
-	isSuccess := res.StatusCode() >= 200 && res.StatusCode() < 300
+	result.SetSuccess(res.StatusCode() >= 200 && res.StatusCode() < 300)
 
 	// run tests
 	if len(r.Tests) != 0 {
@@ -103,25 +103,23 @@ func (r *ReqData) Run() request.Result {
 			program, err := expr.Compile(code, expr.Env(env), expr.AsBool())
 			if err != nil {
 				tRes.Err = err
-				isSuccess = false
+				result.SetSuccess(false)
 				result.AppendTestRes(tRes)
 				continue
 			}
 			output, err := expr.Run(program, env)
 			if err != nil {
 				tRes.Err = err
-				isSuccess = false
+				result.SetSuccess(false)
 				result.AppendTestRes(tRes)
 				continue
 			}
 
 			tRes.Passed = output.(bool)
-			isSuccess = isSuccess && tRes.Passed
-
+			result.SetSuccess(result.Success && tRes.Passed)
 			result.AppendTestRes(tRes)
 		}
 	}
-	result.SetSuccess(isSuccess)
 
 	return result
 }
@@ -158,8 +156,8 @@ func (r *ReqData) SetQueryParams(params url.Values) *ReqData {
 	r.QueryParams = params
 	return r
 }
-func (r *ReqData) SetHeaders(headers http.Header) *ReqData {
-	r.Headers = headers
+func (r *ReqData) SetHeaders(header http.Header) *ReqData {
+	r.Header = header
 	return r
 }
 func (r *ReqData) SetBody(body Body) *ReqData {
@@ -314,8 +312,10 @@ func (r *ReqData) InstancedRequest() (*Request, error) {
 		SetURL(r.URL).
 		SetMethod(r.Method).
 		SetPathParams(r.PathParams).
-		SetQueryParamsFromValues(r.QueryParams).
-		SetHeaderMultiValues(r.Headers)
+		SetQueryParamsFromValues(r.QueryParams)
+
+	// set raw headers
+	maps.Copy(req.Header, r.Header)
 
 	if err := r.convertBody(req); err != nil {
 		return nil, err
