@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/fool-pigeon/pigeon/internal/request"
@@ -19,7 +20,7 @@ type Context struct {
 	env  *env.Env
 }
 
-func readRequest(name string, ctx *Context) (request.Request, error) {
+func readRequest(name string, ctx *Context, c *config.Config) (request.Request, error) {
 	// Read File
 	b, err := fsx.ReadFile(name)
 	if err != nil {
@@ -36,10 +37,18 @@ func readRequest(name string, ctx *Context) (request.Request, error) {
 	default:
 		return nil, fmt.Errorf("the protocol %q not implement yet.", meta.Protocol)
 	case request.P_HTTP:
+		client, err := c.Http()
+		if err != nil {
+			return nil, err
+		}
+
 		var r httpx.ReqData
 		if err := toml.Unmarshal(b, &r); err != nil {
 			return nil, err
 		}
+
+		r.SetClient(client)
+
 		return &r, nil
 
 		// TODO readRequest more
@@ -50,8 +59,8 @@ func isTomlExt(path string) bool {
 	return filepath.Ext(path) == ".toml"
 }
 
-func execTask(name string, ctx *Context, resCh chan request.Result) {
-	r, err := readRequest(name, ctx)
+func execTask(name string, ctx *Context, c *config.Config, resCh chan request.Result) {
+	r, err := readRequest(name, ctx, c)
 	if err != nil {
 		resCh <- request.ErrResult(name, fmt.Errorf("ReadError:%w", err))
 		return
@@ -60,8 +69,14 @@ func execTask(name string, ctx *Context, resCh chan request.Result) {
 	resCh <- res
 }
 func Run(paths []string, handle func(res request.Result), tag ...string) error {
+	startDir := "."
+	// load config
+	cfg, err := config.Load(startDir, tag...)
+	if err != nil {
+		return err
+	}
 	// load startEnv in current directory
-	startEnv, err := env.LoadFromPath(".", tag...)
+	startEnv, err := env.LoadFromPath(startDir, tag...)
 	if err != nil {
 		return err
 	}
@@ -80,7 +95,7 @@ func Run(paths []string, handle func(res request.Result), tag ...string) error {
 		// exec if path is file
 		if info.Mode().IsRegular() && isTomlExt(path) {
 			wg.Go(func() {
-				execTask(path, &ctxs[0], resCh)
+				execTask(path, &ctxs[0], cfg, resCh)
 			})
 			continue
 		}
@@ -102,7 +117,7 @@ func Run(paths []string, handle func(res request.Result), tag ...string) error {
 			case d.Type().IsRegular() && isTomlExt(p):
 				// exec if file
 				wg.Go(func() {
-					execTask(p, &ctx, resCh)
+					execTask(p, &ctx, cfg, resCh)
 				})
 			case d.IsDir():
 				// override load for update env

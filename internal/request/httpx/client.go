@@ -90,9 +90,9 @@ type (
 		BaseURL  string `toml:"base_url"`
 		ProxyURL string `toml:"proxy_url"`
 
-		PathParams  map[string]string `toml:"path_params"`
-		QueryParams url.Values        `toml:"query_params"`
-		Headers     http.Header       `toml:"headers"`
+		PathParams  map[string]string `toml:"path"`
+		QueryParams url.Values        `toml:"query"`
+		Header      http.Header       `toml:"header"`
 
 		Redirect Redirect `toml:"redirect"`
 		Setting  Setting  `toml:"setting"`
@@ -122,7 +122,7 @@ func (c *ClientData) SetQueryParams(params url.Values) *ClientData {
 	return c
 }
 func (c *ClientData) SetHeaders(headers http.Header) *ClientData {
-	c.Headers = headers
+	c.Header = headers
 	return c
 }
 func (c *ClientData) SetRedirect(redirect Redirect) *ClientData {
@@ -182,7 +182,7 @@ func (c *ClientData) InstancedClient() (*Client, error) {
 			}
 		}
 	}
-	if headers := c.Headers; headers != nil {
+	if headers := c.Header; headers != nil {
 		for name, values := range headers {
 			for _, value := range values {
 				client.SetHeaderVerbatim(name, value)
