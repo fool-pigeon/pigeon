@@ -8,15 +8,17 @@ import (
 )
 
 const (
-	DefaultConfigName = "config"
+	// the default file name of config without file ext
+	ConfigFile = "config"
 
 	fileExt = ".toml"
 )
 
+// config store the data of clients
 // config as the entrypoint of clients
 // every client has its own mutex for concurrency
 type Config struct {
-	HttpClientData httpx.ClientData `toml:"http"`
+	HttpData httpx.ClientData `toml:"http"`
 
 	http *httpx.Client
 }
@@ -27,7 +29,7 @@ func (c *Config) Http() (*httpx.Client, error) {
 		return c.http, nil
 	}
 
-	http, err := c.HttpClientData.InstancedClient()
+	http, err := c.HttpData.InstancedClient()
 	if err != nil {
 		return nil, err
 	}
@@ -39,6 +41,10 @@ func (c *Config) Http() (*httpx.Client, error) {
 func New() *Config {
 	return &Config{}
 }
+
+// load config from file in .pg/
+//
+// return error if not find the root tag dir .pg/
 func Load(path string, tag ...string) (*Config, error) {
 	parentDir, err := fsx.RootTagDir(path)
 	if err != nil {
@@ -51,9 +57,15 @@ func Load(path string, tag ...string) (*Config, error) {
 
 	return c, nil
 }
-func FileName(suffix ...string) string {
-	if len(suffix) > 0 && suffix[0] != "" {
-		return DefaultConfigName + "-" + suffix[0] + fileExt
+
+// generate config's file name.
+// for example:
+//
+//	FileName() == "config.toml"
+//	FileName("dev") == "config-dev.toml"
+func FileName(tag ...string) string {
+	if len(tag) > 0 && tag[0] != "" {
+		return ConfigFile + "-" + tag[0] + fileExt
 	}
-	return DefaultConfigName + fileExt
+	return ConfigFile + fileExt
 }

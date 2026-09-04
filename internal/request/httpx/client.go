@@ -86,6 +86,8 @@ func (c *cDataError) Unwrap() error {
 type (
 	Client = resty.Client
 
+	// [ClientData] is wrap to store client's data into toml file for [resty.Client].
+	// The client will be instanced when called [Client.InstancedClient]
 	ClientData struct {
 		BaseURL  string `toml:"base_url"`
 		ProxyURL string `toml:"proxy_url"`

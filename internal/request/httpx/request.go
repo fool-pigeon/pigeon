@@ -56,6 +56,9 @@ type (
 	Response = resty.Response
 	Request  = resty.Request
 
+	// [ReqData] is a wrap for [resty.Request].
+	// It store request's data into toml file.
+	// The request will be [resty.Request] when called [ReqData.InstancedRequest]
 	ReqData struct {
 		request.ReqMeta
 		Method      string            `toml:"mothod" comment:"GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS,TRACE,CONNECT"`

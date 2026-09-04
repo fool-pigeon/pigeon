@@ -15,6 +15,10 @@ const DefaultFileName = ".env"
 
 type EnvData = koanf.Koanf
 
+// Env is a wrap for [koanf.Koanf].
+// the new value will replace the old value when load and has the same key path.
+// Env load from a dotenv file,its type can be seen as map[ string ] string
+// use [Env.Expand] to replace the ${var} in string.
 type Env struct {
 	Data *EnvData
 }
@@ -89,9 +93,9 @@ func getVarName(s string) (string, int) {
 func New() *Env {
 	return &Env{koanf.New(".")}
 }
-func FileName(suffix ...string) string {
-	if len(suffix) > 0 && suffix[0] != "" {
-		return DefaultFileName + "-" + suffix[0]
+func FileName(tag ...string) string {
+	if len(tag) > 0 && tag[0] != "" {
+		return DefaultFileName + "-" + tag[0]
 	}
 	return DefaultFileName
 }
