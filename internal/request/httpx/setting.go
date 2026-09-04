@@ -1,12 +1,5 @@
 package httpx
 
-const (
-	AuthNone AuthType = iota
-	AuthTypeBasic
-	AuthTypeDigest
-	AuthTypeToken
-)
-
 type (
 	Retry struct {
 		Count                int    `toml:"count"`
@@ -15,17 +8,15 @@ type (
 		IsAllowNonIdempotent bool   `toml:"is_allow_non_idempotent"`
 	}
 
-	AuthType = int
-	Auth     struct {
-		Type AuthType `toml:"type" comment:"0:none,1:basic,2:digest(only-client),3:token,4:oauth(only-client)"`
-
-		Token AuthToken `toml:"token" comment:"<header>: <scheme> <token>"`
-		Creds AuthCreds `toml:"creds"`
+	Auth struct {
+		Token  AuthToken `toml:"token,omitempty" comment:"<header>: <scheme> <val>"`
+		Baisc  AuthCreds `toml:"baisc,omitempty"`
+		Digest AuthCreds `toml:"digest,omitempty"`
 	}
 	AuthToken struct {
-		Scheme string `toml:"scheme"`
-		Token  string `toml:"token"`
-		Header string `toml:"header"`
+		Header string `toml:"header,omitempty"`
+		Scheme string `toml:"scheme,omitempty"`
+		Value  string `toml:"val,omitempty"`
 	}
 	AuthCreds struct {
 		Username string `toml:"username"`
@@ -38,7 +29,7 @@ type Setting struct {
 	Timeout string `toml:"timeout" comment:"time>=0, e.g.:'1m30s' time_unit:ns|us|ms|s|m|h"`
 	Retry   Retry  `toml:"retry"`
 
-	Auth Auth `toml:"auth"`
+	Auth Auth `toml:"auth" comment:"token,basic,digest(only-client)"`
 
 	CookieString      string `toml:"cookies"`
 	UnescapeQuery     bool   `toml:"unescape_query"`

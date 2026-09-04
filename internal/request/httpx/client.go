@@ -289,26 +289,21 @@ func (c *ClientData) convertRetry(client *Client) error {
 // set auth for client
 func (c *ClientData) convertAuth(client *Client) error {
 
-	switch auth := c.Setting.Auth; auth.Type {
-	default:
-		return &cDataError{Msg: "auth_type", Err: ErrInvalidValue}
-
-	case AuthNone:
-		// nothing
-	case AuthTypeBasic:
-		creds := auth.Creds
+	switch auth := c.Setting.Auth; {
+	case auth.Baisc != AuthCreds{}:
+		creds := auth.Baisc
 		client.SetBasicAuth(creds.Username, creds.Password)
-	case AuthTypeDigest:
-		creds := auth.Creds
+	case auth.Digest != AuthCreds{}:
+		creds := auth.Digest
 		client.SetDigestAuth(creds.Username, creds.Password)
-	case AuthTypeToken:
-		data := auth.Token
-		client.SetAuthToken(data.Token)
-		if data.Scheme != "" {
-			client.SetAuthScheme(data.Scheme)
+	case auth.Token != AuthToken{}:
+		token := auth.Token
+		client.SetAuthToken(token.Value)
+		if token.Scheme != "" {
+			client.SetAuthScheme(token.Scheme)
 		}
-		if data.Header != "" {
-			client.SetHeaderAuthorizationKey(data.Header)
+		if token.Header != "" {
+			client.SetHeaderAuthorizationKey(token.Header)
 		}
 	}
 	return nil

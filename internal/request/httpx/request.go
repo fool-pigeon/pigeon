@@ -457,23 +457,18 @@ func (r *ReqData) convertRetry(req *Request) error {
 	return nil
 }
 func (r *ReqData) convertAuth(req *Request) error {
-	switch auth := r.Setting.Auth; auth.Type {
-	default:
-		return &rDataError{Msg: "auth_type", Err: ErrInvalidValue}
-
-	case AuthNone:
-		// nothing
-	case AuthTypeBasic:
-		creds := auth.Creds
+	switch auth := r.Setting.Auth; {
+	case auth.Baisc != AuthCreds{}:
+		creds := auth.Baisc
 		req.SetBasicAuth(creds.Username, creds.Password)
-	case AuthTypeToken:
-		data := auth.Token
-		req.SetAuthToken(data.Token)
-		if data.Scheme != "" {
-			req.SetAuthScheme(data.Scheme)
+	case auth.Token != AuthToken{}:
+		token := auth.Token
+		req.SetAuthToken(token.Value)
+		if token.Scheme != "" {
+			req.SetAuthScheme(token.Scheme)
 		}
-		if data.Header != "" {
-			req.SetHeaderAuthorizationKey(data.Header)
+		if token.Header != "" {
+			req.SetHeaderAuthorizationKey(token.Header)
 		}
 	}
 
