@@ -76,10 +76,11 @@ var infoCmd = &cobra.Command{
 		printField("Name", false, meta.ReqName())
 		printField("Protocol", false, meta.ReqProtocol())
 		switch meta.ReqProtocol() {
+		// TODO cmd/cli: pg info, more request type
 		default:
 			return fmt.Errorf("the protocol %q not implement yet.", meta.Protocol)
-			// TODO cmd/cli: pg info, more request type
 		case request.P_HTTP:
+			// TODO: finish http request info
 			var r httpx.ReqData
 			if err := toml.Unmarshal(b, &r); err != nil {
 				return err
