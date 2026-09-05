@@ -81,5 +81,5 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 
 	runCmd.Flags().String("tag", "", "run with config and env which has tag")
-	runCmd.Flags().Bool("raw", false, "show raw response")
+	runCmd.Flags().BoolP("raw", "r", false, "show raw response")
 }
