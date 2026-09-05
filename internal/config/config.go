@@ -2,6 +2,7 @@ package config
 
 import (
 	"path/filepath"
+	"sync"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/fool-pigeon/pigeon/internal/request/httpx"
@@ -14,28 +15,31 @@ const (
 	fileExt = ".toml"
 )
 
+type clientWrap[T any] struct {
+	once   sync.Once
+	err    error
+	client T
+}
+
 // config store the data of clients
 // config as the entrypoint of clients
 // every client has its own mutex for concurrency
 type Config struct {
 	HttpData httpx.ClientData `toml:"http"`
 
-	http *httpx.Client
+	http clientWrap[*httpx.Client]
 }
 
-// return a http client with its own Mutex
-func (c *Config) Http() (*httpx.Client, error) {
-	if c.http != nil {
-		return c.http, nil
+// return a http client pointer with its own Mutex.
+// the client only instance once.
+func (c *Config) HttpClient() (*httpx.Client, error) {
+	if c.http.client != nil {
+		return c.http.client, c.http.err
 	}
-
-	http, err := c.HttpData.InstancedClient()
-	if err != nil {
-		return nil, err
-	}
-	c.http = http
-
-	return http, nil
+	c.http.once.Do(func() {
+		c.http.client, c.http.err = c.HttpData.InstancedClient()
+	})
+	return c.http.client, c.http.err
 }
 
 func New() *Config {

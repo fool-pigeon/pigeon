@@ -19,7 +19,25 @@ func TestFileName(t *testing.T) {
 		require.Equal(t, "config-dev.toml", config.FileName("dev"))
 	})
 }
+func TestInstanceClient(t *testing.T) {
+	t.Run("HTTP", func(t *testing.T) {
+		t.Run("success instance", func(t *testing.T) {
+			c := config.New()
+			c.HttpData.SetBaseURL("url")
+			httpClient, _ := c.HttpClient()
+			assert.Equal(t, "url", httpClient.BaseURL())
+			h2, _ := c.HttpClient()
+			assert.Equal(t, httpClient, h2, "get the same client")
+		})
+		t.Run("failed to parse time", func(t *testing.T) {
+			c := config.New()
+			c.HttpData.SetTimeout("hello")
+			_, err := c.HttpClient()
+			assert.Error(t, err)
+		})
+	})
 
+}
 func TestLoad(t *testing.T) {
 	exampleCfg := config.New()
 	baseURL := "http://127.0.0.1"

@@ -37,7 +37,7 @@ func readRequest(name string, ctx *Context, c *config.Config) (request.Request, 
 	default:
 		return nil, fmt.Errorf("the protocol %q not implement yet.", meta.Protocol)
 	case request.P_HTTP:
-		client, err := c.Http()
+		client, err := c.HttpClient()
 		if err != nil {
 			return nil, err
 		}
