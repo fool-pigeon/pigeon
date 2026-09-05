@@ -54,16 +54,19 @@ var runCmd = &cobra.Command{
 					continue
 				}
 				if tRes.Passed {
-					printSuccess("test: ", tRes.Name, " success")
+					printSuccess("test success: ", tRes.Name)
 				} else {
-					printFailed("test: ", tRes.Name, " failed")
+					printFailed("test failed: ", tRes.Name)
 				}
 			}
 			if showRaw {
 				switch raw := res.Raw.(type) {
 				case *httpx.Response:
 					var out bytes.Buffer
-					json.Indent(&out, raw.Bytes(), "", "  ")
+					if err := json.Indent(&out, raw.Bytes(), "", "  "); err != nil {
+						printInfo(raw)
+						return
+					}
 					printInfo(out.String())
 				}
 			}
