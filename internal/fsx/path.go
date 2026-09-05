@@ -6,7 +6,7 @@ import (
 	"slices"
 )
 
-var ErrRootNotExist = errors.New("Not found root tag directory.")
+var ErrRootNotExist = errors.New("root tag directory is not existed.")
 
 const RootTagDirName = ".pg"
 

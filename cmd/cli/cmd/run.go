@@ -32,7 +32,8 @@ var runCmd = &cobra.Command{
 
 		tag, _ := cmd.Flags().GetString("tag")
 		showRaw, _ := cmd.Flags().GetBool("raw")
-		core.Run(paths, func(res request.Result) {
+
+		return core.Run(paths, func(res request.Result) {
 			printFailed := func(a ...any) { pterm.Println(pterm.LightRed(a...)) }
 			printErr := func(a ...any) { pterm.Println(pterm.Red(a...)) }
 			printSuccess := func(a ...any) { pterm.Println(pterm.Green(a...)) }
@@ -71,7 +72,6 @@ var runCmd = &cobra.Command{
 				}
 			}
 		}, tag)
-		return nil
 	},
 }
 

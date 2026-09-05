@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -76,9 +77,14 @@ func Run(paths []string, handle func(res request.Result), tag ...string) error {
 	if err != nil {
 		cfg = config.New()
 	}
+
 	// load startEnv in current directory
 	startEnv, err := env.LoadFromPath(startDir, tag...)
-	if err != nil {
+	// use empty start env if not exist root tag dir
+	// return if cause fatal error
+	if errors.Is(err, fsx.ErrRootNotExist) {
+		startEnv = env.New()
+	} else if err != nil {
 		return err
 	}
 	ctxs := []Context{{".", startEnv}}
