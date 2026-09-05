@@ -1,7 +1,7 @@
 <script lang="ts">
   import {onMount} from 'svelte';
   import {Events, WML} from "@wailsio/runtime";
-  import {GreetService} from "../bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui";
+  import {GreetService} from "@services";
 
   const wailsVersion = "v3.0.0-beta.16";
 

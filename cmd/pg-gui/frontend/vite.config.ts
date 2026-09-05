@@ -10,4 +10,10 @@ export default defineConfig({
     strictPort: true,
   },
   plugins: [svelte(), wails("./bindings")],
+  resolve:{
+    alias:{
+      '@bindings': '/bindings',
+      '@services': '/bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui',
+    }
+  }
 });
