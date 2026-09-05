@@ -11,6 +11,7 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -109,7 +110,33 @@ func TestIsDirExist(t *testing.T) {
 		require.Equal(t, false, isExist)
 	})
 }
-
+func TestRWFile(t *testing.T) {
+	t.Run("read and write a file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		fName := filepath.Join(tmpDir, "file")
+		data := []byte("data")
+		fsx.WriteFile(fName, data)
+		b, _ := fsx.ReadFile(fName)
+		assert.Equal(t, data, b)
+		bs, _ := fsx.ReadFileAsString(fName)
+		assert.Equal(t, string(data), bs)
+	})
+	t.Run("read a empty file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		fName := filepath.Join(tmpDir, "not-exist")
+		fsx.WriteFile(fName, []byte{})
+		b, _ := fsx.ReadFile(fName)
+		assert.Equal(t, []byte{}, b)
+		bs, _ := fsx.ReadFileAsString(fName)
+		assert.Equal(t, "", bs)
+	})
+	t.Run("read a file not exist", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		fName := filepath.Join(tmpDir, "not-exist")
+		_, err := fsx.ReadFile(fName)
+		assert.ErrorIs(t, err, fsx.ErrNotExist)
+	})
+}
 func TestStoreKoanf(t *testing.T) {
 	tmpDir := t.TempDir()
 
