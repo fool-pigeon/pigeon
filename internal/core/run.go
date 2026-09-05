@@ -72,8 +72,9 @@ func Run(paths []string, handle func(res request.Result), tag ...string) error {
 	startDir := "."
 	// load config
 	cfg, err := config.LoadFromPath(startDir, tag...)
+	// if err,then use the new config
 	if err != nil {
-		return err
+		cfg = config.New()
 	}
 	// load startEnv in current directory
 	startEnv, err := env.LoadFromPath(startDir, tag...)
