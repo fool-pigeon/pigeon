@@ -27,7 +27,7 @@ func TestInstanceClient(t *testing.T) {
 			httpClient, _ := c.HttpClient()
 			assert.Equal(t, "url", httpClient.BaseURL())
 			h2, _ := c.HttpClient()
-			assert.Equal(t, httpClient, h2, "get the same client")
+			assert.Same(t, httpClient, h2, "get the same client")
 		})
 		t.Run("failed to parse time", func(t *testing.T) {
 			c := config.New()

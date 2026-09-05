@@ -21,7 +21,7 @@ type Context struct {
 	env  *env.Env
 }
 
-func ReadRequest(name string, ctx *Context, c *config.Config) (request.Request, error) {
+func readRequest(name string, ctx *Context, c *config.Config) (request.Request, error) {
 	// Read File
 	b, err := fsx.ReadFile(name)
 	if err != nil {
@@ -61,7 +61,7 @@ func isTomlExt(path string) bool {
 }
 
 func execTask(name string, ctx *Context, c *config.Config, resCh chan request.Result) {
-	r, err := ReadRequest(name, ctx, c)
+	r, err := readRequest(name, ctx, c)
 	if err != nil {
 		resCh <- request.ErrResult(name, fmt.Errorf("ReadError:%w", err))
 		return
