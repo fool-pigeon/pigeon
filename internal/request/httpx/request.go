@@ -93,6 +93,7 @@ func (r *ReqData) Run() request.Result {
 	result := request.NewResult()
 	result.SetReqName(r.ReqName()).SetRaw(res).SetStatus(res.Status())
 	result.SetSuccess(res.StatusCode() >= 200 && res.StatusCode() < 300)
+	result.SetDuration(res.Duration())
 
 	// run tests
 	if len(r.Tests) != 0 {

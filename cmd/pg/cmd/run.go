@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"time"
 
 	"github.com/fool-pigeon/pigeon/internal/core"
 	"github.com/fool-pigeon/pigeon/internal/request"
@@ -44,9 +45,9 @@ var runCmd = &cobra.Command{
 				return
 			}
 			if res.Success {
-				pterm.Success.Println(res.ReqName, res.Status)
+				pterm.Success.Println(res.ReqName, res.Status, res.Duration.Round(time.Millisecond/10))
 			} else {
-				pterm.Error.Println(res.ReqName, res.Status)
+				pterm.Error.Println(res.ReqName, res.Status, res.Duration.Round(time.Millisecond/10))
 			}
 
 			for _, tRes := range res.Tests {

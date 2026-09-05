@@ -1,5 +1,7 @@
 package request
 
+import "time"
+
 type Request interface {
 	Run() Result
 	ReqName() string
@@ -18,6 +20,8 @@ type Result struct {
 	ReqName string
 	// this means the tag of status,such as "2xx","4xx","5xx","err","failed"
 	Status string
+	// the end-to-end duration between send request and received response
+	Duration time.Duration
 	// results of test
 	Tests []TestRes
 	// the raw content of response,e.g. [httpx.Response]
@@ -38,6 +42,11 @@ func (result *Result) SetReqName(ReqName string) *Result {
 
 func (result *Result) SetStatus(Status string) *Result {
 	result.Status = Status
+	return result
+}
+
+func (result *Result) SetDuration(duration time.Duration) *Result {
+	result.Duration = duration
 	return result
 }
 
