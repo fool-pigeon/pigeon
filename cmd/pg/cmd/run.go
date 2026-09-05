@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/fool-pigeon/pigeon/internal/core"
@@ -33,6 +34,7 @@ var runCmd = &cobra.Command{
 
 		tag, _ := cmd.Flags().GetString("tag")
 		showRaw, _ := cmd.Flags().GetBool("raw")
+		rawLine, _ := cmd.Flags().GetInt("line")
 
 		return core.Run(".", paths, func(res request.Result) {
 			printFailed := func(a ...any) { pterm.Println(pterm.LightRed(a...)) }
@@ -63,14 +65,20 @@ var runCmd = &cobra.Command{
 				}
 			}
 			if showRaw {
+				var out string
 				switch raw := res.Raw.(type) {
 				case *httpx.Response:
-					var out bytes.Buffer
-					if err := json.Indent(&out, raw.Bytes(), "", "  "); err != nil {
-						printInfo(raw)
-						return
+					var buf bytes.Buffer
+					if err := json.Indent(&buf, raw.Bytes(), "", "  "); err != nil {
+						out = raw.String()
+					} else {
+						out = buf.String()
 					}
-					printInfo(out.String())
+				}
+				if rawLine > 0 {
+					printInfo(strings.Join(strings.SplitN(out, "\n", rawLine+1)[:rawLine], "\n"))
+				} else {
+					printInfo(out)
 				}
 			}
 		}, tag)
@@ -82,4 +90,5 @@ func init() {
 
 	runCmd.Flags().String("tag", "", "run with config and env which has tag")
 	runCmd.Flags().BoolP("raw", "r", false, "show raw response")
+	runCmd.Flags().IntP("line", "l", -1, "Set the number of lines displayed for raw")
 }
