@@ -36,8 +36,9 @@ var runCmd = &cobra.Command{
 
 		return core.Run(".", paths, func(res request.Result) {
 			printFailed := func(a ...any) { pterm.Println(pterm.LightRed(a...)) }
+			printPassed := func(a ...any) { pterm.Println(pterm.LightGreen(a...)) }
 			printErr := func(a ...any) { pterm.Println(pterm.Red(a...)) }
-			printSuccess := func(a ...any) { pterm.Println(pterm.Green(a...)) }
+			// printSuccess := func(a ...any) { pterm.Println(pterm.Green(a...)) }
 			printInfo := func(a ...any) { pterm.Println(pterm.LightBlue(a...)) }
 
 			if res.Err != nil {
@@ -56,9 +57,9 @@ var runCmd = &cobra.Command{
 					continue
 				}
 				if tRes.Passed {
-					printSuccess("test success: ", tRes.Name)
+					printPassed("    ✓: ", tRes.Name)
 				} else {
-					printFailed("test failed: ", tRes.Name)
+					printFailed("    ✗: ", tRes.Name)
 				}
 			}
 			if showRaw {
