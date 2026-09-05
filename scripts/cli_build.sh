@@ -1,0 +1,1 @@
+cd cmd/pg/ && go build -o $GOPATH/bin/pg

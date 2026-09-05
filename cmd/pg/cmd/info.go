@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fool-pigeon/pigeon/cmd/cli/cmd/formatter"
+	"github.com/fool-pigeon/pigeon/cmd/pg/cmd/formatter"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/fool-pigeon/pigeon/internal/request"
 	"github.com/fool-pigeon/pigeon/internal/request/httpx"
