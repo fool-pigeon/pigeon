@@ -21,7 +21,7 @@ type Context struct {
 	env  *env.Env
 }
 
-func readRequest(name string, ctx *Context, c *config.Config) (request.Request, error) {
+func ReadRequest(name string, ctx *Context, c *config.Config) (request.Request, error) {
 	// Read File
 	b, err := fsx.ReadFile(name)
 	if err != nil {
@@ -61,7 +61,7 @@ func isTomlExt(path string) bool {
 }
 
 func execTask(name string, ctx *Context, c *config.Config, resCh chan request.Result) {
-	r, err := readRequest(name, ctx, c)
+	r, err := ReadRequest(name, ctx, c)
 	if err != nil {
 		resCh <- request.ErrResult(name, fmt.Errorf("ReadError:%w", err))
 		return
@@ -69,8 +69,7 @@ func execTask(name string, ctx *Context, c *config.Config, resCh chan request.Re
 	res := r.Run()
 	resCh <- res
 }
-func Run(paths []string, handle func(res request.Result), tag ...string) error {
-	startDir := "."
+func Run(startDir string, paths []string, handle func(res request.Result), tag ...string) error {
 	// load config
 	cfg, err := config.LoadFromPath(startDir, tag...)
 	// if err,then use the new config
