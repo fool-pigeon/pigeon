@@ -12,7 +12,10 @@
   },
   "dependencies": {
     "@lucide/svelte": "^1.41.0",
-    "@wailsio/runtime": "latest"
+    "@tailwindcss/vite": "^4.3.3",
+    "@wailsio/runtime": "latest",
+    "daisyui": "^5.7.28",
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
