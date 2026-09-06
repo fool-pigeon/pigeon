@@ -3,7 +3,7 @@
   "compilerOptions": {
     "paths":{
       "@bindings/*":["./bindings/*"],
-      "@services/*":["./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/*"]
+      "@services":["./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui"]
     },
     "target": "ESNext",
     "useDefineForClassFields": true,
