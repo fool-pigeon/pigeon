@@ -4,8 +4,8 @@ import (
 	"embed"
 
 	"log"
-	"time"
 
+	"github.com/fool-pigeon/pigeon/cmd/pg-gui/gui"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -21,7 +21,8 @@ func init() {
 	// Register a custom event whose associated data type is string.
 	// This is not required, but the binding generator will pick up registered events
 	// and provide a strongly typed JS/TS API for them.
-	application.RegisterEvent[string]("time")
+	// For exmaple:
+	// 		application.RegisterEvent[string]("time")
 }
 
 // main function serves as the application's entry point. It initializes the application, creates a window,
@@ -35,10 +36,10 @@ func main() {
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
 	app := application.New(application.Options{
-		Name:        "pg-gui",
-		Description: "A demo of using raw HTML & CSS",
-		Services: []application.Service{
-			application.NewService(&GreetService{}),
+		Name:        "Pigeon",
+		Description: "Version: 0.1\ngo: 1.26.5\nwails: v3/beta\n",
+		Services:    []application.Service{
+			// application.NewService(&GreetService{}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -53,8 +54,8 @@ func main() {
 	// 'Mac' options tailor the window when running on macOS.
 	// 'BackgroundColour' is the background colour of the window.
 	// 'URL' is the URL that will be loaded into the webview.
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Window 1",
+	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title: "Pigeon",
 		// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
 		Width:  1000,
 		Height: 618,
@@ -65,17 +66,23 @@ func main() {
 		},
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
+		// use localized menu for app
+		UseApplicationMenu: true,
 	})
 
+	mainWindow.Center()
+	gui.InitMenu(app)
+
+	// Event Emit Example:
 	// Create a goroutine that emits an event containing the current time every second.
 	// The frontend can listen to this event and update the UI accordingly.
-	go func() {
-		for {
-			now := time.Now().Format(time.RFC1123)
-			app.Event.Emit("time", now)
-			time.Sleep(time.Second)
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		now := time.Now().Format(time.RFC1123)
+	// 		app.Event.Emit("time", now)
+	// 		time.Sleep(time.Second)
+	// 	}
+	// }()
 
 	// Run the application. This blocks until the application has been exited.
 	err := app.Run()

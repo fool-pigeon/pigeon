@@ -2,5 +2,15 @@
     "js/ts.tsdk.path": "cmd/pg-gui/frontend/node_modules/typescript/lib",
     "files.associations": {
         "*.css":"tailwindcss"
+    },
+    // biome configuartion
+    "biome.configurationPath": "cmd/pg-gui/frontend/biome.json",
+    "biome.lsp.bin": {
+        "linux-x64":"cmd/pg-gui/frontend/node_modules/.pnpm/@biomejs+cli-linux-x64@2.5.12/node_modules/@biomejs/cli-linux-x64/biome",
+        "linux-arm64":"cmd/pg-gui/frontend/node_modules/.pnpm/@biomejs+cli-linux-arm64@2.5.12/node_modules/@biomejs/cli-linux-arm64/biome",
+        "darwin-x64":"cmd/pg-gui/frontend/node_modules/.pnpm/@biomejs+cli-darwin-x64@2.5.12/node_modules/@biomejs/cli-darwin-x64/biome",
+        "darwin-arm64":"cmd/pg-gui/frontend/node_modules/.pnpm/@biomejs+cli-darwin-arm64@2.5.12/node_modules/@biomejs/cli-darwin-arm64/biome",
+        "win32-x64":"cmd/pg-gui/frontend/node_modules/.pnpm/@biomejs+cli-win32-x64@2.5.12/node_modules/@biomejs/cli-win32-x64/biome",
+        "win32-arm64":"cmd/pg-gui/frontend/node_modules/.pnpm/@biomejs+cli-win32-arm64@2.5.12/node_modules/@biomejs/cli-win32-arm64/biome",
     }
 }
