@@ -16,8 +16,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@bindings': '/bindings',
-      '@services': '/bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui',
+      '@bindings': './bindings',
+      '@services': './bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui',
+      '@lib':'./src/lib'
     }
   }
 });

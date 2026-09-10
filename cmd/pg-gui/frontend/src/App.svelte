@@ -13,6 +13,6 @@
 	});
 </script>
 
-<div>
-	<h1 class="w-lvw h-lvh bg-success">Hello World</h1>
+<div class="w-lvw h-lvh bg-success">
+	<h1>Hello World</h1>
 </div>
