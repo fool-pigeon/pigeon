@@ -9,9 +9,13 @@ export default defineConfig({
     port: Number(process.env.WAILS_VITE_PORT) || 9245,
     strictPort: true,
   },
-  plugins: [svelte(), wails("./bindings"),tailwindcss()],
-  resolve:{
-    alias:{
+  plugins: [
+    svelte(),
+    wails("./bindings"),
+    tailwindcss()
+  ],
+  resolve: {
+    alias: {
       '@bindings': '/bindings',
       '@services': '/bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui',
     }
