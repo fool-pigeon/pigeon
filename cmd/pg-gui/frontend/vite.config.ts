@@ -1,3 +1,4 @@
+import path from "node:path";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from '@tailwindcss/vite';
 import wails from "@wailsio/runtime/plugins/vite";
@@ -16,9 +17,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@bindings': './bindings',
-      '@services': './bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui',
-      '@lib':'./src/lib'
+      '@bindings': path.resolve('./bindings'),
+      '@services': path.resolve('./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui'),
+      '@lib': path.resolve('./src/lib')
     }
   }
 });

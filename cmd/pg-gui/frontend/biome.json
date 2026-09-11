@@ -44,6 +44,13 @@
 			"includes": [
 				"**/*.svelte"
 			],
+			"assist": {
+				"actions": {
+					"source": {
+						"organizeImports": "off"
+					}
+				}
+			},
 			"linter": {
 				"rules": {
 					"style": {
