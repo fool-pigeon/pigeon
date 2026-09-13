@@ -7,6 +7,10 @@
 		'ontoggle' | 'oncontextmenu' | 'onclick' | 'onauxclick'
 	>;
 	type TreeItemType = 'leaf' | 'group';
+	/**
+	 * @type type: 'leaf'|'group'
+	 * @type on:bind oncontextmenu or ontoggle for 'group'.bind onclick,onauxclick or oncontextmenu for 'leaf'
+	 */
 	export type TreeItem = {
 		id: string;
 		name: string;
@@ -18,7 +22,14 @@
 		class?: string;
 		style?: string;
 	};
-	// Create a group node in menu,it can be expanded like folder
+	/**
+	 * Create a group node in menu,it can be expanded like folder
+	 * @param id unique string for id
+	 * @param name the label you can see
+	 * @param option the optional options
+	 * @param option.on bind oncontextmenu or ontoggle
+	 * @param option.snippet the optional render to replace original
+	 */
 	export function NewTreeGroup(
 		id: string,
 		name: string,
@@ -33,7 +44,14 @@
 	): TreeItem {
 		return { id, name, type: 'group', isOpen: option?.isOpen ?? false, ...option };
 	}
-	// Create a single node in menu,like file in FS
+	/**
+	 * Create a single node in menu,like file in FS
+	 * @param id
+	 * @param name
+	 * @param option the optional options
+	 * @param option.on bind onclick or onauxclick or onmousecontextmenu
+	 * @param option.snippet the optional render to replace original
+	 */
 	export function NewTreeLeaf(
 		id: string,
 		name: string,
@@ -55,6 +73,7 @@
 		indentSize = $bindable<number>(5),
 		indentGuide = $bindable<IndentGuideType>('always'),
 	} = $props();
+	// the class is style for tailwindcss
 	let indentGuidesClass = $derived(
 		indentGuide === 'none'
 			? ''
@@ -68,7 +87,7 @@
 <ul class="w-full">
 	{@render tree(items, 0)}
 </ul>
-
+<!-- offset is the width of indent -->
 {#snippet tree(items: TreeItem[], offset: number)}
 	{#each items as item (item.id)}
 		<li>

@@ -6,6 +6,12 @@
 		// 0-100, which means the 0-100%
 		minSize?: number;
 	};
+	/**
+	 * Create a panel for join
+	 * @param snippet the content in panel
+	 * @param size initalize the size of panel.if size<0,it will be resize
+	 * @param minSize set the minimum size for panel
+	 */
 	export function NewPanel(snippet: Snippet, size: number = -1, minSize?: number): Panel {
 		return { snippet, size, minSize };
 	}
@@ -59,6 +65,11 @@
 
 	let container: HTMLDivElement;
 
+	/**
+	 * Move divider's place and resize adjacent panel
+	 * @param i the index of divider
+	 * @param e the PointerEvent
+	 */
 	function move(i: number, e: PointerEvent) {
 		const r = container.getBoundingClientRect();
 		// the offset of cursor pointer in container
@@ -81,7 +92,7 @@
 			firstSize = Math.min(total - minAfter, firstSize);
 		}
 
-		// assign to panels where divider before and after
+		// resize adjacent panels
 		panels[i].size = Math.max(0, Math.min(total, firstSize));
 		panels[i + 1].size = total - panels[i].size;
 	}
@@ -96,10 +107,12 @@
 		<div class="flex min-w-0 min-h-0 overflow-auto" style:flex="{panel.size}% 0 0">
 			{@render panel.snippet()}
 		</div>
+		<!-- add divider between adjacent panels -->
 		{#if i < panels.length - 1}
 			<div
 				role="separator"
 				aria-orientation={direction === 'horizontal' ? 'vertical' : 'horizontal'}
+				// hidden the width
 				class="shrink-0 group relative
 				{direction === 'horizontal' ? 'w-1.5 -mx-0.75 cursor-col-resize' : 'h-1 -my-0.5 cursor-row-resize'}
 				"
@@ -107,11 +120,11 @@
 				onpointermove={(e) => e.buttons === 1 && move(i, e)}
 			>
 				<div
+					// Draw the cue line,hidden when not hover
 					class="absolute bg-base-300 transition-colors group-hover:bg-accent
-				{direction === 'horizontal'
+					{direction === 'horizontal'
 						? 'inset-y-0 left-1/2 w-px -translate-x-1/2 group-hover:w-full'
-						: 'inset-x-0 top-1/2 h-px -translate-y-1/2 group-hover:h-full'}
-				"
+						: 'inset-x-0 top-1/2 h-px -translate-y-1/2 group-hover:h-full'}"
 				></div>
 			</div>
 		{/if}
