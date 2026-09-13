@@ -1,5 +1,5 @@
 <script lang="ts">
-	import DynamicJoin, { NewPanel } from '@lib/components/layout/DynamicJoin.svelte';
+	import DynamicJoin, { NewPanel } from '@lib/components/base/DynamicJoin.svelte';
 	import { untrack } from 'svelte';
 
 	function randomInt(n: number): number {

@@ -68,11 +68,18 @@
 </script>
 
 <script lang="ts">
+	const indentScale = 0.25;
+	type Props = {
+		items: TreeItem[];
+		// the size is for tailwindcss which real is {indentScale*indentSize} rem
+		indentSize: number;
+		indentGuide: IndentGuideType;
+	};
 	let {
-		items = $bindable<TreeItem[]>([] as TreeItem[]),
-		indentSize = $bindable<number>(5),
-		indentGuide = $bindable<IndentGuideType>('always'),
-	} = $props();
+		items = $bindable(),
+		indentSize = $bindable(5),
+		indentGuide = $bindable('always'),
+	}: Props = $props();
 	// the class is style for tailwindcss
 	let indentGuidesClass = $derived(
 		indentGuide === 'none'
@@ -81,7 +88,6 @@
 				? 'before:absolute before:inset-y-0 before:w-px before:bg-transparent hover:before:bg-base-content/20'
 				: 'before:absolute before:inset-y-0 before:w-px before:bg-base-content/20',
 	);
-	const indentScale = 0.25;
 </script>
 
 <ul class="w-full">
