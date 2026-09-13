@@ -4,7 +4,7 @@
 		NewTreeGroup,
 		NewTreeLeaf,
 		type TreeItem,
-	} from '@lib/components/navigation/TreeMenu.svelte';
+	} from '@lib/components/base/TreeMenu.svelte';
 	import File from '@lucide/svelte/icons/file';
 	import Folder from '@lucide/svelte/icons/folder';
 	import FolderOpen from '@lucide/svelte/icons/folder-open';
