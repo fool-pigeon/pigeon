@@ -1,10 +1,16 @@
 {
   "extends": "@tsconfig/svelte/tsconfig.json",
   "compilerOptions": {
-    "paths":{
-      "@bindings/*":["./bindings/*"],
-      "@services":["./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui"],
-      "@lib/*":["./src/lib/*"],
+    "paths": {
+      "@bindings/*": [
+        "./bindings/*"
+      ],
+      "@services": [
+        "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui"
+      ],
+      "@lib/*": [
+        "./src/lib/*"
+      ],
     },
     "target": "ESNext",
     "useDefineForClassFields": true,
@@ -20,5 +26,10 @@
     "checkJs": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte", "bindings"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.js",
+    "src/**/*.svelte",
+    "bindings"
+  ],
 }

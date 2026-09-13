@@ -11,7 +11,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "@lucide/svelte": "^1.41.0",
+    "@lucide/svelte": "^1.45.0",
     "@tailwindcss/vite": "^4.3.3",
     "@wailsio/runtime": "latest",
     "daisyui": "^5.7.28",

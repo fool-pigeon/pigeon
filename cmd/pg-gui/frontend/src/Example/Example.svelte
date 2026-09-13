@@ -1,6 +1,7 @@
 <script lang="ts">
 	import TestTubeDiagonal from '@lucide/svelte/icons/test-tube-diagonal';
 	import ExampleDJoin from './ExampleDJoin.svelte';
+	import ExampleTreeMenu from './ExampleTreeMenu.svelte';
 
 	let showName = $state<string>('');
 </script>
@@ -21,10 +22,13 @@
 				<ul class="menu bg-base-200 min-h-full p-4">
 					{@render item('Example')}
 					{@render item('DJoin')}
+					{@render item('TreeMenu')}
 				</ul>
 				<div class="min-w-md bg-base-300">
 					{#if showName === 'DJoin'}
 						<ExampleDJoin />
+					{:else if showName === 'TreeMenu'}
+						<ExampleTreeMenu />
 					{:else}
 						<div class="w-20 h-40 bg-info">Hello World</div>
 					{/if}
