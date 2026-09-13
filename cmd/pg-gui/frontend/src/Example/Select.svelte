@@ -3,7 +3,7 @@
 	let {
 		label = 'select',
 		value = $bindable<T>(),
-		options = $bindable<option<T>[]>([] as option<T>[])
+		options = $bindable<option<T>[]>([] as option<T>[]),
 	} = $props();
 </script>
 

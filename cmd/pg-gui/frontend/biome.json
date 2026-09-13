@@ -23,7 +23,17 @@
 	},
 	"javascript": {
 		"formatter": {
-			"quoteStyle": "double"
+			"quoteStyle": "single",
+			"trailingCommas": "all"
+		}
+	},
+	"json": {
+		"formatter": {
+			"enabled": true,
+			"trailingCommas": "all"
+		},
+		"assist": {
+			"enabled": true
 		}
 	},
 	"css": {

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { WML } from "@wailsio/runtime";
-	import { onMount } from "svelte";
+	import { WML } from '@wailsio/runtime';
+	import { onMount } from 'svelte';
 
 	onMount(() => {
 		// Event Example:

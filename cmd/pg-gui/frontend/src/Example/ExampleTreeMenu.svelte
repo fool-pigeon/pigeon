@@ -3,7 +3,7 @@
 		type IndentGuideType,
 		NewTreeGroup,
 		NewTreeLeaf,
-		type TreeItem
+		type TreeItem,
 	} from '@lib/components/navigation/TreeMenu.svelte';
 	import File from '@lucide/svelte/icons/file';
 	import Folder from '@lucide/svelte/icons/folder';
@@ -20,8 +20,8 @@
 				oncontextmenu: (e) => {
 					e.preventDefault();
 					msg = 'file:contextmenu';
-				}
-			}
+				},
+			},
 		}),
 		NewTreeGroup('2', 'folder', {
 			isOpen: true,
@@ -30,8 +30,8 @@
 				NewTreeLeaf('20', 'f0', { snippet: fileItem }),
 				NewTreeGroup('f2', 'folder2', {
 					isOpen: true,
-					next: [NewTreeLeaf('21', 'f1', { snippet: fileItem }), NewTreeLeaf('22', 'f2')]
-				})
+					next: [NewTreeLeaf('21', 'f1', { snippet: fileItem }), NewTreeLeaf('22', 'f2')],
+				}),
 			],
 			on: {
 				ontoggle: () => {
@@ -39,10 +39,10 @@
 				},
 				oncontextmenu: () => {
 					msg = 'folder:contextmenu';
-				}
-			}
+				},
+			},
 		}),
-		NewTreeLeaf('3', 'music')
+		NewTreeLeaf('3', 'music'),
 	]);
 	let indentSize = $state(5);
 	let indentGuide = $state<IndentGuideType>('always');

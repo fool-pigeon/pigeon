@@ -29,7 +29,7 @@
 			on?: ItemHandlers;
 			class?: string;
 			style?: string;
-		}
+		},
 	): TreeItem {
 		return { id, name, type: 'group', isOpen: option?.isOpen ?? false, ...option };
 	}
@@ -42,7 +42,7 @@
 			on?: ItemHandlers;
 			class?: string;
 			style?: string;
-		}
+		},
 	): TreeItem {
 		return { id, name, type: 'leaf', isOpen: false, ...option };
 	}
@@ -53,14 +53,14 @@
 	let {
 		items = $bindable<TreeItem[]>([] as TreeItem[]),
 		indentSize = $bindable<number>(5),
-		indentGuide = $bindable<IndentGuideType>('always')
+		indentGuide = $bindable<IndentGuideType>('always'),
 	} = $props();
 	let indentGuidesClass = $derived(
 		indentGuide === 'none'
 			? ''
 			: indentGuide === 'hover'
 				? 'before:absolute before:inset-y-0 before:w-px before:bg-transparent hover:before:bg-base-content/20'
-				: 'before:absolute before:inset-y-0 before:w-px before:bg-base-content/20'
+				: 'before:absolute before:inset-y-0 before:w-px before:bg-base-content/20',
 	);
 	const indentScale = 0.25;
 </script>
