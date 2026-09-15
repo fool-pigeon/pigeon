@@ -8,6 +8,9 @@
       "@services": [
         "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/service"
       ],
+      "@services/*": [
+        "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/service/*"
+      ],
       "@lib/*": [
         "./src/lib/*"
       ],
@@ -35,7 +38,4 @@
     "src/**/*.svelte",
     "bindings"
   ],
-  "exclude": [
-    "bindings/**/*"
-  ]
 }
