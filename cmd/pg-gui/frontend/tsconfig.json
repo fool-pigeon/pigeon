@@ -11,6 +11,9 @@
       "@lib/*": [
         "./src/lib/*"
       ],
+      "@components/*": [
+        "./src/lib/components/*"
+      ]
     },
     "target": "ESNext",
     "useDefineForClassFields": true,

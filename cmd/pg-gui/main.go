@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/fool-pigeon/pigeon/cmd/pg-gui/gui"
+	"github.com/fool-pigeon/pigeon/cmd/pg-gui/service"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -38,8 +39,8 @@ func main() {
 	app := application.New(application.Options{
 		Name:        "Pigeon",
 		Description: "Version: 0.1\ngo: 1.26.5\nwails: v3/beta\n",
-		Services:    []application.Service{
-			// application.NewService(&GreetService{}),
+		Services: []application.Service{
+			application.NewService(&service.FileExploreService{}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

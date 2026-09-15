@@ -16,7 +16,7 @@
 		name: string;
 		type: TreeItemType;
 		isOpen: boolean;
-		next?: TreeItem[];
+		children?: TreeItem[];
 		snippet?: Snippet<[TreeItem]>;
 		on?: ItemHandlers;
 		class?: string;
@@ -123,12 +123,12 @@
 							{item.name}
 						{/if}
 					</summary>
-					{#if item.next}
+					{#if item.children}
 						<ul
 							class="relative {indentGuidesClass}"
 							style:--guide="{offset + indentSize * indentScale * 0.5}rem"
 						>
-							{@render tree(item.next, offset + indentSize * indentScale)}
+							{@render tree(item.children, offset + indentSize * indentScale)}
 						</ul>
 					{/if}
 				</details>
