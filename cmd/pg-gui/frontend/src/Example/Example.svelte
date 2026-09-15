@@ -1,7 +1,7 @@
 <script lang="ts">
 	import TestTubeDiagonal from '@lucide/svelte/icons/test-tube-diagonal';
-	import ExampleDJoin from './ExampleDJoin.svelte';
-	import ExampleTreeMenu from './ExampleTreeMenu.svelte';
+	import ExampleDJoin from './DJoin.svelte';
+	import ExampleTreeMenu from './TreeMenu.svelte';
 
 	let showName = $state<string>('');
 </script>
