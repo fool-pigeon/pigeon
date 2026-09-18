@@ -1,7 +1,9 @@
 <script lang="ts">
 	import TestTubeDiagonal from '@lucide/svelte/icons/test-tube-diagonal';
 	import ExampleDJoin from './DJoin.svelte';
-	import ExampleTreeMenu from './TreeMenu.svelte';
+	import ExampleTreeMenu from './ExampleTreeMenu.svelte';
+	import ExampleFileExplorer from './ExampleFileExplorer.svelte';
+	import ExampleModal from './ExampleModal.svelte';
 
 	let showName = $state<string>('');
 </script>
@@ -21,14 +23,20 @@
 			<div class="join h-full">
 				<ul class="menu bg-base-200 min-h-full p-4">
 					{@render item('Example')}
+					{@render item('Modal')}
 					{@render item('DJoin')}
 					{@render item('TreeMenu')}
+					{@render item('FileExplorer')}
 				</ul>
 				<div class="min-w-md bg-base-300">
-					{#if showName === 'DJoin'}
+					{#if showName === 'Modal'}
+						<ExampleModal />
+					{:else if showName === 'DJoin'}
 						<ExampleDJoin />
 					{:else if showName === 'TreeMenu'}
 						<ExampleTreeMenu />
+					{:else if showName === 'FileExplorer'}
+						<ExampleFileExplorer />
 					{:else}
 						<div class="w-20 h-40 bg-info">Hello World</div>
 					{/if}

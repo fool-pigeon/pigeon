@@ -36,11 +36,15 @@ func main() {
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
+	pathSelectService := service.NewPathSelectService()
+	fileExploreService := service.NewFileExploreService()
 	app := application.New(application.Options{
 		Name:        "Pigeon",
 		Description: "Version: 0.1\ngo: 1.26.5\nwails: v3/beta\n",
 		Services: []application.Service{
-			application.NewService(&service.FileExploreService{}),
+			application.NewService(fileExploreService),
+			application.NewService(pathSelectService),
+			application.NewService(&gui.MenuService{}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

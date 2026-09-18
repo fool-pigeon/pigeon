@@ -1,9 +1,7 @@
 package service
 
 import (
-	"context"
 	"errors"
-	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -15,7 +13,6 @@ import (
 	"github.com/fool-pigeon/pigeon/internal/request"
 	"github.com/fool-pigeon/pigeon/internal/request/httpx"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type FSType int
@@ -207,6 +204,8 @@ func (n *Node) DelSub(path string) {
 	}
 	delete(n.sub, path)
 }
+
+// first time to load the dir's subs
 func (n *Node) load() error {
 	if n.GetType() != DirType {
 		return nil
@@ -245,6 +244,51 @@ func (n *Node) load() error {
 	n.sub = subs
 	return nil
 }
+
+// reload dir's subs with the minimum modification
+func (n *Node) reload() error {
+	if n.GetType() != DirType {
+		return nil
+	}
+	if !n.Loaded() {
+		return nil
+	}
+	parent := n.GetPath()
+	ds, err := os.ReadDir(parent)
+	if err != nil {
+		return err
+	}
+
+	var (
+		wg sync.WaitGroup
+		mu sync.Mutex
+	)
+	subs := make(map[string]*Node)
+	for _, d := range ds {
+		path := filepath.Join(parent, d.Name())
+
+		if node, ok := n.Sub(path); ok {
+			subs[path] = node
+			continue
+		}
+
+		if d.IsDir() {
+			subs[path] = NewDirNode(path, d.Name(), n)
+			continue
+		}
+		wg.Go(func() {
+			b, _ := fsx.ReadFile(path)
+			mu.Lock()
+			defer mu.Unlock()
+			subs[path] = NewFileNode(path, d.Name(), getTag(b), n)
+		})
+	}
+	wg.Wait()
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.sub = subs
+	return nil
+}
 func (n *Node) updateCache() {
 	if !n.Loaded() {
 		return
@@ -257,9 +301,7 @@ func (n *Node) updateCache() {
 
 	n.mu.RLock()
 	subs := make([]*Node, 0, len(n.sub))
-	for _, v := range n.sub {
-		subs = append(subs, v)
-	}
+	subs = slices.AppendSeq(subs, maps.Values(n.sub))
 	n.mu.RUnlock()
 
 	slices.SortFunc(subs, func(a *Node, b *Node) int {
@@ -318,94 +360,157 @@ type FileExploreService struct {
 	root *Node
 }
 
-// ServiceStartup implements [application.ServiceStartup].
-func (f *FileExploreService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.root = &Node{Type: DirType}
-	return nil
+func NewFileExploreService() *FileExploreService {
+	return &FileExploreService{root: &Node{Type: DirType}}
 }
 
-// path is a directory path
-func (f *FileExploreService) LoadRoot(dir string) ([]*Node, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+// ServiceStartup implements [application.ServiceStartup].
+// func (f *FileExploreService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+// 	f.mu.Lock()
+// 	defer f.mu.Unlock()
+// 	f.root = &Node{Type: DirType}
+// 	return nil
+// }
+
+// Parse the root dir paths in the directory
+func (f *FileExploreService) ParseRootPaths(dir string) []string {
+	rootPaths := make([]string, 0)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	var parseDir func(string)
+	parseDir = func(path string) {
+		info, err := os.Lstat(path)
+		// cause error or not a dir
+		if err != nil || !info.IsDir() {
+			return
+		}
+
+		// has the .pg/ means this is a root dir
+		if tagInfo, err := os.Lstat(filepath.Join(path, fsx.RootTagDirName)); err == nil && tagInfo.IsDir() {
+			mu.Lock()
+			rootPaths = append(rootPaths, path)
+			mu.Unlock()
+		}
+
+		// parse sub dirs
+		entries, _ := os.ReadDir(path)
+		for _, entry := range entries {
+			if entry.IsDir() {
+				wg.Go(func() { parseDir(filepath.Join(path, entry.Name())) })
+			}
+		}
+
+	}
+	wg.Go(func() { parseDir(filepath.Clean(dir)) })
+	wg.Wait()
+	return rootPaths
+}
+
+// add workspace's root dir
+func (f *FileExploreService) AddRoot(paths []string) ([]*Node, error) {
+	f.mu.RLock()
 	if f.root == nil {
 		return nil, ErrNilRoot
 	}
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		// cause error or not a directory
-		if err != nil || !d.IsDir() {
-			return nil
-		}
+	f.mu.RUnlock()
 
+	for _, path := range paths {
 		path = filepath.Clean(path)
 		// has existed
 		if f.root.SubContain(path) {
-			return filepath.SkipDir
+			continue
 		}
-		// not has root tag or cause error
-		if isExist, err := fsx.IsDirExist(filepath.Join(path, fsx.RootTagDirName)); !isExist || err != nil {
-			return nil
+		if info, err := os.Lstat(filepath.Join(path, fsx.RootTagDirName)); !info.IsDir() || err != nil {
+			continue
 		}
-
-		f.root.SetSub(path, NewDirNode(path, d.Name(), f.root))
-		return nil
-	})
-	if err != nil {
-		return nil, err
+		info, err := os.Lstat(path)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		f.root.SetSub(path, NewDirNode(path, info.Name(), f.root))
 	}
+
 	f.root.SetLoaded(true)
 	f.root.updateCache()
 	return f.root.SubsCache(), nil
 }
 
 // load the dir
-func (f *FileExploreService) Load(dir string) error {
-	node, err := f.getNode(filepath.Clean(dir))
+func (f *FileExploreService) LoadSubs(dir string) error {
+	node, err := f.getNodeExact(dir)
 	if err != nil {
 		return err
 	}
-
 	return node.load()
 }
 
-// return current [Node.SubsCache] after called [FileExploreService.UpdateView]
-func (f *FileExploreService) UpdateRoot() ([]*Node, error) {
-	if err := f.UpdateView(); err != nil {
+// load the dir and return subsCache
+func (f *FileExploreService) LoadSubsCached(dir string) ([]*Node, error) {
+	node, err := f.getNodeExact(dir)
+	if err != nil {
 		return nil, err
 	}
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-	return f.root.SubsCache(), nil
+	if err := node.load(); err != nil {
+		return nil, err
+	}
+	node.updateCache()
+	return node.SubsCache(), nil
 }
 
-// Update the subCache for all loaded node
-func (f *FileExploreService) UpdateView() error {
+// reload dir
+func (f *FileExploreService) ReloadSubs(dir string) error {
+	node, err := f.getNodeExact(dir)
+	if err != nil {
+		return err
+	}
+	return node.reload()
+}
+
+// reload dir and return subsCache
+func (f *FileExploreService) ReloadSubsCached(dir string) ([]*Node, error) {
+	node, err := f.getNodeExact(dir)
+	if err != nil {
+		return nil, err
+	}
+	if err := node.reload(); err != nil {
+		return nil, err
+	}
+	node.updateCache()
+	return node.SubsCache(), nil
+}
+
+// return current [Node.SubsCache] after called [FileExploreService.UpdateView]
+func (f *FileExploreService) ReloadRootView() ([]*Node, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	if f.root == nil {
-		return ErrNilRoot
+		return nil, ErrNilRoot
 	}
 
 	var wg sync.WaitGroup
 	nodes := []*Node{f.root}
 	q := []*Node{f.root}
 	for len(q) > 0 {
-		if front := q[0]; front.Loaded() {
-			subs := front.Subs()
-			nodes = append(nodes, subs...)
-			q = append(q, subs...)
+		for _, node := range q[0].Subs() {
+			if !node.Loaded() {
+				continue
+			}
+			if info, err := os.Lstat(node.GetPath()); err == nil && info.IsDir() {
+				nodes = append(nodes, node)
+				q = append(q, node)
+			}
+
 		}
 		q = q[1:]
 	}
 	for _, node := range nodes {
 		wg.Go(func() {
+			node.reload()
 			node.updateCache()
 		})
 	}
 	wg.Wait()
-	return nil
+	return f.root.SubsCache(), nil
 }
 
 // Delete Node
@@ -415,16 +520,16 @@ func (f *FileExploreService) DeleteNode(path string) error {
 		return err
 	}
 
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
 	path = node.GetPath()
 	pre := node.Pre()
 	if pre == nil {
 		return ErrNodeNilPre
 	}
+	if err := os.RemoveAll(path); err != nil {
+		return err
+	}
+
 	pre.DelSub(path)
-	os.RemoveAll(path)
 
 	return nil
 }

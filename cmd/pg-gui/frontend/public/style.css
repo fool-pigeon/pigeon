@@ -1,2 +1,18 @@
 @import "tailwindcss";
+@theme {
+	--color-req-get: oklch(87.0% 0.264 146.3); /* green */
+	--color-req-post: oklch(87% 0.26 55); /* orange  – create */
+	--color-req-put: oklch(87% 0.26 250); /* blue    – replace */
+	--color-req-patch: oklch(87% 0.26 305); /* purple  – partial update */
+	--color-req-delete: oklch(87% 0.26 25); /* red     – destructive */
+	--color-req-head: oklch(87% 0.26 185); /* teal    – GET-like, headers only */
+	--color-req-options: oklch(87% 0.02 250); /* neutral gray – metadata */
+	--color-req-trace: oklch(87% 0.02 100); /* warm gray – diagnostic */
+	--color-req-connect: oklch(87% 0.03 260); /* slate   – tunnel */
+
+	/* Protocol */
+	--color-req-grpc: oklch(87% 0.26 215); /* cyan    – RPC */
+	--color-req-gql: oklch(87% 0.26 340); /* magenta – GraphQL */
+	--color-req-ws: oklch(87% 0.26 95); /* yellow  – realtime */
+}
 @plugin "daisyui";

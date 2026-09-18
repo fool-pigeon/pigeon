@@ -11,16 +11,17 @@
 	 * @type type: 'leaf'|'group'
 	 * @type on:bind oncontextmenu or ontoggle for 'group'.bind onclick,onauxclick or oncontextmenu for 'leaf'
 	 */
-	export type TreeItem = {
+	export type TreeItem<T = undefined> = {
 		id: string;
 		name: string;
 		type: TreeItemType;
 		isOpen: boolean;
-		children?: TreeItem[];
-		snippet?: Snippet<[TreeItem]>;
+		sub?: TreeItem<T>[];
+		snippet?: Snippet<[TreeItem<T>]>;
 		on?: ItemHandlers;
-		class?: string;
 		style?: string;
+
+		additional?: T;
 	};
 	/**
 	 * Create a group node in menu,it can be expanded like folder
@@ -30,18 +31,18 @@
 	 * @param option.on bind oncontextmenu or ontoggle
 	 * @param option.snippet the optional render to replace original
 	 */
-	export function NewTreeGroup(
+	export function NewTreeGroup<T>(
 		id: string,
 		name: string,
 		option?: {
+			additional?: T;
 			isOpen?: boolean;
-			next?: TreeItem[];
-			snippet?: Snippet<[TreeItem]>;
+			sub?: TreeItem<T>[];
+			snippet?: Snippet<[TreeItem<T>]>;
 			on?: ItemHandlers;
-			class?: string;
 			style?: string;
 		},
-	): TreeItem {
+	): TreeItem<T> {
 		return { id, name, type: 'group', isOpen: option?.isOpen ?? false, ...option };
 	}
 	/**
@@ -52,16 +53,16 @@
 	 * @param option.on bind onclick or onauxclick or onmousecontextmenu
 	 * @param option.snippet the optional render to replace original
 	 */
-	export function NewTreeLeaf(
+	export function NewTreeLeaf<T>(
 		id: string,
 		name: string,
 		option?: {
-			snippet?: Snippet<[TreeItem]>;
+			additional?: T;
+			snippet?: Snippet<[TreeItem<T>]>;
 			on?: ItemHandlers;
-			class?: string;
 			style?: string;
 		},
-	): TreeItem {
+	): TreeItem<T> {
 		return { id, name, type: 'leaf', isOpen: false, ...option };
 	}
 	export type IndentGuideType = 'none' | 'hover' | 'always';
@@ -69,17 +70,19 @@
 
 <script lang="ts">
 	const indentScale = 0.25;
-	type Props = {
-		items: TreeItem[];
-		// the size is for tailwindcss which real is {indentScale*indentSize} rem
-		indentSize: number;
-		indentGuide: IndentGuideType;
-	};
 	let {
 		items = $bindable(),
+		// the size is for tailwindcss which real is {indentScale*indentSize} rem
 		indentSize = $bindable(5),
 		indentGuide = $bindable('always'),
-	}: Props = $props();
+
+		selectedId = $bindable(''),
+		activedId = $bindable(''),
+
+		enableHoverStyle = false,
+		enableActiveStyle = false,
+		enableSelectedStyle = false,
+	} = $props();
 	// the class is style for tailwindcss
 	let indentGuidesClass = $derived(
 		indentGuide === 'none'
@@ -100,9 +103,17 @@
 			{#if item.type === 'group'}
 				<details bind:open={item.isOpen} ontoggle={item.on?.ontoggle}>
 					<summary
-						class="flex items-center {item.class}"
+						class="flex items-center cursor-pointer border
+						{enableSelectedStyle && selectedId === item.id
+							? 'bg-primary border-primary'
+							: enableActiveStyle && activedId === item.id
+								? 'bg-primary/20 border-primary'
+								: enableHoverStyle
+									? 'border-dashed border-transparent hover:bg-primary/5 hover:border-primary/70'
+									: 'border-transparent'}"
 						style={item.style}
 						style:padding-left="{offset}rem"
+						onclick={item.on?.onclick}
 						oncontextmenu={item.on?.oncontextmenu}
 					>
 						<span
@@ -123,18 +134,25 @@
 							{item.name}
 						{/if}
 					</summary>
-					{#if item.children}
+					{#if item.sub && item.isOpen}
 						<ul
 							class="relative {indentGuidesClass}"
 							style:--guide="{offset + indentSize * indentScale * 0.5}rem"
 						>
-							{@render tree(item.children, offset + indentSize * indentScale)}
+							{@render tree(item.sub, offset + indentSize * indentScale)}
 						</ul>
 					{/if}
 				</details>
 			{:else}
 				<button
-					class="w-full text-left {item.class}"
+					class="w-full text-left cursor-pointer border
+						{enableSelectedStyle && selectedId === item.id
+						? 'bg-primary border-primary'
+						: enableActiveStyle && activedId === item.id
+							? 'bg-primary/20 border-primary'
+							: enableHoverStyle
+								? 'border-dashed border-transparent hover:bg-primary/5 hover:border-primary/70'
+								: 'border-transparent'}"
 					style={item.style}
 					style:padding-left="{offset}rem"
 					onclick={item.on?.onclick}

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ContextMenu from '@lib/components/base/ContextMenu.svelte';
+	import Modal from '@lib/components/base/Modal.svelte';
 	import { WML } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
 
@@ -16,3 +18,5 @@
 <div class="w-lvw h-lvh bg-success">
 	<h1>Hello World</h1>
 </div>
+<Modal />
+<ContextMenu />

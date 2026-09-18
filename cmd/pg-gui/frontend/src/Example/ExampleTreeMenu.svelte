@@ -26,11 +26,11 @@
 		NewTreeGroup('2', 'folder', {
 			isOpen: true,
 			snippet: folderItem,
-			next: [
+			sub: [
 				NewTreeLeaf('20', 'f0', { snippet: fileItem }),
 				NewTreeGroup('f2', 'folder2', {
 					isOpen: true,
-					next: [NewTreeLeaf('21', 'f1', { snippet: fileItem }), NewTreeLeaf('22', 'f2')],
+					sub: [NewTreeLeaf('21', 'f1', { snippet: fileItem }), NewTreeLeaf('22', 'f2')],
 				}),
 			],
 			on: {

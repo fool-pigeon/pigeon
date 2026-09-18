@@ -7,6 +7,12 @@ import (
 	wa "github.com/wailsapp/wails/v3/pkg/application"
 )
 
+type MenuEvent = string
+
+const (
+	OpenCollection MenuEvent = "menu:open-collection"
+)
+
 type MenuWrap struct {
 	menu *wa.Menu
 }
@@ -83,7 +89,7 @@ func InitMenu(app *wa.App) {
 	// 		NewRequest
 	// 		NewProject
 	// 		----------
-	// 		OpenProject
+	// 		OpenCollection
 	// 		----------
 	// 		Save
 	// 		----------
@@ -94,12 +100,13 @@ func InitMenu(app *wa.App) {
 		bindItemWithShortcut("New Request", "CmdOrCtrl+n", func(ctx *wa.Context) {
 			app.Logger.Info("file:NewRequest")
 		}).
-		bindItemWithShortcut("New Project", "CmdOrCtrl+Shift+n", func(ctx *wa.Context) {
+		bindItemWithShortcut("New Collection", "CmdOrCtrl+Shift+n", func(ctx *wa.Context) {
 			app.Logger.Info("file:NewProject")
 		}).
 		addSeparator().
-		bindItemWithShortcut("Open Project", "CmdOrCtrl+Shift+o", func(ctx *wa.Context) {
-			app.Logger.Info("file:OpenProject")
+		bindItemWithShortcut("Open Collection", "CmdOrCtrl+Shift+o", func(ctx *wa.Context) {
+			app.Logger.Info("file:OpenCollection")
+			app.Event.Emit(OpenCollection)
 		}).
 		addSeparator().
 		bindItemWithShortcut("Save", "CmdOrCtrl+s", func(ctx *wa.Context) {
@@ -148,4 +155,13 @@ func InitMenu(app *wa.App) {
 		bindItem("Documentation", func(ctx *wa.Context) {
 			app.Logger.Info("Documentation clicked")
 		})
+}
+
+// this is a empty Service to export the enum to js/ts
+type MenuService struct {
+	me MenuEvent
+}
+
+func (ms *MenuService) Example() MenuEvent {
+	return ms.me
 }

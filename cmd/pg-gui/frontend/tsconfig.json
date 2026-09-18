@@ -3,7 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@bindings/*": [
-        "./bindings/*"
+        "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/*"
       ],
       "@services": [
         "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/service"
