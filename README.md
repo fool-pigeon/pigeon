@@ -39,3 +39,29 @@ pg-cli commands
   * --tag
 * info
   * args: fName
+
+## TODO: Feature
+* User Interface
+  * [x] cli
+  * [ ] gui
+  * [ ] vscode-extension
+* Protocols
+  * [x] HTTP
+  * [ ] SSE
+  * [ ] gRPC
+  * [ ] WS
+  * [ ] GQL
+  * [ ] ...
+* Test Feature
+  * [x] Script inject
+  * [ ] Script syntax highlighting 
+  * [ ] Script autocompletion
+  * [ ] Data Drive Test
+  * [ ] Pre Request
+  * [ ] Limit Concurrent
+  * [ ] Optional AI Integration to generate tests for only extra GUI version(do not intergration in main version, I hate ai)
+* Collection type conversion
+  * [ ] OpenAPI
+  * [ ] Postman
+  * [ ] Apifox
+  * [ ] Bruno
