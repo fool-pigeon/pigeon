@@ -315,9 +315,9 @@
 		{#if item.type === 'group'}
 			<!-- Icon for folder -->
 			{#if item.id.endsWith('.pg')}
-				<IconFolderCog class="size-5 text-base-content/80" strokeWidth={1} nonScalingStroke />
+				<IconFolderCog class="size-4 text-base-content/80" strokeWidth={1} nonScalingStroke />
 			{:else}
-				<IconFolder class="size-5 text-base-content/80" strokeWidth={1} nonScalingStroke />
+				<IconFolder class="size-4 text-base-content/80" strokeWidth={1} nonScalingStroke />
 			{/if}
 			<!-- Icon for file -->
 		{:else if item.additional === FSTag.HttpGet}
@@ -340,7 +340,7 @@
 			<span class="text-req-connect">CON</span>
 			<!-- TODO: add more icon for req file -->
 		{:else}
-			<IconFile class="size-5 text-base-content/25" strokeWidth={1} nonScalingStroke />
+			<IconFile class="size-4 text-base-content/25" strokeWidth={1} nonScalingStroke />
 		{/if}
 		{item.name}
 	</div>
