@@ -5,12 +5,47 @@
 	const NewFSGroup = NewTreeGroup<FSTag>;
 	const NewFSLeaf = NewTreeLeaf<FSTag>;
 
-	let items = $state<FSItem[]>([]);
-	let selectedItem = $state<FSItem>({ id: '' } as FSItem);
-	let selectedId = $state('');
-	let rootPathsToAdd = $state<string[]>([]);
-	let selectedPath = $state<string>('');
+	class FileExplorerState {
+		items = $state<FSItem[]>([]);
+		selectedItem = $state<FSItem>({ id: '' } as FSItem);
+		rootPathsToAdd = $state<string[]>([]);
+		selectedPath = $state<string>('');
 
+		selectItem(item: FSItem) {
+			this.selectedItem = item;
+		}
+		/**
+		 * find the first item whose id equals path in items
+		 * @param path
+		 */
+		findItem(path: string): FSItem | undefined {
+			for (const i of this.items) {
+				if (path === i.id) {
+					return i;
+				}
+				if (i.sub && path.startsWith(i.id)) {
+					const target = this.findItem(path);
+					if (target) return target;
+				}
+			}
+		}
+		/**
+		 * find the first item parent whose sub has id equals path in items
+		 * @param path
+		 */
+		findPreItem(path: string): FSItem | undefined {
+			for (const i of this.items) {
+				if (i.sub?.some((f) => f.id === path)) {
+					return i;
+				}
+				if (i.sub && path.startsWith(i.id)) {
+					const pre = this.findPreItem(path);
+					if (pre) return pre;
+				}
+			}
+		}
+	}
+	const fState = new FileExplorerState();
 	// remember the open states of folders
 	const openStates = new Map<string, boolean>();
 </script>
@@ -47,15 +82,15 @@
 	import IconFilePlusCorner from '@lucide/svelte/icons/file-plus-corner';
 	import IconCopyMinus from '@lucide/svelte/icons/copy-minus';
 
-	$effect(() => {
-		selectedId = selectedItem.id;
-	});
+	// $effect(() => {
+	// 	selectedId = selectedItem.id;
+	// });
 	onMount(() => {
 		Events.On(MenuEvent.OpenCollection, () => {
 			SelectFolder()
 				.then((val) => {
-					rootPathsToAdd = [];
-					selectedPath = val;
+					fState.rootPathsToAdd = [];
+					fState.selectedPath = val;
 					modal.open(selectRootPathsModal, 'Open Collection');
 				})
 				.catch((err) => {
@@ -64,55 +99,20 @@
 				});
 		});
 		ReloadRootView()
-			.then((val) => (items = parseNodes(val)))
+			.then((val) => (fState.items = parseNodes(val)))
 			.catch((err) => console.error(err));
 	});
 	onDestroy(async () => {
 		Events.Off(MenuEvent.OpenCollection);
 	});
 
-	/**
-	 * find the first item whose id equals path in items
-	 * @param items
-	 * @param path
-	 */
-	function findItem(items: FSItem[], path: string): FSItem | undefined {
-		for (const i of items) {
-			if (path === i.id) {
-				return i;
-			}
-			if (i.sub && path.startsWith(i.id)) {
-				const target = findItem(i.sub, path);
-				if (target) return target;
-			}
-		}
-	}
-	/**
-	 * find the first item parent whose sub has id equals path in items
-	 * @param items
-	 * @param path
-	 */
-	function findPreItem(items: FSItem[], path: string): FSItem | undefined {
-		for (const i of items) {
-			if (i.sub?.some((f) => f.id === path)) {
-				return i;
-			}
-			if (i.sub && path.startsWith(i.id)) {
-				const pre = findPreItem(i.sub, path);
-				if (pre) return pre;
-			}
-		}
-	}
 	function deleteFSItem(path: string) {
 		DeleteNode(path)
 			.then(() => {
-				const pre = findPreItem(items, path);
+				const pre = fState.findPreItem(path);
 				if (pre) pre.sub = pre.sub?.filter((s) => s.id !== path);
 			})
 			.catch((err) => console.error(err));
-	}
-	function selectItem(item: FSItem) {
-		selectedItem = item;
 	}
 
 	function parseNodes(nodes: FS[] | null | undefined): FSItem[] {
@@ -127,7 +127,7 @@
 				on: {
 					// TODO: open editor of file
 					onclick: () => {
-						selectItem(dirItem);
+						fState.selectItem(dirItem);
 						LoadSubsCached(node.path)
 							.then((val) => {
 								if (openStates.get(node.path)) {
@@ -135,14 +135,14 @@
 								} else {
 									openStates.set(node.path, true);
 								}
-								const target = findItem(items, node.path);
+								const target = fState.findItem(node.path);
 								if (target) target.sub = parseNodes(val);
 							})
 							.then((err) => console.error('load cached sub:', err));
 					},
 					// TODO dir context menu
 					oncontextmenu: (e) => {
-						selectItem(dirItem);
+						fState.selectItem(dirItem);
 						contextmenu.open(e, itemContextMenu, true);
 					},
 				},
@@ -153,10 +153,10 @@
 				additional: node.tag,
 				snippet: fsItemDisplay,
 				on: {
-					onclick: () => selectItem(fileItem),
+					onclick: () => fState.selectItem(fileItem),
 					// TODO file context menu
 					oncontextmenu: (e) => {
-						selectItem(fileItem);
+						fState.selectItem(fileItem);
 						contextmenu.open(e, itemContextMenu, true);
 					},
 				},
@@ -165,9 +165,9 @@
 		}
 	}
 	function addRootInModal() {
-		AddRoot(rootPathsToAdd)
+		AddRoot(fState.rootPathsToAdd)
 			.then((val) => {
-				items = parseNodes(val);
+				fState.items = parseNodes(val);
 				modal.close();
 			})
 			.catch((err) => {
@@ -193,7 +193,7 @@
 			icon: IconRotateCw,
 			handle: () =>
 				ReloadRootView()
-					.then((val) => (items = parseNodes(val)))
+					.then((val) => (fState.items = parseNodes(val)))
 					.catch((err) => console.error(err)),
 		},
 		{
@@ -222,8 +222,8 @@
 	</div>
 	<div class="overflow-auto">
 		<TreeMenu
-			bind:items
-			bind:selectedId
+			bind:items={fState.items}
+			bind:selectedId={fState.selectedItem.id}
 			indentGuide={'always'}
 			indentSize={5}
 			enableHoverStyle
@@ -234,7 +234,7 @@
 </div>
 
 {#snippet selectRootPathsModal()}
-	{#await ParseRootPaths(selectedPath)}
+	{#await ParseRootPaths(fState.selectedPath)}
 		<div class="h-30 w-full flex justify-center items-center">
 			<IconLoaderCircle class="absolute size-10 animate-spin" strokeWidth={2} nonScalingStroke />
 		</div>
@@ -248,16 +248,16 @@
 					</div>
 					<div>
 						<button
-							class="btn btn-soft btn-sm font-normal {rootPathsToAdd.length === paths.length
+							class="btn btn-soft btn-sm font-normal {fState.rootPathsToAdd.length === paths.length
 								? 'btn-error'
 								: 'btn-primary'}"
 							onclick={() => {
-								if (rootPathsToAdd.length === paths.length) {
-									rootPathsToAdd = [];
+								if (fState.rootPathsToAdd.length === paths.length) {
+									fState.rootPathsToAdd = [];
 								} else {
-									rootPathsToAdd = paths;
+									fState.rootPathsToAdd = paths;
 								}
-							}}>{rootPathsToAdd.length === paths.length ? 'DropAll' : 'SelectAll'}</button
+							}}>{fState.rootPathsToAdd.length === paths.length ? 'DropAll' : 'SelectAll'}</button
 						>
 					</div>
 				</div>
@@ -267,7 +267,7 @@
 							<input
 								type="checkbox"
 								class="checkbox checkbox-sm checkbox-primary"
-								bind:group={rootPathsToAdd}
+								bind:group={fState.rootPathsToAdd}
 								value={path}
 							/>
 							{path}
@@ -276,7 +276,7 @@
 				</div>
 				<div class="mt-10 flex gap-1 justify-between items-center">
 					<div>
-						<span class="text-primary">{rootPathsToAdd.length} </span>
+						<span class="text-primary">{fState.rootPathsToAdd.length} </span>
 						<span class="text-base-content/50">of {paths.length} selected</span>
 					</div>
 					<div>
@@ -286,7 +286,9 @@
 				</div>
 			</div>
 		{:else}
-			<div class="text-warning h-10 text-center">Not Found Collection in {selectedPath}</div>
+			<div class="text-warning h-10 text-center">
+				Not Found Collection in {fState.selectedPath}
+			</div>
 		{/if}
 	{:catch err}
 		<div class="text-error h-10">cause-error: {err}</div>
@@ -295,7 +297,7 @@
 {#snippet itemContextMenu()}
 	<!-- TODO: impl the function in explorer context menu -->
 	<ul class="menu p-0 bg-base-100 [&_li>*]:rounded-none" oncontextmenu={(e) => e.preventDefault()}>
-		{#if selectedItem?.type === 'group'}
+		{#if fState.selectedItem.type === 'group'}
 			<li><button>new request</button></li>
 			<li><button>new folder</button></li>
 		{:else}
