@@ -1,23 +1,33 @@
 <script lang="ts" module>
+	type Unit = '%' | 'px';
+	type Size = {
+		value: number;
+		unit: Unit;
+	};
 	export type Panel = {
 		snippet: Snippet;
-		// 0-100, which means the 0-100%,negative means need auto resize
-		size: number;
-		// 0-100, which means the 0-100%
-		minSize?: number;
+		// size.value<0 means auto resize
+		size: Size;
+		minSize?: Size;
 	};
 	/**
 	 * Create a panel for join
 	 * @param snippet the content in panel
-	 * @param size initalize the size of panel.if size<0,it will be resize
+	 * @param size initalize the size of panel.if size.value<0,it will be resize
 	 * @param minSize set the minimum size for panel
 	 */
-	export function NewPanel(snippet: Snippet, size: number = -1, minSize?: number): Panel {
+	export function NewPanel(
+		snippet: Snippet,
+		size: Size = { unit: '%', value: -1 },
+		minSize?: Size,
+	): Panel {
 		return { snippet, size, minSize };
 	}
 </script>
 
 <script lang="ts">
+	import { Backpack } from '@lucide/svelte';
+
 	import { untrack, type Snippet } from 'svelte';
 
 	type Props = {
@@ -25,6 +35,15 @@
 		direction?: 'horizontal' | 'vertical';
 	};
 	let { panels = $bindable<Panel[]>(), direction = $bindable('horizontal') }: Props = $props();
+
+	// to the percent of length
+	function getPct(length: number, pixelLength: number): number {
+		return (length / pixelLength) * 100;
+	}
+	// to the pixel of length
+	function getPx(percent: number, pixelLength: number): number {
+		return (percent / 100) * pixelLength;
+	}
 	// init panels' size
 	$effect(() => {
 		const len = panels.length;
@@ -34,30 +53,36 @@
 		}
 		untrack(() => {
 			// if has resized,return
-			if (!panels.some((p) => p.size < 0)) {
+			if (!panels.some((p) => p.size.value < 0)) {
 				return;
 			}
 
-			let totalSize = 100;
-			let needCount = 0;
-			panels.forEach((p) => {
-				if (p.size >= 0) {
-					totalSize -= p.size;
-				} else {
-					needCount++;
-				}
-			});
-			if (totalSize < 0 || (totalSize === 0 && needCount > 0)) {
-				needCount = panels.length;
-				totalSize = 100;
+			const r = container.getBoundingClientRect();
+			const pixelLength = direction === 'horizontal' ? r.width : r.height;
+			if (pixelLength <= 0) {
+				return;
 			}
+			let totalPercentSize = 100;
+			let needCount = 0;
+			for (const p of panels) {
+				if (totalPercentSize < 0) {
+					needCount = panels.length;
+					totalPercentSize = 100;
+					break;
+				}
+				if (p.size.value < 0) {
+					needCount++;
+					continue;
+				}
+				totalPercentSize -= p.size.unit === '%' ? p.size.value : getPct(p.size.value, pixelLength);
+			}
+			const needSize = totalPercentSize / needCount;
 			if (needCount > 0) {
-				const size = totalSize / needCount;
-				panels = panels.map((value) => {
-					if (value.size < 0) {
-						value.size = size;
+				panels = panels.map((p) => {
+					if (p.size.value < 0) {
+						p.size = { value: needSize, unit: '%' };
 					}
-					return value;
+					return p;
 				});
 			}
 		});
@@ -76,25 +101,34 @@
 		const dx = e.clientX - r.left;
 		const dy = e.clientY - r.top;
 
+		const pxLen = direction === 'horizontal' ? r.width : r.height;
+		const pct = (size: Size) => (size.unit === '%' ? size.value : getPct(size.value, pxLen));
+		const px = (size: Size) => (size.unit === 'px' ? size.value : getPx(size.value, pxLen));
+
+		// front panel size and back panel size
+		const frontSize = panels[i].size;
+		const backSize = panels[i + 1].size;
 		// mapping to first panel size
-		const percent = (direction === 'horizontal' ? dx / r.width : dy / r.height) * 100;
-		const before = panels.slice(0, i).reduce((a, b) => a + b.size, 0);
-		const total = panels[i].size + panels[i + 1].size;
-		let firstSize = Math.max(0, Math.min(100, percent)) - before;
+		const current = getPct(direction === 'horizontal' ? dx : dy, pxLen);
+		const before = panels.slice(0, i).reduce((a, b) => a + pct(b.size), 0);
+		const total = pct(frontSize) + pct(backSize);
+
+		let frontPct = Math.max(0, Math.min(100, current)) - before;
 
 		// limit panel's minimum size
 		const minBefore = panels[i].minSize;
 		const minAfter = panels[i + 1].minSize;
-		if (minBefore && minBefore > 0) {
-			firstSize = Math.max(minBefore, firstSize);
+		if (minBefore && minBefore.value > 0) {
+			frontPct = Math.max(pct(minBefore), frontPct);
 		}
-		if (minAfter && minAfter > 0) {
-			firstSize = Math.min(total - minAfter, firstSize);
+		if (minAfter && minAfter.value > 0) {
+			frontPct = Math.min(total - pct(minAfter), frontPct);
 		}
-
+		frontPct = Math.max(0, Math.min(total, frontPct));
+		const backPct = total - frontPct;
 		// resize adjacent panels
-		panels[i].size = Math.max(0, Math.min(total, firstSize));
-		panels[i + 1].size = total - panels[i].size;
+		panels[i].size.value = frontSize.unit === '%' ? frontPct : getPx(frontPct, pxLen);
+		panels[i + 1].size.value = backSize.unit === '%' ? backPct : getPx(backPct, pxLen);
 	}
 </script>
 
@@ -104,7 +138,10 @@
 	{direction === 'horizontal' ? 'flex-row' : 'flex-col'}"
 >
 	{#each panels as panel, i}
-		<div class="flex min-w-0 min-h-0 overflow-auto" style:flex="{panel.size}% 0 0">
+		<div
+			class="flex min-w-0 min-h-0 overflow-auto"
+			style:flex="{panel.size.value}{panel.size.unit} 0 0"
+		>
 			{@render panel.snippet()}
 		</div>
 		<!-- add divider between adjacent panels -->

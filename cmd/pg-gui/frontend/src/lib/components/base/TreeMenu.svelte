@@ -31,7 +31,7 @@
 	 * @param option.on bind oncontextmenu or ontoggle
 	 * @param option.snippet the optional render to replace original
 	 */
-	export function NewTreeGroup<T>(
+	export function NewTreeGroup<T = undefined>(
 		id: string,
 		name: string,
 		option?: {
@@ -53,7 +53,7 @@
 	 * @param option.on bind onclick or onauxclick or onmousecontextmenu
 	 * @param option.snippet the optional render to replace original
 	 */
-	export function NewTreeLeaf<T>(
+	export function NewTreeLeaf<T = undefined>(
 		id: string,
 		name: string,
 		option?: {
