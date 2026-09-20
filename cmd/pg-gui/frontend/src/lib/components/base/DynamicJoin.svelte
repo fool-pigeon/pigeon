@@ -46,9 +46,8 @@
 	}
 	// init panels' size
 	$effect(() => {
-		const len = panels.length;
 		// no need to resize when has no panel
-		if (len === 0) {
+		if (panels.length === 0) {
 			return;
 		}
 		// if has resized,return
@@ -57,35 +56,34 @@
 		}
 		untrack(() => {
 			const r = container.getBoundingClientRect();
-			const pixelLength = direction === 'horizontal' ? r.width : r.height;
-			if (pixelLength <= 0) {
+			const pxLen = direction === 'horizontal' ? r.width : r.height;
+			if (pxLen <= 0) {
 				return;
 			}
-			let totalPercentSize = 100;
-			let needCount = 0;
-			for (const p of panels) {
-				if (totalPercentSize < 0) {
-					needCount = panels.length;
-					totalPercentSize = 100;
-					break;
-				}
-				if (p.size.value < 0) {
-					needCount++;
-					continue;
-				}
-				totalPercentSize -= p.size.unit === '%' ? p.size.value : getPct(p.size.value, pixelLength);
+
+			let needCount = panels.filter((p) => p.size.value < 0).length;
+			if (needCount <= 0) {
+				return;
 			}
+
+			let totalPercentSize = panels
+				.map((p) => (p.size.unit === '%' ? p.size.value : getPct(p.size.value, pxLen)))
+				.reduce((a, b) => a - b, 100);
+			if (totalPercentSize < 0) {
+				needCount = panels.length;
+				totalPercentSize = 100;
+			}
+
 			const needSize = totalPercentSize / needCount;
-			if (needCount > 0) {
-				panels = panels.map((p) => {
-					if (p.size.value < 0) {
-						p.size = { value: needSize, unit: '%' };
-					}
-					return p;
-				});
-			}
+			panels = panels.map((p) => {
+				if (p.size.value < 0) {
+					p.size = { value: needSize, unit: '%' };
+				}
+				return p;
+			});
 		});
 	});
+	// auto resize panels when the container is resizing
 	$effect(() => {
 		if (panels.some((p) => p.size.value < 0)) {
 			return;
