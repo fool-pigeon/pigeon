@@ -182,7 +182,6 @@
 					// TODO: open editor of file
 					onclick: () => {
 						fState.selectItem(dirItem);
-						// BUG: dir not render sub when first load
 						LoadSubsCached(node.path)
 							.then((val) => {
 								if (openStates.get(node.path)) {
