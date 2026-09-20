@@ -14,7 +14,9 @@
 
 		selectItem(item: FSItem) {
 			this.selectedItem = item;
-			this.activedItem = item;
+			if (item.type === 'leaf') {
+				this.activedItem = item;
+			}
 		}
 		/**
 		 * find the first item whose id equals path in items
@@ -32,6 +34,31 @@
 					return this.findItem(i.sub, path);
 				}
 			}
+		}
+		/**
+		 * find routes to item
+		 * @param path
+		 */
+		findRoutes(path: string): FSItem[] {
+			return this.findItemRoutes(this.items, path);
+		}
+		findItemRoutes(items: FSItem[], path: string): FSItem[] {
+			const routes: FSItem[] = [];
+			for (const i of items) {
+				if (path === i.id) {
+					return [i];
+				}
+				if (i.sub && path.startsWith(i.id)) {
+					routes.push(i);
+					const next = this.findItemRoutes(i.sub, path);
+					if (next.length > 0) {
+						routes.push(...next);
+						return routes;
+					}
+					routes.pop();
+				}
+			}
+			return routes;
 		}
 		/**
 		 * find the first item parent whose sub has id equals path in items
@@ -56,9 +83,26 @@
 	const openStates = new Map<string, boolean>();
 	export { fsItemDisplay };
 	export const fileExplorer = {
+		findRoutes: ((path?: string) => {
+			if (!path) {
+				return [];
+			}
+			return fState.findRoutes(path);
+		}).bind(fState),
 		getActivedFS: (() => fState.activedItem).bind(fState),
 		setActivedFS: ((item: FSItem | undefined) => {
 			fState.activedItem = item;
+		}).bind(fState),
+		getSelectedFS: (() => fState.selectedItem).bind(fState),
+		setSelectedFS: fState.selectItem.bind(fState),
+		// recursively open folder until item
+		expandToItem: ((item: FSItem) => {
+			for (const r of fState.findRoutes(item.id)) {
+				if (r.type === 'group' && !r.isOpen) {
+					r.isOpen = true;
+					openStates.set(r.id, r.isOpen);
+				}
+			}
 		}).bind(fState),
 	};
 </script>
@@ -81,7 +125,7 @@
 	} from '@services/fileexploreservice';
 	import { FSTag, FSType, type Node } from '@services/models';
 	import { Events } from '@wailsio/runtime';
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { modal } from '../base/Modal.svelte';
 	import { SelectFolder } from '@bindings/service/pathselectservice';
 	import { contextmenu } from '../base/ContextMenu.svelte';
@@ -216,19 +260,15 @@
 </script>
 
 <div class="w-full">
-	<div class="flex justify-end">
+	<div class="flex p-1 border-b border-base-content/70">
 		{#each topBarBtns as btn (btn.label)}
-			<div class="group relative">
-				<button
-					onclick={btn.handle}
-					class="btn btn-ghost rounded-none size-6 p-1 hover:bg-base-content/10"
-				>
-					<btn.icon class="size-4" />
-				</button>
-				<span class="absolute top-full left-0 hidden group-hover:block whitespace-nowrap">
-					{btn.label}
-				</span>
-			</div>
+			<button
+				title={btn.label}
+				onclick={btn.handle}
+				class="btn btn-ghost rounded-none size-6 p-0 text-base-content/90 hover:text-primary"
+			>
+				<btn.icon class="size-4.5" />
+			</button>
 		{/each}
 	</div>
 	<div class="overflow-auto">
@@ -324,7 +364,7 @@
 {/snippet}
 
 {#snippet fsItemDisplay(item: FSItem)}
-	<div class="flex gap-1 items-center">
+	<div title={item.id} class="flex gap-1 items-center">
 		{#if item.type === 'group'}
 			<!-- Icon for folder -->
 			{#if item.id.endsWith('.pg')}
