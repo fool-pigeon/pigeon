@@ -13,6 +13,7 @@ import (
 	"github.com/fool-pigeon/pigeon/internal/request"
 	"github.com/fool-pigeon/pigeon/internal/request/httpx"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type FSType int
@@ -267,16 +268,21 @@ func (n *Node) reload() error {
 	for _, d := range ds {
 		path := filepath.Join(parent, d.Name())
 
-		if node, ok := n.Sub(path); ok {
-			subs[path] = node
-			continue
-		}
-
-		if d.IsDir() {
-			subs[path] = NewDirNode(path, d.Name(), n)
-			continue
-		}
 		wg.Go(func() {
+			mu.Lock()
+			if node, ok := n.Sub(path); ok {
+				defer mu.Unlock()
+				subs[path] = node
+				return
+			}
+
+			if d.IsDir() {
+				defer mu.Unlock()
+				subs[path] = NewDirNode(path, d.Name(), n)
+				return
+			}
+			mu.Unlock()
+
 			b, _ := fsx.ReadFile(path)
 			mu.Lock()
 			defer mu.Unlock()
@@ -358,10 +364,11 @@ var (
 type FileExploreService struct {
 	mu   sync.RWMutex
 	root *Node
+	em   *application.EventManager
 }
 
-func NewFileExploreService() *FileExploreService {
-	return &FileExploreService{root: &Node{Type: DirType}}
+func NewFileExploreService(em *application.EventManager) *FileExploreService {
+	return &FileExploreService{root: &Node{Type: DirType}, em: em}
 }
 
 // ServiceStartup implements [application.ServiceStartup].

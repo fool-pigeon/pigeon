@@ -85,7 +85,7 @@
 	});
 	// auto resize panels when the container is resizing
 	$effect(() => {
-		if (panels.some((p) => p.size.value < 0)) {
+		if (untrack(() => panels.some((p) => p.size.value < 0))) {
 			return;
 		}
 		const ro = new ResizeObserver(([e]) => {

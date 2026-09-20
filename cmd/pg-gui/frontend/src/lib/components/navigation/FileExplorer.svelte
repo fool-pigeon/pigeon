@@ -20,14 +20,16 @@
 		 * find the first item whose id equals path in items
 		 * @param path
 		 */
-		findItem(path: string): FSItem | undefined {
-			for (const i of this.items) {
+		find(path: string): FSItem | undefined {
+			return this.findItem(this.items, path);
+		}
+		findItem(items: FSItem[], path: string): FSItem | undefined {
+			for (const i of items) {
 				if (path === i.id) {
 					return i;
 				}
 				if (i.sub && path.startsWith(i.id)) {
-					const target = this.findItem(path);
-					if (target) return target;
+					return this.findItem(i.sub, path);
 				}
 			}
 		}
@@ -35,14 +37,16 @@
 		 * find the first item parent whose sub has id equals path in items
 		 * @param path
 		 */
-		findPreItem(path: string): FSItem | undefined {
-			for (const i of this.items) {
+		findPre(path: string): FSItem | undefined {
+			return this.findPreItem(this.items, path);
+		}
+		findPreItem(items: FSItem[], path: string): FSItem | undefined {
+			for (const i of items) {
 				if (i.sub?.some((f) => f.id === path)) {
 					return i;
 				}
 				if (i.sub && path.startsWith(i.id)) {
-					const pre = this.findPreItem(path);
-					if (pre) return pre;
+					return this.findPreItem(i.sub, path);
 				}
 			}
 		}
@@ -115,7 +119,7 @@
 	function deleteFSItem(path: string) {
 		DeleteNode(path)
 			.then(() => {
-				const pre = fState.findPreItem(path);
+				const pre = fState.findPre(path);
 				if (pre) pre.sub = pre.sub?.filter((s) => s.id !== path);
 			})
 			.catch((err) => console.error(err));
@@ -142,10 +146,10 @@
 								} else {
 									openStates.set(node.path, true);
 								}
-								const target = fState.findItem(node.path);
+								const target = fState.find(node.path);
 								if (target) target.sub = parseNodes(val);
 							})
-							.then((err) => console.error('load cached sub:', err));
+							.catch((err) => console.error('load cached sub:', err));
 					},
 					// TODO dir context menu
 					oncontextmenu: (e) => {
