@@ -16,3 +16,53 @@
 	--color-req-ws: oklch(87% 0.26 95); /* yellow  – realtime */
 }
 @plugin "daisyui";
+
+/* custom light scrollbar */
+.custom-scrollbar {
+	/* 覆盖全局 thin，否则 webkit 伪元素失效 */
+	scrollbar-width: auto;
+	/* 同上 */
+	scrollbar-color: auto;
+	/* 预留槽位，防布局偏移 */
+	scrollbar-gutter: stable;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+	width: 1px; /* 纵向滚动条宽度 */
+	height: 1px; /* 横向滚动条高度 */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+	/* 轨道透明 */
+	background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+	/* 滑块圆角 */
+	border-radius: 4px;
+	/* 内缩，视觉更细 */
+	border: 0px solid transparent;
+	/* 背景不含 border 区 */
+	background-clip: padding-box;
+	/* 滑块颜色 */
+	/* background-color: #888; */
+	@apply bg-primary;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+	/* 悬停同色，避免任何视觉变化 */
+	@apply bg-primary;
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+	/* 横纵滚动条交角 */
+	background: transparent;
+}
+
+/* 仅 Firefox 生效 */
+/* @supports not selector(::-webkit-scrollbar) {
+		.custom-scrollbar {
+			scrollbar-width: thin;
+			scrollbar-color: #888 transparent;
+		}
+	} */

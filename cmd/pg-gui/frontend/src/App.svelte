@@ -2,6 +2,7 @@
 	import ContextMenu from '@lib/components/base/ContextMenu.svelte';
 	import DynamicJoin, { NewPanel } from '@lib/components/base/DynamicJoin.svelte';
 	import Modal from '@lib/components/base/Modal.svelte';
+	import Editor from '@lib/components/editor/Editor.svelte';
 	import FileExplorer from '@lib/components/navigation/FileExplorer.svelte';
 	import { WML } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
@@ -18,7 +19,7 @@
 </script>
 
 <div class="w-lvw h-lvh bg-base-100/50">
-	<DynamicJoin panels={[NewPanel(fileExplorer, { unit: 'px', value: 100 }), NewPanel(editor)]} />
+	<DynamicJoin panels={[NewPanel(fileExplorer, { unit: 'px', value: 200 }), NewPanel(editor)]} />
 </div>
 <Modal />
 <ContextMenu />
@@ -28,7 +29,5 @@
 {/snippet}
 <!-- TODO: complete the editor's page -->
 {#snippet editor()}
-	<div class="w-full flex justify-center items-center">
-		<div>EDITOR PAGE</div>
-	</div>
+	<Editor />
 {/snippet}

@@ -44,6 +44,7 @@
 	function getPx(percent: number, pixelLength: number): number {
 		return (percent / 100) * pixelLength;
 	}
+	// FIXME: the size don't resize when window resizing
 	// init panels' size
 	$effect(() => {
 		const len = panels.length;

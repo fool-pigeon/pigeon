@@ -1,18 +1,20 @@
 <script lang="ts" module>
 	type FS = Node | null;
 	// addtional data is FSTag
-	type FSItem = TreeItem<FSTag>;
+	export type FSItem = TreeItem<FSTag>;
 	const NewFSGroup = NewTreeGroup<FSTag>;
 	const NewFSLeaf = NewTreeLeaf<FSTag>;
 
 	class FileExplorerState {
 		items = $state<FSItem[]>([]);
 		selectedItem = $state<FSItem>({ id: '' } as FSItem);
+		activedItem = $state<FSItem>();
 		rootPathsToAdd = $state<string[]>([]);
 		selectedPath = $state<string>('');
 
 		selectItem(item: FSItem) {
 			this.selectedItem = item;
+			this.activedItem = item;
 		}
 		/**
 		 * find the first item whose id equals path in items
@@ -48,6 +50,13 @@
 	const fState = new FileExplorerState();
 	// remember the open states of folders
 	const openStates = new Map<string, boolean>();
+	export { fsItemDisplay };
+	export const fileExplorer = {
+		getActivedFS: (() => fState.activedItem).bind(fState),
+		setActivedFS: ((item: FSItem | undefined) => {
+			fState.activedItem = item;
+		}).bind(fState),
+	};
 </script>
 
 <script lang="ts">
@@ -82,9 +91,6 @@
 	import IconFilePlusCorner from '@lucide/svelte/icons/file-plus-corner';
 	import IconCopyMinus from '@lucide/svelte/icons/copy-minus';
 
-	// $effect(() => {
-	// 	selectedId = selectedItem.id;
-	// });
 	onMount(() => {
 		Events.On(MenuEvent.OpenCollection, () => {
 			SelectFolder()
@@ -128,6 +134,7 @@
 					// TODO: open editor of file
 					onclick: () => {
 						fState.selectItem(dirItem);
+						// BUG: dir not render sub when first load
 						LoadSubsCached(node.path)
 							.then((val) => {
 								if (openStates.get(node.path)) {
