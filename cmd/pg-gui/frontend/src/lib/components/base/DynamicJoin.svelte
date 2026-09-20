@@ -44,7 +44,6 @@
 	function getPx(percent: number, pixelLength: number): number {
 		return (percent / 100) * pixelLength;
 	}
-	// FIXME: the size don't resize when window resizing
 	// init panels' size
 	$effect(() => {
 		const len = panels.length;
@@ -52,12 +51,11 @@
 		if (len === 0) {
 			return;
 		}
+		// if has resized,return
+		if (!panels.some((p) => p.size.value < 0)) {
+			return;
+		}
 		untrack(() => {
-			// if has resized,return
-			if (!panels.some((p) => p.size.value < 0)) {
-				return;
-			}
-
 			const r = container.getBoundingClientRect();
 			const pixelLength = direction === 'horizontal' ? r.width : r.height;
 			if (pixelLength <= 0) {
@@ -87,6 +85,28 @@
 				});
 			}
 		});
+	});
+	$effect(() => {
+		if (panels.some((p) => p.size.value < 0)) {
+			return;
+		}
+		const ro = new ResizeObserver(([e]) => {
+			const pxLen = direction === 'horizontal' ? e.contentRect.width : e.contentRect.height;
+			const needCount = panels.filter((p) => p.size.unit === '%').length;
+			if (needCount <= 0) {
+				return;
+			}
+			const deltaPercentSize = panels
+				.map((p) => (p.size.unit === '%' ? p.size.value : getPct(p.size.value, pxLen)))
+				.reduce((pre, cur) => pre - cur, 100);
+			for (const p of panels) {
+				if (p.size.unit === '%') {
+					p.size.value += deltaPercentSize / needCount;
+				}
+			}
+		});
+		ro.observe(container);
+		return () => ro.disconnect();
 	});
 
 	let container: HTMLDivElement;
