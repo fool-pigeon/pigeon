@@ -26,8 +26,6 @@
 </script>
 
 <script lang="ts">
-	import { Backpack } from '@lucide/svelte';
-
 	import { untrack, type Snippet } from 'svelte';
 
 	type Props = {
@@ -35,15 +33,8 @@
 		direction?: 'horizontal' | 'vertical';
 	};
 	let { panels = $bindable<Panel[]>(), direction = $bindable('horizontal') }: Props = $props();
+	let container: HTMLDivElement;
 
-	// to the percent of length
-	function getPct(length: number, pixelLength: number): number {
-		return (length / pixelLength) * 100;
-	}
-	// to the pixel of length
-	function getPx(percent: number, pixelLength: number): number {
-		return (percent / 100) * pixelLength;
-	}
 	// init panels' size
 	$effect(() => {
 		// no need to resize when has no panel
@@ -107,8 +98,14 @@
 		return () => ro.disconnect();
 	});
 
-	let container: HTMLDivElement;
-
+	// to the percent of length
+	function getPct(length: number, pixelLength: number): number {
+		return (length / pixelLength) * 100;
+	}
+	// to the pixel of length
+	function getPx(percent: number, pixelLength: number): number {
+		return (percent / 100) * pixelLength;
+	}
 	/**
 	 * Move divider's place and resize adjacent panel
 	 * @param i the index of divider
