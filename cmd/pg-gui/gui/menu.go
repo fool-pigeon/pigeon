@@ -10,7 +10,14 @@ import (
 type MenuEvent = string
 
 const (
-	OpenCollection MenuEvent = "menu:open-collection"
+	// File Subs
+	NewRequest     MenuEvent = "menu:file:new-request"
+	NewCollection  MenuEvent = "menu:file:new-collection"
+	OpenCollection MenuEvent = "menu:file:open-collection"
+	Save           MenuEvent = "menu:file:save"
+	Preferences    MenuEvent = "menu:file:preferences"
+	// Help Subs
+	Documentation MenuEvent = "menu:help:docmentation"
 )
 
 type MenuWrap struct {
@@ -98,23 +105,27 @@ func InitMenu(app *wa.App) {
 	// 		Quit
 	NewMenuWrap(menu.AddSubmenu(FileMenu)).
 		bindItemWithShortcut("New Request", "CmdOrCtrl+n", func(ctx *wa.Context) {
-			app.Logger.Info("file:NewRequest")
+			app.Logger.Info(NewRequest)
+			app.Event.Emit(NewRequest)
 		}).
 		bindItemWithShortcut("New Collection", "CmdOrCtrl+Shift+n", func(ctx *wa.Context) {
-			app.Logger.Info("file:NewProject")
+			app.Logger.Info(NewCollection)
+			app.Event.Emit(NewCollection)
 		}).
 		addSeparator().
 		bindItemWithShortcut("Open Collection", "CmdOrCtrl+Shift+o", func(ctx *wa.Context) {
-			app.Logger.Info("file:OpenCollection")
+			app.Logger.Info(OpenCollection)
 			app.Event.Emit(OpenCollection)
 		}).
 		addSeparator().
 		bindItemWithShortcut("Save", "CmdOrCtrl+s", func(ctx *wa.Context) {
-			app.Logger.Info("file:Save")
+			app.Logger.Info(Save)
+			app.Event.Emit(Save)
 		}).
 		addSeparator().
 		bindItemWithShortcut("Preferences", "CmdOrCtrl+,", func(ctx *wa.Context) {
-			app.Logger.Info("file:Preferences")
+			app.Logger.Info(Preferences)
+			app.Event.Emit(Preferences)
 		}).
 		addSeparator().
 		bindRole(wa.Quit, "Quit", !isDarwin)
@@ -153,7 +164,8 @@ func InitMenu(app *wa.App) {
 	NewMenuWrap(menu.AddSubmenu(HelpMenu)).
 		bindRole(wa.About, "About", !isDarwin).
 		bindItem("Documentation", func(ctx *wa.Context) {
-			app.Logger.Info("Documentation clicked")
+			app.Logger.Info(Documentation)
+			app.Event.Emit(Documentation)
 		})
 }
 

@@ -40,6 +40,12 @@
 			fileExplorer.expandToItem(rf.fs);
 			fileExplorer.setSelectedFS(rf.fs);
 		}
+		saveCurrent() {
+			if (!this.curRf) {
+				return;
+			}
+			this.saveRawFile(this.curRf);
+		}
 		saveRawFile(rf: RawFile) {
 			WriteFile(rf.fs.id, rf.value)
 				.then(() => (rf.initValue = rf.value))
@@ -72,8 +78,15 @@
 	import IconEllipsis from '@lucide/svelte/icons/ellipsis';
 	import IconChevronRight from '@lucide/svelte/icons/chevron-right';
 	import IconSaveAll from '@lucide/svelte/icons/save-all';
-	import { untrack } from 'svelte';
-
+	import { onDestroy, onMount, untrack } from 'svelte';
+	import { Events } from '@wailsio/runtime';
+	import { MenuEvent } from '@bindings/gui';
+	onMount(() => {
+		Events.On(MenuEvent.Save, () => rState.saveCurrent());
+	});
+	onDestroy(() => {
+		Events.Off(MenuEvent.Save);
+	});
 	$effect(() => {
 		if (!activedFS || activedFS.type === 'group') {
 			return;
