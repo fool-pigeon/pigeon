@@ -11,9 +11,13 @@
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.0",
+    "@codemirror/state": "^6.7.4",
+    "@codemirror/view": "^6.43.11",
     "@lucide/svelte": "^1.45.0",
     "@tailwindcss/vite": "^4.3.3",
     "@wailsio/runtime": "latest",
+    "codemirror": "^6.0.2",
     "daisyui": "^5.7.28",
     "tailwindcss": "^4.3.3"
   },
