@@ -1,16 +1,4 @@
-<script lang="ts">
-	import { fileExplorer, fsItemDisplay, type FSItem } from '../navigation/FileExplorer.svelte';
-	import IconX from '@lucide/svelte/icons/x';
-	import IconFileTypeCorner from '@lucide/svelte/icons/file-type-corner';
-	import IconForm from '@lucide/svelte/icons/form';
-	import IconLayoutCol from '@lucide/svelte/icons/columns-2';
-	import IconLayoutRow from '@lucide/svelte/icons/rows-2';
-	import IconEllipsis from '@lucide/svelte/icons/ellipsis';
-	import IconChevronRight from '@lucide/svelte/icons/chevron-right';
-	import IconSaveAll from '@lucide/svelte/icons/save-all';
-	import ScrollFlex from '../base/ScrollFlex.svelte';
-	import { ReadFile } from '@bindings/service/fileservice';
-	import FileView from './FileView.svelte';
+<script lang="ts" module>
 	type RawFile = {
 		// original file content
 		initValue: string;
@@ -19,23 +7,87 @@
 		// meta of file
 		fs: FSItem;
 	};
-	let topItems = $state<FSItem[]>([]);
-	let rawFile = $state('');
+	class RawFileState {
+		// raw files
+		rfs = $state<RawFile[]>([]);
+		// current selected raw file
+		curRf = $state<RawFile>();
+
+		/**
+		 * return true if has the raw file whose fs.id equals path
+		 * @param path
+		 */
+		includesPath(path: string): boolean {
+			return this.rfs.some((r) => r.fs.id === path);
+		}
+		/**
+		 * get raw file from rfs whose fs.id equals path
+		 * @param path
+		 */
+		findRaw(path: string): RawFile | undefined {
+			return this.rfs.filter((r) => r.fs.id === path).at(0);
+		}
+		/**
+		 * select rf if rf not undefined
+		 * @param rf
+		 */
+		selectCurrent(rf: RawFile | undefined) {
+			this.curRf = rf;
+			if (!rf) {
+				fileExplorer.setActivedFS(undefined);
+				return;
+			}
+			fileExplorer.expandToItem(rf.fs);
+			fileExplorer.setSelectedFS(rf.fs);
+		}
+		saveRawFile(rf: RawFile) {
+			WriteFile(rf.fs.id, rf.value)
+				.then(() => (rf.initValue = rf.value))
+				.catch(console.error);
+		}
+	}
+	const rState = new RawFileState();
 	let isRawFileMode = $state(false);
 	let isLayoutRow = $state(true);
-	let routes = $derived(fileExplorer.findRoutes(fileExplorer.getActivedFS()?.id));
 	let activedFS = $derived(fileExplorer.getActivedFS());
+	let routes = $derived(fileExplorer.findRoutes(activedFS?.id));
+</script>
+
+<script lang="ts">
+	import {
+		fileExplorer,
+		fsItemDisplay as fsDisplay,
+		type FSItem,
+	} from '../navigation/FileExplorer.svelte';
+	import ScrollFlex from '../base/ScrollFlex.svelte';
+	import FileView from './FileView.svelte';
+	import { ReadFile, WriteFile } from '@bindings/service/fileservice';
+	// Icons
+	import IconCircle from '@lucide/svelte/icons/circle';
+	import IconX from '@lucide/svelte/icons/x';
+	import IconFileTypeCorner from '@lucide/svelte/icons/file-type-corner';
+	import IconForm from '@lucide/svelte/icons/form';
+	import IconLayoutCol from '@lucide/svelte/icons/columns-2';
+	import IconLayoutRow from '@lucide/svelte/icons/rows-2';
+	import IconEllipsis from '@lucide/svelte/icons/ellipsis';
+	import IconChevronRight from '@lucide/svelte/icons/chevron-right';
+	import IconSaveAll from '@lucide/svelte/icons/save-all';
+	import { untrack } from 'svelte';
+
 	$effect(() => {
 		if (!activedFS || activedFS.type === 'group') {
 			return;
 		}
-		ReadFile(activedFS.id)
-			.then((val) => (rawFile = val))
-			.catch(console.error);
-		if (topItems.some((fs) => fs.id === activedFS.id)) {
+		if (untrack(() => rState.includesPath(activedFS.id))) {
 			return;
 		}
-		topItems.push(activedFS);
+		ReadFile(activedFS.id)
+			.then((val) => {
+				const rf: RawFile = { initValue: val, value: val, fs: activedFS };
+				rState.rfs.push(rf);
+				rState.selectCurrent(rf);
+			})
+			.catch(console.error);
 	});
 </script>
 
@@ -51,31 +103,33 @@
 			<div class="flex gap-1 justify-between">
 				<ScrollFlex>
 					{#snippet content()}
-						{#each topItems as item, i (item.id)}
+						{#each rState.rfs as r, i (r.fs.id)}
 							<div
 								role="button"
 								tabindex="0"
 								class="p-1 flex gap-0.5 items-center cursor-pointer
-							text-base-content/60 hover:text-primary hover:bg-base-300
-							{fileExplorer.getActivedFS()?.id === item.id ? 'bg-primary/30' : ''}"
+									text-base-content/60 hover:text-primary hover:bg-base-300
+									{activedFS.id === r.fs.id ? 'bg-primary/30' : ''}"
 								onkeydown={() => {}}
-								onclick={() => {
-									fileExplorer.setSelectedFS(item);
-									fileExplorer.expandToItem(item);
-								}}
+								onclick={() => rState.selectCurrent(r)}
 							>
-								{@render fsItemDisplay(item)}
+								{@render fsDisplay(r.fs)}
 								<button
-									class="p-1 size-5 btn btn-ghost btn-sm hover:btn-error"
+									class="p-0 size-5 btn btn-ghost btn-sm text-base-content/30 hover:btn-error group"
 									onclick={(e) => {
 										e.stopPropagation();
-										if (fileExplorer.getActivedFS()?.id === item.id) {
-											fileExplorer.setActivedFS(i > 0 ? topItems[i - 1] : topItems[i + 1]);
+										if (activedFS.id === r.fs.id) {
+											rState.selectCurrent(i > 0 ? rState.rfs[i - 1] : rState.rfs[i + 1]);
 										}
-										topItems.splice(i, 1);
+										rState.rfs.splice(i, 1);
 									}}
 								>
-									<IconX class="size-5" />
+									{#if r.initValue === r.value}
+										<IconX class="size-5" />
+									{:else}
+										<IconCircle class="p-1 size-5 group-hover:hidden fill-current border-none" />
+										<IconX class="size-5 hidden group-hover:inline" />
+									{/if}
 								</button>
 							</div>
 						{/each}
@@ -85,9 +139,13 @@
 				<!-- TODO: complete functions for top btns -->
 				<div class="flex border border-primary/40">
 					<button
-						title={'save'}
-						class="size-8 p-0 flex justify-center items-center hover:bg-base-content/10"
-						onclick={() => {}}
+						title={'Save all'}
+						class="size-8 p-0 flex justify-center items-center cursor-pointer hover:bg-base-content/10"
+						onclick={() => {
+							for (const rf of rState.rfs) {
+								rState.saveRawFile(rf);
+							}
+						}}
 					>
 						<IconSaveAll class="size-5" />
 					</button>
@@ -97,10 +155,10 @@
 					>
 						<input type="checkbox" bind:checked={isRawFileMode} />
 						<div class="swap-on">
-							<IconForm class="size=5" />
+							<IconForm class="size-5" />
 						</div>
 						<div class="swap-off">
-							<IconFileTypeCorner class="size=5" />
+							<IconFileTypeCorner class="size-5" />
 						</div>
 					</label>
 					<label
@@ -109,15 +167,15 @@
 					>
 						<input type="checkbox" bind:checked={isLayoutRow} />
 						<div class="swap-on">
-							<IconLayoutRow class="size=5" />
+							<IconLayoutRow class="size-5" />
 						</div>
 						<div class="swap-off">
-							<IconLayoutCol class="size=5" />
+							<IconLayoutCol class="size-5" />
 						</div>
 					</label>
 					<button
 						title={'more'}
-						class="size-8 p-0 flex justify-center items-center hover:bg-base-content/10"
+						class="size-8 p-0 flex justify-center items-center cursor-pointer hover:bg-base-content/10"
 						onclick={() => {}}
 					>
 						<IconEllipsis class="size-5" />
@@ -133,11 +191,11 @@
 								<button
 									class="hover:underline hover:cursor-pointer"
 									onclick={() => {
-										fileExplorer.setSelectedFS(r);
 										fileExplorer.expandToItem(r);
+										fileExplorer.setSelectedFS(r);
 									}}
 								>
-									{@render fsItemDisplay(r)}
+									{@render fsDisplay(r)}
 								</button>
 								{#if i < routes.length - 1}
 									<IconChevronRight class="size-4 text-base-content/70" />
@@ -150,14 +208,16 @@
 		</div>
 		<!-- content -->
 		<!-- TODO: fill content of editor -->
-		<div class="grow">
-			{#if isRawFileMode}
-				<FileView bind:value={rawFile} />
-			{:else}
-				<div>Form Mode</div>
-				<div>{JSON.stringify(topItems, null, 2)}</div>
-				<div>{JSON.stringify(fileExplorer.getActivedFS(), null, 2)}</div>
-			{/if}
-		</div>
+		{#if !rState.curRf}{:else}
+			<div class="grow">
+				{#if isRawFileMode}
+					<FileView bind:value={rState.curRf.value} />
+				{:else}
+					<div>Form Mode</div>
+					<div>{JSON.stringify(rState.rfs, null, 2)}</div>
+					<div>{JSON.stringify(rState.curRf, null, 2)}</div>
+				{/if}
+			</div>
+		{/if}
 	{/if}
 </div>
