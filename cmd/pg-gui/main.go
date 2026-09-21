@@ -50,6 +50,7 @@ func main() {
 		},
 	})
 	app.RegisterService(application.NewService(service.NewPathSelectService(app)))
+	app.RegisterService(application.NewService(service.NewFileService()))
 	app.RegisterService(application.NewService(service.NewFileExploreService(app.Event)))
 
 	// Create a new window with the necessary options.

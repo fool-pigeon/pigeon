@@ -156,7 +156,7 @@
 			.then((val) => (fState.items = parseNodes(val)))
 			.catch((err) => console.error(err));
 	});
-	onDestroy(async () => {
+	onDestroy(() => {
 		Events.Off(MenuEvent.OpenCollection);
 	});
 
@@ -184,13 +184,16 @@
 						fState.selectItem(dirItem);
 						LoadSubsCached(node.path)
 							.then((val) => {
+								const target = fState.find(node.path);
+								if (!target) {
+									return;
+								}
 								if (openStates.get(node.path)) {
 									openStates.set(node.path, false);
 								} else {
 									openStates.set(node.path, true);
 								}
-								const target = fState.find(node.path);
-								if (target) target.sub = parseNodes(val);
+								target.sub = parseNodes(val);
 							})
 							.catch((err) => console.error('load cached sub:', err));
 					},
