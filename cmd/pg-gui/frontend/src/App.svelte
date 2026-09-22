@@ -3,6 +3,7 @@
 	import DynamicJoin, { NewPanel } from '@lib/components/base/DynamicJoin.svelte';
 	import Modal from '@lib/components/base/Modal.svelte';
 	import Editor from '@lib/components/editor/Editor.svelte';
+	import AlertNotify from '@lib/components/message/AlertNotify.svelte';
 	import FileExplorer from '@lib/components/navigation/FileExplorer.svelte';
 	import { WML } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
@@ -23,7 +24,7 @@
 </div>
 <Modal />
 <ContextMenu />
-
+<AlertNotify />
 {#snippet fileExplorer()}
 	<FileExplorer />
 {/snippet}
