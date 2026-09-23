@@ -9,25 +9,25 @@ type Request interface {
 }
 
 type TestRes struct {
-	Name   string
-	Passed bool
-	Err    error
+	Name   string `json:"name"`
+	Passed bool   `json:"passed"`
+	Err    error  `json:"err"`
 }
 
 // As the View Result of [Request.Run]
 type Result struct {
-	Success bool
-	ReqName string
+	Success bool   `json:"success"`
+	ReqName string `json:"reqName"`
 	// this means the tag of status,such as "2xx","4xx","5xx","err","failed"
-	Status string
+	Status string `json:"status"`
 	// the end-to-end duration between send request and received response
-	Duration time.Duration
+	Duration time.Duration `json:"duration"`
 	// results of test
-	Tests []TestRes
+	Tests []TestRes `json:"tests"`
 	// the raw content of response,e.g. [httpx.Response]
-	Raw any
+	Raw any `json:"raw"`
 	// this is default nil if not get error in context
-	Err error
+	Err error `json:"err"`
 }
 
 func (result *Result) SetSuccess(Success bool) *Result {
@@ -76,8 +76,8 @@ func ErrResult(reqName string, err error) Result {
 }
 
 type ReqMeta struct {
-	Name     string `toml:"name"`
-	Protocol string `toml:"protocol" comment:"'http'"`
+	Name     string `toml:"name" json:"name"`
+	Protocol string `toml:"protocol" comment:"'http'" json:"protocol"`
 }
 
 // ReqName implements [Request].

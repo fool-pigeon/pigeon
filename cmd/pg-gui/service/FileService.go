@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	"github.com/pelletier/go-toml/v2"
 )
 
 var (
@@ -112,28 +114,6 @@ func (f *FileService) IsSaved(path string) bool {
 	return !f.temp.hasKey(path)
 }
 
-// read file as string
-func (f *FileService) ReadText(path string) (string, error) {
-	b, err := f.read(path)
-	return string(b), err
-}
-
-// read original content as string
-func (f *FileService) ReadOriginalText(path string) (string, error) {
-	b, err := f.readOriginal(path)
-	return string(b), err
-}
-
-// write string to file
-func (f *FileService) WriteText(path string, text string) error {
-	return f.write(path, []byte(text))
-}
-
-// set string in [FileService.temp]
-func (f *FileService) StageText(path string, text string) error {
-	return f.stage(path, []byte(text))
-}
-
 // first read into cache and insert path to [FileService.openedPaths]
 func (f *FileService) open(path string) ([]byte, error) {
 	b, err := fsx.ReadFile(path)
@@ -220,5 +200,89 @@ func (f *FileService) close(path string) error {
 	f.temp.delete(path)
 	f.original.delete(path)
 	f.opendPaths = slices.DeleteFunc(f.opendPaths, func(p string) bool { return p == path })
+	return nil
+}
+
+// the wrapper of FileService
+type FileServiceWrapper[T any] interface {
+	Read(path string) (T, error)
+	ReadOriginal(path string) (T, error)
+	Write(path string, data T) error
+	Stage(path string, data T) error
+}
+
+// FileServiceWrapper[string]
+type TextFileService struct {
+	fs *FileService
+}
+
+func NewTextFileService(fs *FileService) *TextFileService {
+	return &TextFileService{fs}
+}
+func (t *TextFileService) Read(path string) (string, error) {
+	b, err := t.fs.read(path)
+	return string(b), err
+}
+
+func (t *TextFileService) ReadOriginal(path string) (string, error) {
+	b, err := t.fs.readOriginal(path)
+	return string(b), err
+}
+
+func (t *TextFileService) Write(path string, data string) error {
+	return t.fs.write(path, []byte(data))
+}
+
+func (t *TextFileService) Stage(path string, data string) error {
+	return t.fs.stage(path, []byte(data))
+}
+
+// FileServiceWrapper[http.ReqData]
+type HttpReqFileService struct {
+	fs *FileService
+}
+
+func NewHttpReqFileService(fs *FileService) *HttpReqFileService {
+	return &HttpReqFileService{fs}
+}
+func (r *HttpReqFileService) Read(path string) (*httpx.ReqData, error) {
+	b, err := r.fs.read(path)
+	if err != nil {
+		return nil, err
+	}
+	var req *httpx.ReqData
+	if err := toml.Unmarshal(b, req); err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+func (r *HttpReqFileService) ReadOriginal(path string) (*httpx.ReqData, error) {
+	b, err := r.fs.readOriginal(path)
+	if err != nil {
+		return nil, err
+	}
+	var req *httpx.ReqData
+	if err := toml.Unmarshal(b, req); err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+func (r *HttpReqFileService) Write(path string, data *httpx.ReqData) error {
+	b, err := toml.Marshal(data)
+	if err != nil {
+		return err
+	}
+	r.fs.write(path, b)
+	return nil
+}
+
+func (r *HttpReqFileService) Stage(path string, data *httpx.ReqData) error {
+	b, err := toml.Marshal(data)
+	if err != nil {
+		return err
+	}
+	r.fs.stage(path, b)
 	return nil
 }

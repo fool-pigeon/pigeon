@@ -19,23 +19,23 @@ import (
 type (
 	// type field of HTTP multipart/form-data
 	MultiField struct {
-		Name        string   `toml:"name"`
-		Values      []string `toml:"values"`
-		FileName    string   `toml:"file_name"`
-		FilePath    string   `toml:"file_path"`
-		ContentType string   `toml:"content_type"`
+		Name        string   `toml:"name" json:"name"`
+		Values      []string `toml:"values" json:"values"`
+		FileName    string   `toml:"file_name" json:"fileName"`
+		FilePath    string   `toml:"file_path" json:"filePath"`
+		ContentType string   `toml:"content_type" json:"contentType"`
 	}
 	Body struct {
 		// raw data
-		Raw string `toml:"raw,multiline" comment:"raw data"`
+		Raw string `toml:"raw,multiline" comment:"raw data" json:"raw"`
 		// multipart/form-data
-		Multipart []MultiField `toml:"multipart,multiline" comment:"list of multipart/form-data"`
+		Multipart []MultiField `toml:"multipart,multiline" comment:"list of multipart/form-data" json:"multipart"`
 		// x-www-form-url-encoded
-		Form url.Values `toml:"form,multiline" comment:"key-values of x-www-form-url-encoded"`
+		Form url.Values `toml:"form,multiline" comment:"key-values of x-www-form-url-encoded" json:"form"`
 		// file/binary path
-		Binary string `toml:"binary,multiline" comment:"the file/binary path"`
+		Binary string `toml:"binary,multiline" comment:"the file/binary path" json:"binary"`
 		// json,xml,text,or origin string value
-		ContentType string `toml:"content_type,omitempty" comment:"'json'|'xml'|'text',else keep origin"`
+		ContentType string `toml:"content_type,omitempty" comment:"'json'|'xml'|'text',else keep origin" json:"contentType"`
 	}
 
 	rDataError struct {
@@ -61,22 +61,22 @@ type (
 	// The request will be [resty.Request] when called [ReqData.InstancedRequest]
 	ReqData struct {
 		request.ReqMeta
-		Method      string            `toml:"mothod" comment:"GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS,TRACE,CONNECT"`
-		URL         string            `toml:"url"`
-		PathParams  map[string]string `toml:"path,omitempty,multiline"`
-		QueryParams url.Values        `toml:"query,omitempty,multiline"`
-		Header      http.Header       `toml:"header,omitempty,multiline"`
-		Body        Body              `toml:"body,omitempty"`
-		Desc        string            `toml:"desc,omitempty,multiline"`
-		Setting     Setting           `toml:"setting,omitempty"`
+		Method      string            `toml:"mothod" comment:"GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS,TRACE,CONNECT" json:"method"`
+		URL         string            `toml:"url" json:"url"`
+		PathParams  map[string]string `toml:"path,omitempty,multiline" json:"pathParams"`
+		QueryParams url.Values        `toml:"query,omitempty,multiline" json:"queryParams"`
+		Header      http.Header       `toml:"header,omitempty,multiline" json:"header"`
+		Body        Body              `toml:"body,omitempty" json:"body"`
+		Desc        string            `toml:"desc,omitempty,multiline" json:"desc"`
+		Setting     Setting           `toml:"setting,omitempty" json:"setting"`
 
 		// the expr script before send request,could set random data for request
-		PreReq string `toml:"pre_req,omitempty,multiline"`
+		PreReq string `toml:"pre_req,omitempty,multiline" json:"preReq"`
 
 		// the exprs whose the result value type is bool
 		// key is test's name
 		// value is expr expression
-		Tests map[string]string `toml:"tests,omitempty,multiline"`
+		Tests map[string]string `toml:"tests,omitempty,multiline" json:"tests"`
 
 		client *Client
 	}
