@@ -21,6 +21,7 @@ type NodeMode uint32
 const (
 	DirMode     NodeMode = 1 << iota // Directory: is a directory
 	ConfigDir                        // ConfigDir: the .pg/ directory
+	NormalDir                        // NormalDir: redundancy
 	FileMode                         // File: is a file
 	Request                          // Req: is a request file
 	HttpReq                          // HTTP:[httpx.ReqData]
@@ -70,6 +71,8 @@ func NewDirNode(path string, name string, pre ...*Node) *Node {
 	m := DirMode
 	if name == fsx.RootTagDirName {
 		m |= ConfigDir
+	} else {
+		m |= NormalDir
 	}
 	return NewNode(m, path, name, pre...)
 }
@@ -199,7 +202,7 @@ func (n *Node) DelSub(path string) {
 
 // first time to load the dir's subs
 func (n *Node) load() error {
-	if n.GetMode() != DirMode {
+	if !n.GetMode().IsDir() {
 		return nil
 	}
 	parent := n.GetPath()
@@ -242,7 +245,7 @@ func (n *Node) load() error {
 
 // reload dir's subs with the minimum modification
 func (n *Node) reload() error {
-	if n.GetMode() != DirMode {
+	if !n.GetMode().IsDir() {
 		return nil
 	}
 	if !n.Loaded() {
