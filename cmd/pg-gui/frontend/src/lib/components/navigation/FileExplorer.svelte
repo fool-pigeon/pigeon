@@ -397,29 +397,27 @@
 		{/if}
 		<!-- Icon for file -->
 	{:else if ModeContains(m, NodeMode.FileMode)}
-		{#if ModeContains(m, NodeMode.Request)}
-			{#if ModeContains(m, NodeMode.HttpGet)}
-				<span class="text-req-get">GET</span>
-			{:else if ModeContains(m, NodeMode.HttpPost)}
-				<span class="text-req-post">POST</span>
-			{:else if ModeContains(m, NodeMode.HttpPut)}
-				<span class="text-req-put">PUT</span>
-			{:else if ModeContains(m, NodeMode.HttpDelete)}
-				<span class="text-req-delete">DEL</span>
-			{:else if ModeContains(m, NodeMode.HttpHead)}
-				<span class="text-req-head">HEAD</span>
-			{:else if ModeContains(m, NodeMode.HttpPatch)}
-				<span class="text-req-patch">PATCH</span>
-			{:else if ModeContains(m, NodeMode.HttpOptions)}
-				<span class="text-req-options">OPT</span>
-			{:else if ModeContains(m, NodeMode.HttpTrace)}
-				<span class="text-req-trace">TRACE</span>
-			{:else if ModeContains(m, NodeMode.HttpConnect)}
-				<span class="text-req-connect">CON</span>
-				<!-- TODO: add more icon for req file -->
-			{:else}
-				<IconFile class="size-4 text-base-content/25" strokeWidth={1} nonScalingStroke />
-			{/if}
+		{#if ModeContains(m, NodeMode.HttpGet)}
+			<span class="text-req-get">GET</span>
+		{:else if ModeContains(m, NodeMode.HttpPost)}
+			<span class="text-req-post">POST</span>
+		{:else if ModeContains(m, NodeMode.HttpPut)}
+			<span class="text-req-put">PUT</span>
+		{:else if ModeContains(m, NodeMode.HttpDelete)}
+			<span class="text-req-delete">DEL</span>
+		{:else if ModeContains(m, NodeMode.HttpHead)}
+			<span class="text-req-head">HEAD</span>
+		{:else if ModeContains(m, NodeMode.HttpPatch)}
+			<span class="text-req-patch">PATCH</span>
+		{:else if ModeContains(m, NodeMode.HttpOptions)}
+			<span class="text-req-options">OPT</span>
+		{:else if ModeContains(m, NodeMode.HttpTrace)}
+			<span class="text-req-trace">TRACE</span>
+		{:else if ModeContains(m, NodeMode.HttpConnect)}
+			<span class="text-req-connect">CON</span>
+			<!-- TODO: add more icon for req file -->
+		{:else}
+			<IconFile class="size-4 text-base-content/25" strokeWidth={1} nonScalingStroke />
 		{/if}
 	{/if}
 {/snippet}
