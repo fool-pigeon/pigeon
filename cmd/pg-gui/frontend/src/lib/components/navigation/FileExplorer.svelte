@@ -4,15 +4,27 @@
 	export type FSItem = TreeItem<FSTag>;
 	const NewFSGroup = NewTreeGroup<FSTag>;
 	const NewFSLeaf = NewTreeLeaf<FSTag>;
-
+	const emptyFSItem = { id: '' } as FSItem;
 	class FileExplorerState {
 		items = $state<FSItem[]>([]);
-		selectedItem = $state<FSItem>({ id: '' } as FSItem);
+		selectedItem = $state<FSItem>(emptyFSItem);
 		activedItem = $state<FSItem>();
 		rootPathsToAdd = $state<string[]>([]);
 		selectedPath = $state<string>('');
 
-		selectItem(item: FSItem) {
+		reload() {
+			ReloadRootView()
+				.then((val) => {
+					this.items = parseNodes(val);
+					Events.Emit(DataEvent.FileExplorerLoaded);
+				})
+				.catch(msgAlert.error);
+		}
+		selectItem(item: FSItem | undefined) {
+			if (!item) {
+				this.selectedItem = emptyFSItem;
+				return;
+			}
 			this.selectedItem = item;
 			if (item.type === 'leaf') {
 				this.activedItem = item;
@@ -82,6 +94,7 @@
 	// remember the open states of folders
 	const openStates = new Map<string, boolean>();
 	export { fsItemDisplay };
+
 	export const fileExplorer = {
 		findRoutes: ((path?: string) => {
 			if (!path) {
@@ -89,6 +102,7 @@
 			}
 			return fState.findRoutes(path);
 		}).bind(fState),
+		find: fState.find.bind(fState),
 		getActivedFS: (() => fState.activedItem).bind(fState),
 		setActivedFS: ((item: FSItem | undefined) => {
 			fState.activedItem = item;
@@ -105,74 +119,10 @@
 			}
 		}).bind(fState),
 	};
-</script>
-
-<script lang="ts">
-	import { MenuEvent } from '@bindings/gui';
-	import TreeMenu, {
-		NewTreeGroup,
-		NewTreeLeaf,
-		type TreeItem,
-	} from '@components/base/TreeMenu.svelte';
-	import {
-		AddRoot,
-		DeleteNode,
-		AddNode,
-		LoadSubsCached,
-		ReloadSubsCached,
-		ReloadRootView,
-		ParseRootPaths,
-	} from '@services/fileexploreservice';
-	import { FSTag, FSType, type Node } from '@services/models';
-	import { Events } from '@wailsio/runtime';
-	import { onDestroy, onMount, untrack } from 'svelte';
-	import { modal } from '../base/Modal.svelte';
-	import { SelectFolder } from '@bindings/service/pathselectservice';
-	import { contextmenu } from '../base/ContextMenu.svelte';
-	// Import Icons
-	import IconLoaderCircle from '@lucide/svelte/icons/loader-circle';
-	import IconFolder from '@lucide/svelte/icons/folder';
-	import IconFolderCog from '@lucide/svelte/icons/folder-cog';
-	import IconFile from '@lucide/svelte/icons/file';
-	import IconRotateCw from '@lucide/svelte/icons/rotate-cw';
-	import IconFolderPlus from '@lucide/svelte/icons/folder-plus';
-	import IconFilePlusCorner from '@lucide/svelte/icons/file-plus-corner';
-	import IconCopyMinus from '@lucide/svelte/icons/copy-minus';
-
-	onMount(() => {
-		Events.On(MenuEvent.OpenCollection, () => {
-			SelectFolder()
-				.then((val) => {
-					fState.rootPathsToAdd = [];
-					fState.selectedPath = val;
-					modal.open(selectRootPathsModal, 'Open Collection');
-				})
-				.catch((err) => {
-					// TODO global message
-					console.error(err);
-				});
-		});
-		ReloadRootView()
-			.then((val) => (fState.items = parseNodes(val)))
-			.catch((err) => console.error(err));
-	});
-	onDestroy(() => {
-		Events.Off(MenuEvent.OpenCollection);
-	});
-
-	function deleteFSItem(path: string) {
-		DeleteNode(path)
-			.then(() => {
-				const pre = fState.findPre(path);
-				if (pre) pre.sub = pre.sub?.filter((s) => s.id !== path);
-			})
-			.catch((err) => console.error(err));
-	}
-
-	function parseNodes(nodes: FS[] | null | undefined): FSItem[] {
+	export function parseNodes(nodes: FS[] | null | undefined): FSItem[] {
 		return (nodes ?? []).filter((f) => f !== null).map(nodeToFSItem);
 	}
-	function nodeToFSItem(node: Node): FSItem {
+	export function nodeToFSItem(node: Node): FSItem {
 		if (FSType.DirType === node.type) {
 			const dirItem = NewFSGroup(node.path, node.name, {
 				sub: parseNodes(node.sub),
@@ -221,6 +171,67 @@
 			return fileItem;
 		}
 	}
+</script>
+
+<script lang="ts">
+	import { MenuEvent } from '@bindings/gui';
+	import TreeMenu, {
+		NewTreeGroup,
+		NewTreeLeaf,
+		type TreeItem,
+	} from '@components/base/TreeMenu.svelte';
+	import {
+		AddRoot,
+		DeleteNode,
+		AddNode,
+		LoadSubsCached,
+		ReloadSubsCached,
+		ReloadRootView,
+		ParseRootPaths,
+	} from '@services/fileexploreservice';
+	import { FSTag, FSType, type Node } from '@services/models';
+	import { Events } from '@wailsio/runtime';
+	import { onDestroy, onMount, untrack } from 'svelte';
+	import { modal } from '../base/Modal.svelte';
+	import { SelectFolder } from '@bindings/service/pathselectservice';
+	import { contextmenu } from '../base/ContextMenu.svelte';
+	// Import Icons
+	import IconLoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import IconFolder from '@lucide/svelte/icons/folder';
+	import IconFolderCog from '@lucide/svelte/icons/folder-cog';
+	import IconFile from '@lucide/svelte/icons/file';
+	import IconRotateCw from '@lucide/svelte/icons/rotate-cw';
+	import IconFolderPlus from '@lucide/svelte/icons/folder-plus';
+	import IconFilePlusCorner from '@lucide/svelte/icons/file-plus-corner';
+	import IconCopyMinus from '@lucide/svelte/icons/copy-minus';
+	import { msgAlert } from '../message/AlertNotify.svelte';
+	import { DataEvent } from '@lib/enum/events';
+
+	onMount(() => {
+		Events.On(MenuEvent.OpenCollection, () => {
+			SelectFolder()
+				.then((val) => {
+					fState.rootPathsToAdd = [];
+					fState.selectedPath = val;
+					modal.open(selectRootPathsModal, 'Open Collection');
+				})
+				.catch(msgAlert.error);
+		});
+		fState.reload();
+	});
+	onDestroy(() => {
+		Events.Off(MenuEvent.OpenCollection);
+	});
+
+	function deleteFSItem(path: string) {
+		DeleteNode(path)
+			.then(() => {
+				const pre = fState.findPre(path);
+				if (pre) pre.sub = pre.sub?.filter((s) => s.id !== path);
+			})
+			.catch((err) => console.error(err));
+	}
+
 	function addRootInModal() {
 		AddRoot(fState.rootPathsToAdd)
 			.then((val) => {

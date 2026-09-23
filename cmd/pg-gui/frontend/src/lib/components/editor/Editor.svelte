@@ -1,58 +1,57 @@
 <script lang="ts" module>
-	type RawFile = {
-		// original file content
-		initValue: string;
-		// current file content
-		value: string;
-		// meta of file
+	export type OpenedFS = {
 		fs: FSItem;
+		saved: boolean;
 	};
-	class RawFileState {
-		// raw files
-		rfs = $state<RawFile[]>([]);
-		// current selected raw file
-		curRf = $state<RawFile>();
+	class EditorState {
+		// state of opened files
+		ofs = $state<OpenedFS[]>([]);
+		// current fs
+		current = $state<OpenedFS>();
 
-		/**
-		 * return true if has the raw file whose fs.id equals path
-		 * @param path
-		 */
+		reload() {
+			GetOpenedState()
+				.then((val) => {
+					this.ofs = [];
+					for (const v of val ?? []) {
+						const fs = fileExplorer.find(v.path);
+						if (!fs) {
+							Close(v.path);
+							continue;
+						}
+						this.ofs.push({ fs, saved: v.saved });
+					}
+				})
+				.catch(msgAlert.error);
+		}
+		close(index: number) {
+			const of = this.ofs[index];
+			Close(of.fs.id)
+				.then(() => {
+					if (activedFS && activedFS.id === of.fs.id) {
+						this.selectCurrent(index > 0 ? this.ofs[index - 1] : this.ofs[index + 1]);
+					}
+					this.ofs.splice(index, 1);
+				})
+				.catch(msgAlert.error);
+		}
 		includesPath(path: string): boolean {
-			return this.rfs.some((r) => r.fs.id === path);
+			return this.ofs.some((v) => v.fs.id === path);
 		}
-		/**
-		 * get raw file from rfs whose fs.id equals path
-		 * @param path
-		 */
-		findRaw(path: string): RawFile | undefined {
-			return this.rfs.filter((r) => r.fs.id === path).at(0);
+		find(path: string): OpenedFS | undefined {
+			return this.ofs.filter((v) => v.fs.id === path).at(0);
 		}
-		/**
-		 * select rf if rf not undefined
-		 * @param rf
-		 */
-		selectCurrent(rf: RawFile | undefined) {
-			this.curRf = rf;
-			if (!rf) {
+		selectCurrent(of: OpenedFS | undefined) {
+			this.current = of;
+			if (!of) {
 				fileExplorer.setActivedFS(undefined);
 				return;
 			}
-			fileExplorer.expandToItem(rf.fs);
-			fileExplorer.setSelectedFS(rf.fs);
-		}
-		saveCurrent() {
-			if (!this.curRf) {
-				return;
-			}
-			this.saveRawFile(this.curRf);
-		}
-		saveRawFile(rf: RawFile) {
-			WriteFile(rf.fs.id, rf.value)
-				.then(() => (rf.initValue = rf.value))
-				.catch(console.error);
+			fileExplorer.expandToItem(of.fs);
+			fileExplorer.setSelectedFS(of.fs);
 		}
 	}
-	const rState = new RawFileState();
+	const eState = new EditorState();
 	let isRawFileMode = $state(false);
 	let isLayoutRow = $state(true);
 	let activedFS = $derived(fileExplorer.getActivedFS());
@@ -67,7 +66,14 @@
 	} from '../navigation/FileExplorer.svelte';
 	import ScrollFlex from '../base/ScrollFlex.svelte';
 	import FileView from './FileView.svelte';
-	import { ReadFile, WriteFile } from '@bindings/service/fileservice';
+	import {
+		Close,
+		CloseAll,
+		GetOpenedState,
+		Open,
+		Save,
+		SaveAll,
+	} from '@bindings/service/fileservice';
 	// Icons
 	import IconCircle from '@lucide/svelte/icons/circle';
 	import IconX from '@lucide/svelte/icons/x';
@@ -78,34 +84,39 @@
 	import IconEllipsis from '@lucide/svelte/icons/ellipsis';
 	import IconChevronRight from '@lucide/svelte/icons/chevron-right';
 	import IconSaveAll from '@lucide/svelte/icons/save-all';
+	import IconTriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import { onDestroy, onMount, untrack } from 'svelte';
+	import { msgAlert } from '../message/AlertNotify.svelte';
+	import { modal } from '../base/Modal.svelte';
 	import { Events } from '@wailsio/runtime';
 	import { MenuEvent } from '@bindings/gui';
+	import { DataEvent } from '@lib/enum/events';
 	onMount(() => {
-		Events.On(MenuEvent.Save, () => rState.saveCurrent());
+		Events.Once(DataEvent.FileExplorerLoaded, () => eState.reload());
 	});
-	onDestroy(() => {
-		Events.Off(MenuEvent.Save);
-	});
+	onDestroy(() => CloseAll());
 	$effect(() => {
 		if (!activedFS || activedFS.type === 'group') {
 			return;
 		}
-		if (untrack(() => rState.includesPath(activedFS.id))) {
+		if (untrack(() => eState.includesPath(activedFS.id))) {
+			const of = eState.find(activedFS.id);
+			if (of && eState.current !== of) {
+				eState.selectCurrent(of);
+			}
 			return;
 		}
-		ReadFile(activedFS.id)
-			.then((val) => {
-				const rf: RawFile = { initValue: val, value: val, fs: activedFS };
-				rState.rfs.push(rf);
-				rState.selectCurrent(rf);
+		Open(activedFS.id)
+			.then(() => {
+				eState.ofs.push({ fs: activedFS, saved: true });
+				eState.selectCurrent({ fs: activedFS, saved: true });
 			})
-			.catch(console.error);
+			.catch(msgAlert.error);
 	});
 </script>
 
 <div class="w-full h-full flex flex-col">
-	{#if !activedFS || activedFS.type === 'group'}
+	{#if eState.ofs.length <= 0}
 		<!-- TODO: user tips in editor -->
 		<div class="w-full h-full flex justify-center items-center text-2xl">
 			<div>Some tips like shortcuts and description here</div>
@@ -116,28 +127,67 @@
 			<div class="flex gap-1 justify-between">
 				<ScrollFlex>
 					{#snippet content()}
-						{#each rState.rfs as r, i (r.fs.id)}
+						{#each eState.ofs as of, i (of.fs.id)}
 							<div
 								role="button"
 								tabindex="0"
 								class="p-1 flex gap-0.5 items-center cursor-pointer
 									text-base-content/60 hover:text-primary hover:bg-base-300
-									{activedFS.id === r.fs.id ? 'bg-primary/30' : ''}"
+									{activedFS && activedFS.id === of.fs.id ? 'bg-primary/30' : ''}"
 								onkeydown={() => {}}
-								onclick={() => rState.selectCurrent(r)}
+								onclick={() => eState.selectCurrent(of)}
 							>
-								{@render fsDisplay(r.fs)}
+								{@render fsDisplay(of.fs)}
+								{#snippet UnsavedChange()}
+									<div class="p-2 flex flex-col">
+										<div class="p-1 flex items-center">
+											<IconTriangleAlert class="size-8 text-warning" />
+											<span class="text-2xl">Wait a moment..</span>
+										</div>
+										<div>You have unsaved changes in this file.</div>
+										<div class="mt-4 flex justify-between">
+											<button
+												class="rounded-none btn btn-error p-2"
+												onclick={() => {
+													eState.close(i);
+													modal.close();
+												}}
+											>
+												Not Save
+											</button>
+											<div class="flex gap-1">
+												<button
+													class="rounded-none btn btn-ghost p-2 hover:bg-base-content/30"
+													onclick={() => {
+														modal.close();
+													}}
+												>
+													Cancel
+												</button>
+												<button
+													class="rounded-none btn btn-info p-2 hover:btn-success"
+													onclick={() => {
+														Events.Emit(MenuEvent.Save);
+													}}
+												>
+													Save
+												</button>
+											</div>
+										</div>
+									</div>
+								{/snippet}
 								<button
 									class="p-0 size-5 btn btn-ghost btn-sm text-base-content/30 hover:btn-error group"
 									onclick={(e) => {
 										e.stopPropagation();
-										if (activedFS.id === r.fs.id) {
-											rState.selectCurrent(i > 0 ? rState.rfs[i - 1] : rState.rfs[i + 1]);
+										if (of.saved) {
+											eState.close(i);
+										} else {
+											modal.open(UnsavedChange, 'Unsaved Change');
 										}
-										rState.rfs.splice(i, 1);
 									}}
 								>
-									{#if r.initValue === r.value}
+									{#if of.saved}
 										<IconX class="size-5" />
 									{:else}
 										<IconCircle class="p-1 size-5 group-hover:hidden fill-current border-none" />
@@ -155,9 +205,12 @@
 						title={'Save all'}
 						class="size-8 p-0 flex justify-center items-center cursor-pointer hover:bg-base-content/10"
 						onclick={() => {
-							for (const rf of rState.rfs) {
-								rState.saveRawFile(rf);
-							}
+							SaveAll()
+								.then(() => {
+									eState.reload();
+									msgAlert.success('Saved all');
+								})
+								.catch(msgAlert.error);
 						}}
 					>
 						<IconSaveAll class="size-5" />
@@ -221,15 +274,17 @@
 		</div>
 		<!-- content -->
 		<!-- TODO: fill content of editor -->
-		{#if !rState.curRf}{:else}
+		{#if !eState.current}{:else}
 			<div class="grow">
-				{#if isRawFileMode}
-					<FileView bind:value={rState.curRf.value} />
-				{:else}
-					<div>Form Mode</div>
-					<div>{JSON.stringify(rState.rfs, null, 2)}</div>
-					<div>{JSON.stringify(rState.curRf, null, 2)}</div>
-				{/if}
+				{#key eState.current.fs.id}
+					{#if isRawFileMode}
+						<FileView bind:openedFS={eState.current} />
+					{:else}
+						<div>Form Mode</div>
+						<div>{JSON.stringify(eState.ofs, null, 2)}</div>
+						<div>{JSON.stringify(eState.current, null, 2)}</div>
+					{/if}
+				{/key}
 			</div>
 		{/if}
 	{/if}
