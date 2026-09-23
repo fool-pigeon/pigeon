@@ -1,9 +1,9 @@
 <script lang="ts" module>
 	type FS = Node | null;
 	// addtional data is FSTag
-	export type FSItem = TreeItem<FSTag>;
-	const NewFSGroup = NewTreeGroup<FSTag>;
-	const NewFSLeaf = NewTreeLeaf<FSTag>;
+	export type FSItem = TreeItem<NodeMode>;
+	const NewFSGroup = NewTreeGroup<NodeMode>;
+	const NewFSLeaf = NewTreeLeaf<NodeMode>;
 	const emptyFSItem = { id: '' } as FSItem;
 	class FileExplorerState {
 		items = $state<FSItem[]>([]);
@@ -123,8 +123,9 @@
 		return (nodes ?? []).filter((f) => f !== null).map(nodeToFSItem);
 	}
 	export function nodeToFSItem(node: Node): FSItem {
-		if (FSType.DirType === node.type) {
+		if (ModeContains(node.mode, NodeMode.DirMode)) {
 			const dirItem = NewFSGroup(node.path, node.name, {
+				additional: node.mode,
 				sub: parseNodes(node.sub),
 				isOpen: openStates.get(node.path),
 				snippet: fsItemDisplay,
@@ -157,7 +158,7 @@
 			return dirItem;
 		} else {
 			const fileItem = NewFSLeaf(node.path, node.name, {
-				additional: node.tag,
+				additional: node.mode,
 				snippet: fsItemDisplay,
 				on: {
 					onclick: () => fState.selectItem(fileItem),
@@ -189,7 +190,7 @@
 		ReloadRootView,
 		ParseRootPaths,
 	} from '@services/fileexploreservice';
-	import { FSTag, FSType, type Node } from '@services/models';
+	import { NodeMode, type Node } from '@services/models';
 	import { Events } from '@wailsio/runtime';
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { modal } from '../base/Modal.svelte';
@@ -206,6 +207,7 @@
 	import IconCopyMinus from '@lucide/svelte/icons/copy-minus';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { DataEvent } from '@lib/enum/events';
+	import { ModeContains } from '@lib/utils/asserts';
 
 	onMount(() => {
 		Events.On(MenuEvent.OpenCollection, () => {
@@ -378,36 +380,46 @@
 
 {#snippet fsItemDisplay(item: FSItem)}
 	<div title={item.id} class="flex gap-1 items-center">
-		{#if item.type === 'group'}
-			<!-- Icon for folder -->
-			{#if item.id.endsWith('.pg')}
-				<IconFolderCog class="size-4 text-base-content/80" strokeWidth={1} nonScalingStroke />
-			{:else}
-				<IconFolder class="size-4 text-base-content/80" strokeWidth={1} nonScalingStroke />
-			{/if}
-			<!-- Icon for file -->
-		{:else if item.additional === FSTag.HttpGet}
-			<span class="text-req-get">GET</span>
-		{:else if item.additional === FSTag.HttpPost}
-			<span class="text-req-post">POST</span>
-		{:else if item.additional === FSTag.HttpPut}
-			<span class="text-req-put">PUT</span>
-		{:else if item.additional === FSTag.HttpDelete}
-			<span class="text-req-delete">DEL</span>
-		{:else if item.additional === FSTag.HttpHead}
-			<span class="text-req-head">HEAD</span>
-		{:else if item.additional === FSTag.HttpPatch}
-			<span class="text-req-patch">PATCH</span>
-		{:else if item.additional === FSTag.HttpOptions}
-			<span class="text-req-options">OPT</span>
-		{:else if item.additional === FSTag.HttpTrace}
-			<span class="text-req-trace">TRACE</span>
-		{:else if item.additional === FSTag.HttpConnect}
-			<span class="text-req-connect">CON</span>
-			<!-- TODO: add more icon for req file -->
-		{:else}
-			<IconFile class="size-4 text-base-content/25" strokeWidth={1} nonScalingStroke />
-		{/if}
+		{@render nodeModeIcon(item.additional)}
 		{item.name}
 	</div>
+{/snippet}
+{#snippet nodeModeIcon(m?: NodeMode)}
+	{#if !m}
+		<span>Unkown</span>
+		<!-- Icon for folder -->
+	{:else if ModeContains(m, NodeMode.DirMode)}
+		<!-- config folder -->
+		{#if ModeContains(m, NodeMode.ConfigDir)}
+			<IconFolderCog class="size-4 text-base-content/80" strokeWidth={1} nonScalingStroke />
+		{:else}
+			<IconFolder class="size-4 text-base-content/80" strokeWidth={1} nonScalingStroke />
+		{/if}
+		<!-- Icon for file -->
+	{:else if ModeContains(m, NodeMode.FileMode)}
+		{#if ModeContains(m, NodeMode.Request)}
+			{#if ModeContains(m, NodeMode.HttpGet)}
+				<span class="text-req-get">GET</span>
+			{:else if ModeContains(m, NodeMode.HttpPost)}
+				<span class="text-req-post">POST</span>
+			{:else if ModeContains(m, NodeMode.HttpPut)}
+				<span class="text-req-put">PUT</span>
+			{:else if ModeContains(m, NodeMode.HttpDelete)}
+				<span class="text-req-delete">DEL</span>
+			{:else if ModeContains(m, NodeMode.HttpHead)}
+				<span class="text-req-head">HEAD</span>
+			{:else if ModeContains(m, NodeMode.HttpPatch)}
+				<span class="text-req-patch">PATCH</span>
+			{:else if ModeContains(m, NodeMode.HttpOptions)}
+				<span class="text-req-options">OPT</span>
+			{:else if ModeContains(m, NodeMode.HttpTrace)}
+				<span class="text-req-trace">TRACE</span>
+			{:else if ModeContains(m, NodeMode.HttpConnect)}
+				<span class="text-req-connect">CON</span>
+				<!-- TODO: add more icon for req file -->
+			{:else}
+				<IconFile class="size-4 text-base-content/25" strokeWidth={1} nonScalingStroke />
+			{/if}
+		{/if}
+	{/if}
 {/snippet}

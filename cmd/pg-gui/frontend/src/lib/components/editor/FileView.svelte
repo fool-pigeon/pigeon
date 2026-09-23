@@ -8,6 +8,7 @@
 	import { Events } from '@wailsio/runtime';
 	import { MenuEvent } from '@bindings/gui';
 	import { TextFileService } from '@services';
+	import { fileExplorer } from '../navigation/FileExplorer.svelte';
 	type Prop = {
 		openedFS: OpenedFS;
 	};
@@ -29,7 +30,12 @@
 			Events.On(MenuEvent.Save, () => {
 				const fs = openedFS.fs;
 				TextFileService.Write(fs.id, temp)
-					.then(() => {
+					.then((m) => {
+						const fsItem = fileExplorer.find(openedFS.fs.id);
+						if (fsItem) {
+							fs.additional = m;
+						}
+						openedFS.fs.additional = m;
 						original = temp;
 						msgAlert.success(`Saved ${fs.name} Successfully`);
 					})
@@ -57,7 +63,7 @@
 		view.destroy();
 		Events.Off(MenuEvent.Save);
 		if (!openedFS.saved) {
-			TextFileService.Stage(openedFS.fs.id, temp);
+			TextFileService.Stage(openedFS.fs.id, temp).then((m) => (openedFS.fs.additional = m));
 		}
 	});
 	$effect(() => {

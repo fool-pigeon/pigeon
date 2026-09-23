@@ -16,37 +16,37 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-type FSType int
+type NodeMode uint32
 
 const (
-	TypeUnkown FSType = iota
-	DirType
-	FileType
+	DirMode     NodeMode = 1 << iota // Directory: is a directory
+	ConfigDir                        // ConfigDir: the .pg/ directory
+	FileMode                         // File: is a file
+	Request                          // Req: is a request file
+	HttpReq                          // HTTP:[httpx.ReqData]
+	HttpGet                          // GET: http GET Method
+	HttpHead                         // HEAD: http HEAD Mehtod
+	HttpPost                         // POST: http POST Method
+	HttpPut                          // PUT: http PUT Method
+	HttpPatch                        // PATCH: http PATCH Method
+	HttpDelete                       // DELETE: http DELETE Method
+	HttpConnect                      // CONNECT: http CONNECT Method
+	HttpOptions                      // OPTIONS: http OPTIONS Method
+	HttpTrace                        // TRACE: http TRACE Method
 )
 
-// identify file content type
-type FSTag int
-
-const (
-	Unkown FSTag = iota
-
-	HttpGet
-	HttpHead
-	HttpPost
-	HttpPut
-	HttpPatch
-	HttpDelete
-	HttpConnect
-	HttpOptions
-	HttpTrace
-)
+func (m NodeMode) HasRole(role NodeMode) bool {
+	return m&role != 0
+}
+func (m NodeMode) IsDir() bool {
+	return m&DirMode != 0
+}
 
 type Node struct {
-	Type FSType `json:"type"`
-	Path string `json:"path"`
+	Mode NodeMode `json:"mode"`
+	Path string   `json:"path"`
 
 	Name string `json:"name"`
-	Tag  FSTag  `json:"tag"`
 
 	// for cache view
 	SubCache []*Node `json:"sub"`
@@ -60,27 +60,29 @@ type Node struct {
 	mu sync.RWMutex
 }
 
+func NewNode(mode NodeMode, path string, name string, pre ...*Node) *Node {
+	if len(pre) > 0 {
+		return &Node{Path: path, Name: name, Mode: mode, pre: pre[0]}
+	}
+	return &Node{Path: path, Name: name, Mode: mode}
+}
 func NewDirNode(path string, name string, pre ...*Node) *Node {
-	if len(pre) > 0 {
-		return &Node{Type: DirType, Path: path, Name: name, pre: pre[0]}
+	m := DirMode
+	if name == fsx.RootTagDirName {
+		m |= ConfigDir
 	}
-	return &Node{Type: DirType, Path: path, Name: name}
+	return NewNode(m, path, name, pre...)
 }
-func NewFileNode(path string, name string, tag FSTag, pre ...*Node) *Node {
-	if len(pre) > 0 {
-		return &Node{Type: FileType, Path: path, Name: name, Tag: tag, pre: pre[0]}
-	}
-	return &Node{Type: FileType, Path: path, Name: name, Tag: tag}
-}
-func (n *Node) GetType() FSType {
+
+func (n *Node) GetMode() NodeMode {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
-	return n.Type
+	return n.Mode
 }
-func (n *Node) SetType(t FSType) *Node {
+func (n *Node) SetMode(t NodeMode) *Node {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	n.Type = t
+	n.Mode = t
 	return n
 }
 func (n *Node) GetPath() string {
@@ -103,17 +105,6 @@ func (n *Node) SetName(name string) *Node {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	n.Name = name
-	return n
-}
-func (n *Node) GetTag() FSTag {
-	n.mu.RLock()
-	defer n.mu.RUnlock()
-	return n.Tag
-}
-func (n *Node) SetTag(tag FSTag) *Node {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	n.Tag = tag
 	return n
 }
 func (n *Node) Loaded() bool {
@@ -208,7 +199,7 @@ func (n *Node) DelSub(path string) {
 
 // first time to load the dir's subs
 func (n *Node) load() error {
-	if n.GetType() != DirType {
+	if n.GetMode() != DirMode {
 		return nil
 	}
 	parent := n.GetPath()
@@ -237,7 +228,10 @@ func (n *Node) load() error {
 			b, _ := fsx.ReadFile(path)
 			mu.Lock()
 			defer mu.Unlock()
-			subs[path] = NewFileNode(path, d.Name(), getTag(b), n)
+			if _, ok := subs[path]; ok {
+				return
+			}
+			subs[path] = NewNode(getFileMode(b), path, d.Name(), n)
 		})
 	}
 	wg.Wait()
@@ -248,7 +242,7 @@ func (n *Node) load() error {
 
 // reload dir's subs with the minimum modification
 func (n *Node) reload() error {
-	if n.GetType() != DirType {
+	if n.GetMode() != DirMode {
 		return nil
 	}
 	if !n.Loaded() {
@@ -286,7 +280,10 @@ func (n *Node) reload() error {
 			b, _ := fsx.ReadFile(path)
 			mu.Lock()
 			defer mu.Unlock()
-			subs[path] = NewFileNode(path, d.Name(), getTag(b), n)
+			if _, ok := subs[path]; ok {
+				return
+			}
+			subs[path] = NewNode(getFileMode(b), path, d.Name(), n)
 		})
 	}
 	wg.Wait()
@@ -311,10 +308,8 @@ func (n *Node) updateCache() {
 	n.mu.RUnlock()
 
 	slices.SortFunc(subs, func(a *Node, b *Node) int {
-		if type1, type2 := a.GetType(), b.GetType(); type1 != type2 {
-			return int(type1) - int(type2)
-		} else if tag1, tag2 := a.GetTag(), b.GetTag(); tag1 != tag2 {
-			return int(tag1) - int(tag2)
+		if m1, m2 := a.GetMode(), b.GetMode(); m1 != m2 {
+			return int(m1) - int(m2)
 		} else {
 			return strings.Compare(a.GetName(), b.GetName())
 		}
@@ -323,36 +318,49 @@ func (n *Node) updateCache() {
 	n.SetSubsCache(subs)
 }
 
-// switch tag
-func getTag(b []byte) FSTag {
+// parse FSType from file content
+func getFileMode(b []byte) NodeMode {
+	res := FileMode
+	// parse if it is a request file
 	var reqMeta request.ReqMeta
-	toml.Unmarshal(b, &reqMeta)
-	switch reqMeta.ReqProtocol() {
-	case request.P_HTTP:
-		var httpReq httpx.ReqData
-		toml.Unmarshal(b, &httpReq)
-		switch httpReq.Method {
-		case httpx.MethodGet:
-			return HttpGet
-		case httpx.MethodPost:
-			return HttpPost
-		case httpx.MethodPut:
-			return HttpPut
-		case httpx.MethodDelete:
-			return HttpDelete
-		case httpx.MethodPatch:
-			return HttpPatch
-		case httpx.MethodHead:
-			return HttpHead
-		case httpx.MethodOptions:
-			return HttpOptions
-		case httpx.MethodTrace:
-			return HttpTrace
-		case httpx.MethodConnect:
-			return HttpConnect
+	if err := toml.Unmarshal(b, &reqMeta); err == nil {
+		// add Request flag
+		res |= Request
+		switch reqMeta.ReqProtocol() {
+		case request.P_HTTP:
+			// add HTTP flag
+			var httpReq httpx.ReqData
+			toml.Unmarshal(b, &httpReq)
+			res |= parseModeFromHttpReq(&httpReq)
 		}
+		return res
 	}
-	return Unkown
+
+	return res
+}
+func parseModeFromHttpReq(req *httpx.ReqData) NodeMode {
+	res := HttpReq
+	switch req.Method {
+	case httpx.MethodGet:
+		res |= HttpGet
+	case httpx.MethodPost:
+		res |= HttpPost
+	case httpx.MethodPut:
+		res |= HttpPut
+	case httpx.MethodDelete:
+		res |= HttpDelete
+	case httpx.MethodPatch:
+		res |= HttpPatch
+	case httpx.MethodHead:
+		res |= HttpHead
+	case httpx.MethodOptions:
+		res |= HttpOptions
+	case httpx.MethodTrace:
+		res |= HttpTrace
+	case httpx.MethodConnect:
+		res |= HttpConnect
+	}
+	return res
 }
 
 var (
@@ -368,7 +376,7 @@ type FileExploreService struct {
 }
 
 func NewFileExploreService(em *application.EventManager) *FileExploreService {
-	return &FileExploreService{root: &Node{Type: DirType}, em: em}
+	return &FileExploreService{root: &Node{Mode: DirMode}, em: em}
 }
 
 // ServiceStartup implements [application.ServiceStartup].

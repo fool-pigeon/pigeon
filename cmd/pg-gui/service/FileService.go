@@ -207,8 +207,8 @@ func (f *FileService) close(path string) error {
 type FileServiceWrapper[T any] interface {
 	Read(path string) (T, error)
 	ReadOriginal(path string) (T, error)
-	Write(path string, data T) error
-	Stage(path string, data T) error
+	Write(path string, data T) (NodeMode, error)
+	Stage(path string, data T) (NodeMode, error)
 }
 
 // FileServiceWrapper[string]
@@ -229,12 +229,18 @@ func (t *TextFileService) ReadOriginal(path string) (string, error) {
 	return string(b), err
 }
 
-func (t *TextFileService) Write(path string, data string) error {
-	return t.fs.write(path, []byte(data))
+func (t *TextFileService) Write(path string, data string) (NodeMode, error) {
+	if err := t.fs.write(path, []byte(data)); err != nil {
+		return 0, err
+	}
+	return getFileMode([]byte(data)), nil
 }
 
-func (t *TextFileService) Stage(path string, data string) error {
-	return t.fs.stage(path, []byte(data))
+func (t *TextFileService) Stage(path string, data string) (NodeMode, error) {
+	if err := t.fs.stage(path, []byte(data)); err != nil {
+		return 0, err
+	}
+	return getFileMode([]byte(data)), nil
 }
 
 // FileServiceWrapper[http.ReqData]
@@ -269,20 +275,20 @@ func (r *HttpReqFileService) ReadOriginal(path string) (*httpx.ReqData, error) {
 	return req, nil
 }
 
-func (r *HttpReqFileService) Write(path string, data *httpx.ReqData) error {
+func (r *HttpReqFileService) Write(path string, data *httpx.ReqData) (NodeMode, error) {
 	b, err := toml.Marshal(data)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	r.fs.write(path, b)
-	return nil
+	return FileMode | Request | parseModeFromHttpReq(data), nil
 }
 
-func (r *HttpReqFileService) Stage(path string, data *httpx.ReqData) error {
+func (r *HttpReqFileService) Stage(path string, data *httpx.ReqData) (NodeMode, error) {
 	b, err := toml.Marshal(data)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	r.fs.stage(path, b)
-	return nil
+	return FileMode | Request | parseModeFromHttpReq(data), nil
 }
