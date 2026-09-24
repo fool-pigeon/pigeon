@@ -10,13 +10,13 @@
 		current = $state<OpenedFS>();
 
 		reload() {
-			GetOpenedState()
+			FileService.GetOpenedState()
 				.then((val) => {
 					this.ofs = [];
 					for (const v of val ?? []) {
 						const fs = fileExplorer.find(v.path);
 						if (!fs) {
-							Close(v.path);
+							FileService.Close(v.path);
 							continue;
 						}
 						this.ofs.push({ fs, saved: v.saved });
@@ -26,7 +26,7 @@
 		}
 		close(index: number) {
 			const of = this.ofs[index];
-			Close(of.fs.id)
+			FileService.Close(of.fs.id)
 				.then(() => {
 					if (activedFS && activedFS.id === of.fs.id) {
 						this.selectCurrent(index > 0 ? this.ofs[index - 1] : this.ofs[index + 1]);
@@ -52,28 +52,13 @@
 		}
 	}
 	const eState = new EditorState();
-	let isRawFileMode = $state(false);
-	let isLayoutRow = $state(true);
+	let isRawMode = $state(false);
+	let isFlexRow = $state(true);
 	let activedFS = $derived(fileExplorer.getActivedFS());
 	let routes = $derived(fileExplorer.findRoutes(activedFS?.id));
 </script>
 
 <script lang="ts">
-	import {
-		fileExplorer,
-		fsItemDisplay as fsDisplay,
-		type FSItem,
-	} from '../navigation/FileExplorer.svelte';
-	import ScrollFlex from '../base/ScrollFlex.svelte';
-	import FileView from './FileView.svelte';
-	import {
-		Close,
-		CloseAll,
-		GetOpenedState,
-		Open,
-		Save,
-		SaveAll,
-	} from '@bindings/service/fileservice';
 	// Icons
 	import IconCircle from '@lucide/svelte/icons/circle';
 	import IconX from '@lucide/svelte/icons/x';
@@ -85,6 +70,10 @@
 	import IconChevronRight from '@lucide/svelte/icons/chevron-right';
 	import IconSaveAll from '@lucide/svelte/icons/save-all';
 	import IconTriangleAlert from '@lucide/svelte/icons/triangle-alert';
+
+	import { FileService } from '@services';
+	import { fileExplorer, fsItemDisplay, type FSItem } from '../navigation/FileExplorer.svelte';
+	import ScrollFlex from '../base/ScrollFlex.svelte';
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { modal } from '../base/Modal.svelte';
@@ -93,11 +82,12 @@
 	import { DataEvent } from '@lib/enum/events';
 	import { ModeContains } from '@lib/utils/asserts';
 	import { NodeMode } from '@bindings/service';
+	import FileView from './FileView.svelte';
 	import HttpReqView from './HttpReqView.svelte';
 	onMount(() => {
 		Events.Once(DataEvent.FileExplorerLoaded, () => eState.reload());
 	});
-	onDestroy(() => CloseAll());
+	onDestroy(() => FileService.CloseAll());
 	$effect(() => {
 		if (!activedFS || activedFS.type === 'group') {
 			return;
@@ -109,7 +99,7 @@
 			}
 			return;
 		}
-		Open(activedFS.id)
+		FileService.Open(activedFS.id)
 			.then(() => {
 				eState.ofs.push({ fs: activedFS, saved: true });
 				eState.selectCurrent({ fs: activedFS, saved: true });
@@ -128,6 +118,7 @@
 		<div class="select-none">
 			<!-- top bar nav -->
 			<div class="flex gap-1 justify-between">
+				<!-- top bar file list -->
 				<ScrollFlex>
 					{#snippet content()}
 						{#each eState.ofs as of, i (of.fs.id)}
@@ -140,7 +131,7 @@
 								onkeydown={() => {}}
 								onclick={() => eState.selectCurrent(of)}
 							>
-								{@render fsDisplay(of.fs)}
+								{@render fsItemDisplay(of.fs)}
 								{#snippet UnsavedChange()}
 									<div class="p-2 flex flex-col">
 										<div class="p-1 flex items-center">
@@ -154,27 +145,20 @@
 												onclick={() => {
 													eState.close(i);
 													modal.close();
-												}}
+												}}>Not Save</button
 											>
-												Not Save
-											</button>
 											<div class="flex gap-1">
 												<button
 													class="rounded-none btn btn-ghost p-2 hover:bg-base-content/30"
-													onclick={() => {
-														modal.close();
-													}}
+													onclick={() => modal.close()}>Cancel</button
 												>
-													Cancel
-												</button>
 												<button
 													class="rounded-none btn btn-info p-2 hover:btn-success"
 													onclick={() => {
 														Events.Emit(MenuEvent.Save);
-													}}
+														// FIXME: should close after saved
+													}}>Save</button
 												>
-													Save
-												</button>
 											</div>
 										</div>
 									</div>
@@ -185,9 +169,9 @@
 										e.stopPropagation();
 										if (of.saved) {
 											eState.close(i);
-										} else {
-											modal.open(UnsavedChange, 'Unsaved Change');
+											return;
 										}
+										modal.open(UnsavedChange, 'Unsaved Change');
 									}}
 								>
 									{#if of.saved}
@@ -208,7 +192,7 @@
 						title={'Save all'}
 						class="size-8 p-0 flex justify-center items-center cursor-pointer hover:bg-base-content/10"
 						onclick={() => {
-							SaveAll()
+							FileService.SaveAll()
 								.then(() => {
 									eState.reload();
 									msgAlert.success('Saved all');
@@ -219,10 +203,10 @@
 						<IconSaveAll class="size-5" />
 					</button>
 					<label
-						title={isRawFileMode ? 'To form mode' : 'To file mode'}
+						title={isRawMode ? 'To form mode' : 'To file mode'}
 						class="size-8 swap swap-rotate hover:bg-base-content/10"
 					>
-						<input type="checkbox" bind:checked={isRawFileMode} />
+						<input type="checkbox" bind:checked={isRawMode} />
 						<div class="swap-on">
 							<IconForm class="size-5" />
 						</div>
@@ -231,10 +215,10 @@
 						</div>
 					</label>
 					<label
-						title={isLayoutRow ? 'To column layout' : 'To row layout'}
+						title={isFlexRow ? 'To column layout' : 'To row layout'}
 						class="size-8 swap swap-rotate hover:bg-base-content/10"
 					>
-						<input type="checkbox" bind:checked={isLayoutRow} />
+						<input type="checkbox" bind:checked={isFlexRow} />
 						<div class="swap-on">
 							<IconLayoutRow class="size-5" />
 						</div>
@@ -264,7 +248,7 @@
 										fileExplorer.setSelectedFS(r);
 									}}
 								>
-									{@render fsDisplay(r)}
+									{@render fsItemDisplay(r)}
 								</button>
 								{#if i < routes.length - 1}
 									<IconChevronRight class="size-4 text-base-content/70" />
@@ -280,7 +264,7 @@
 		{#if !eState.current}{:else}
 			<div class="grow">
 				{#key eState.current.fs.id}
-					{#if isRawFileMode}
+					{#if isRawMode}
 						<FileView bind:openedFS={eState.current} />
 					{:else if !eState.current.fs.additional}
 						<div>Unkown File</div>
