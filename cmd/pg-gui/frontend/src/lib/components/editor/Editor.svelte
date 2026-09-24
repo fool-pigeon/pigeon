@@ -265,7 +265,7 @@
 			<div class="grow">
 				{#key eState.current.fs.id}
 					{#if isRawMode}
-						<FileView bind:openedFS={eState.current} />
+						<FileView bind:cur={eState.current} />
 					{:else if !eState.current.fs.additional}
 						<div>Unkown File</div>
 					{:else if ModeContains(eState.current.fs.additional, NodeMode.HttpReq)}

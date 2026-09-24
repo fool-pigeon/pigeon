@@ -8,6 +8,7 @@
 	import { onMount } from 'svelte';
 	import { modal } from '../base/Modal.svelte';
 	import { msgAlert } from '../message/AlertNotify.svelte';
+	import Loading from '../base/Loading.svelte';
 	type Prop = { afterLoadFunc: (rootPaths: string[]) => void };
 	let { afterLoadFunc }: Prop = $props();
 
@@ -28,8 +29,8 @@
 
 {#snippet openCollection()}
 	{#await FileExploreService.ParseRootPaths(searchPath)}
-		<div class="h-30 w-full flex justify-center items-center">
-			<IconLoaderCircle class="absolute size-10 animate-spin" strokeWidth={2} nonScalingStroke />
+		<div class="w-full h-30">
+			<Loading />
 		</div>
 	{:then paths}
 		{#if paths !== null && paths.length > 0}

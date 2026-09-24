@@ -9,66 +9,58 @@
 	import { MenuEvent } from '@bindings/gui';
 	import { TextFileService } from '@services';
 	import { fileExplorer } from '../navigation/FileExplorer.svelte';
+	import CMWrapper from '../form/CMWrapper.svelte';
 	type Prop = {
-		openedFS: OpenedFS;
+		cur: OpenedFS;
 	};
-	let { openedFS = $bindable<OpenedFS>() }: Prop = $props();
+	let { cur = $bindable<OpenedFS>() }: Prop = $props();
 	// original file content
 	let original = $state('');
 	// temp file content
 	let temp = $state('');
-	let el: HTMLDivElement;
-	let view: EditorView;
-	onMount(async () => {
-		await Promise.allSettled([
-			TextFileService.Read(openedFS.fs.id)
-				.then((v) => (temp = v))
-				.catch(msgAlert.error),
-			TextFileService.ReadOriginal(openedFS.fs.id)
-				.then((v) => (original = v))
-				.catch(msgAlert.error),
-			Events.On(MenuEvent.Save, () => {
-				const fs = openedFS.fs;
-				TextFileService.Write(fs.id, temp)
-					.then((m) => {
-						const fsItem = fileExplorer.find(openedFS.fs.id);
-						if (fsItem) {
-							fs.additional = m;
-						}
-						openedFS.fs.additional = m;
-						original = temp;
-						msgAlert.success(`Saved ${fs.name} Successfully`);
-					})
-					.catch(msgAlert.error);
-			}),
-		]);
-		view = new EditorView({
-			doc: temp,
-			parent: el,
-			extensions: [
-				basicSetup,
-				keymap.of([indentWithTab, ...defaultKeymap]),
-				EditorView.updateListener.of((u) => {
-					if (u.docChanged) {
-						temp = u.state.doc.toString();
+	onMount(() => {
+		const unregister = Events.On(MenuEvent.Save, () =>
+			TextFileService.Write(cur.fs.id, temp)
+				.then((m) => {
+					const fsItem = fileExplorer.find(cur.fs.id);
+					if (fsItem) {
+						fsItem.additional = m;
 					}
-				}),
-				EditorView.baseTheme({
-					'&': { height: '100%' },
-				}),
-			],
-		});
-	});
-	onDestroy(() => {
-		view.destroy();
-		Events.Off(MenuEvent.Save);
-		if (!openedFS.saved) {
-			TextFileService.Stage(openedFS.fs.id, temp).then((m) => (openedFS.fs.additional = m));
-		}
+					cur.fs.additional = m;
+					original = temp;
+					msgAlert.success(`Saved ${cur.fs.name} Successfully`);
+				})
+				.catch(msgAlert.error),
+		);
+		return () => {
+			unregister();
+			if (!cur.saved) {
+				TextFileService.Stage(cur.fs.id, temp).then((m) => (cur.fs.additional = m));
+			}
+		};
 	});
 	$effect(() => {
-		openedFS.saved = original === temp;
+		cur.saved = original === temp;
 	});
 </script>
 
-<div class="w-full h-full" bind:this={el}></div>
+{#await Promise.allSettled([TextFileService.Read(cur.fs.id)
+		.then((v) => (temp = v))
+		.catch(msgAlert.error), TextFileService.ReadOriginal(cur.fs.id)
+		.then((v) => (original = v))
+		.catch(msgAlert.error)]) then}
+	<CMWrapper
+		bind:value={temp}
+		viewInitFunc={() => {
+			return new EditorView({
+				extensions: [
+					basicSetup,
+					keymap.of([indentWithTab, ...defaultKeymap]),
+					EditorView.baseTheme({
+						'&': { height: '100%' },
+					}),
+				],
+			});
+		}}
+	/>
+{/await}
