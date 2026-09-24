@@ -6,9 +6,8 @@
 	class EditorState {
 		// state of opened files
 		ofs = $state<OpenedFS[]>([]);
-		// current fs
-		current = $state<OpenedFS>();
-
+		// current fs index
+		index = $state(-1);
 		reload() {
 			FileService.GetOpenedState()
 				.then((val) => {
@@ -24,29 +23,33 @@
 				})
 				.catch(msgAlert.error);
 		}
-		close(index: number) {
-			const of = this.ofs[index];
+		close(i: number) {
+			const of = this.ofs[i];
 			FileService.Close(of.fs.id)
 				.then(() => {
-					if (activedFS && activedFS.id === of.fs.id) {
-						this.selectCurrent(index > 0 ? this.ofs[index - 1] : this.ofs[index + 1]);
+					this.ofs.splice(i, 1);
+					if (i===this.index) {
+						this.selectCurrent(i > 0 ? i - 1 : i + 1);
+					}else if (i<this.index){
+						this.selectCurrent(this.index-1)
 					}
-					this.ofs.splice(index, 1);
 				})
 				.catch(msgAlert.error);
 		}
 		includesPath(path: string): boolean {
 			return this.ofs.some((v) => v.fs.id === path);
 		}
-		find(path: string): OpenedFS | undefined {
-			return this.ofs.filter((v) => v.fs.id === path).at(0);
+		findIndex(path: string): number {
+			return this.ofs.findIndex((v) => v.fs.id === path);
 		}
-		selectCurrent(of: OpenedFS | undefined) {
-			this.current = of;
-			if (!of) {
+		selectCurrent(index: number) {
+			if (index < 0 || index >= this.ofs.length) {
 				fileExplorer.setActivedFS(undefined);
+				this.index = -1;
 				return;
 			}
+			this.index = index;
+			const of = this.ofs[index];
 			fileExplorer.expandToItem(of.fs);
 			fileExplorer.setSelectedFS(of.fs);
 		}
@@ -93,16 +96,16 @@
 			return;
 		}
 		if (untrack(() => eState.includesPath(activedFS.id))) {
-			const of = eState.find(activedFS.id);
-			if (of && eState.current !== of) {
-				eState.selectCurrent(of);
+			const i = untrack(()=>eState.findIndex(activedFS.id));
+			if (i >= 0 && eState.index !== i) {
+				eState.selectCurrent(i);
 			}
 			return;
 		}
 		FileService.Open(activedFS.id)
 			.then(() => {
 				eState.ofs.push({ fs: activedFS, saved: true });
-				eState.selectCurrent({ fs: activedFS, saved: true });
+				eState.selectCurrent(eState.ofs.length-1);
 			})
 			.catch(msgAlert.error);
 	});
@@ -129,7 +132,7 @@
 									text-base-content/60 hover:text-primary hover:bg-base-300
 									{activedFS && activedFS.id === of.fs.id ? 'bg-primary/30' : ''}"
 								onkeydown={() => {}}
-								onclick={() => eState.selectCurrent(of)}
+								onclick={() => eState.selectCurrent(i)}
 							>
 								{@render fsItemDisplay(of.fs)}
 								{#snippet UnsavedChange()}
@@ -261,19 +264,20 @@
 		</div>
 		<!-- content -->
 		<!-- TODO: fill content of editor -->
-		{#if !eState.current}{:else}
-			<div class="grow">
-				{#key eState.current.fs.id}
+		{#if eState.index < 0 || eState.index > eState.ofs.length}{:else}
+		<!-- FOR TEST -->
+		<div>Form Mode</div>
+		<div>{JSON.stringify(eState.index, null, 2)}</div>
+		<div>{JSON.stringify(eState.ofs[eState.index], null, 2)}</div>
+		<div class="grow">
+			{let mode=$derived(eState.ofs[eState.index].fs.additional)}
+			{#key eState.index}
 					{#if isRawMode}
-						<FileView bind:cur={eState.current} />
-					{:else if !eState.current.fs.additional}
+						<FileView bind:cur={eState.ofs[eState.index]} />
+						{:else if !mode}
 						<div>Unkown File</div>
-					{:else if ModeContains(eState.current.fs.additional, NodeMode.HttpReq)}
-						<HttpReqView bind:cur={eState.current} />
-					{:else}
-						<div>Form Mode</div>
-						<div>{JSON.stringify(eState.ofs, null, 2)}</div>
-						<div>{JSON.stringify(eState.current, null, 2)}</div>
+						{:else if ModeContains(mode, NodeMode.HttpReq)}
+						<HttpReqView bind:cur={eState.ofs[eState.index]} />
 					{/if}
 				{/key}
 			</div>
