@@ -91,6 +91,9 @@
 	import { Events } from '@wailsio/runtime';
 	import { MenuEvent } from '@bindings/gui';
 	import { DataEvent } from '@lib/enum/events';
+	import { ModeContains } from '@lib/utils/asserts';
+	import { NodeMode } from '@bindings/service';
+	import HttpReqView from './HttpReqView.svelte';
 	onMount(() => {
 		Events.Once(DataEvent.FileExplorerLoaded, () => eState.reload());
 	});
@@ -279,6 +282,10 @@
 				{#key eState.current.fs.id}
 					{#if isRawFileMode}
 						<FileView bind:openedFS={eState.current} />
+					{:else if !eState.current.fs.additional}
+						<div>Unkown File</div>
+					{:else if ModeContains(eState.current.fs.additional, NodeMode.HttpReq)}
+						<HttpReqView bind:cur={eState.current} />
 					{:else}
 						<div>Form Mode</div>
 						<div>{JSON.stringify(eState.ofs, null, 2)}</div>

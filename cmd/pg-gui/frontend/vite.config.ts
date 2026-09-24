@@ -19,6 +19,7 @@ export default defineConfig({
     alias: {
       '@bindings': path.resolve('./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/'),
       '@services': path.resolve('./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/service'),
+      '@internal': path.resolve('./bindings/github.com/fool-pigeon/pigeon/internal'),
       '@lib': path.resolve('./src/lib'),
       '@components': path.resolve('./src/lib/components')
     }

@@ -256,11 +256,11 @@ func (r *HttpReqFileService) Read(path string) (*httpx.ReqData, error) {
 	if err != nil {
 		return nil, err
 	}
-	var req *httpx.ReqData
-	if err := toml.Unmarshal(b, req); err != nil {
+	var req httpx.ReqData
+	if err := toml.Unmarshal(b, &req); err != nil {
 		return nil, err
 	}
-	return req, nil
+	return &req, nil
 }
 
 func (r *HttpReqFileService) ReadOriginal(path string) (*httpx.ReqData, error) {
@@ -268,11 +268,11 @@ func (r *HttpReqFileService) ReadOriginal(path string) (*httpx.ReqData, error) {
 	if err != nil {
 		return nil, err
 	}
-	var req *httpx.ReqData
-	if err := toml.Unmarshal(b, req); err != nil {
+	var req httpx.ReqData
+	if err := toml.Unmarshal(b, &req); err != nil {
 		return nil, err
 	}
-	return req, nil
+	return &req, nil
 }
 
 func (r *HttpReqFileService) Write(path string, data *httpx.ReqData) (NodeMode, error) {
