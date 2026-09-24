@@ -9,8 +9,6 @@
 		items = $state<FSItem[]>([]);
 		selectedItem = $state<FSItem>(emptyFSItem);
 		activedItem = $state<FSItem>();
-		rootPathsToAdd = $state<string[]>([]);
-		collectionPath = $state<string>('');
 
 		reload() {
 			FileExploreService.ReloadRootView()
@@ -193,17 +191,9 @@
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { DataEvent } from '@lib/enum/events';
 	import { ModeContains } from '@lib/utils/asserts';
+	import OpenCollectionModal from './OpenCollectionModal.svelte';
 
 	onMount(() => {
-		Events.On(MenuEvent.OpenCollection, () => {
-			PathSelectService.SelectFolder()
-				.then((val) => {
-					fState.rootPathsToAdd = [];
-					fState.collectionPath = val;
-					modal.open(selectRootPathsModal, 'Open Collection');
-				})
-				.catch(msgAlert.error);
-		});
 		fState.reload();
 	});
 	onDestroy(() => {
@@ -268,82 +258,14 @@
 		/>
 	</div>
 </div>
+<OpenCollectionModal
+	afterLoadFunc={(rootPaths) => {
+		FileExploreService.AddRoot(rootPaths)
+			.then((v) => (fState.items = parseNodes(v)))
+			.catch(msgAlert.error);
+	}}
+/>
 
-{#snippet selectRootPathsModal()}
-	{#await FileExploreService.ParseRootPaths(fState.collectionPath)}
-		<div class="h-30 w-full flex justify-center items-center">
-			<IconLoaderCircle class="absolute size-10 animate-spin" strokeWidth={2} nonScalingStroke />
-		</div>
-	{:then paths}
-		{#if paths !== null && paths.length > 0}
-			<div class="p-4 min-w-sm">
-				<div class="flex items-end justify-between">
-					<div class="flex items-baseline gap-1">
-						<span>Collections</span>
-						<div class="badge badge-soft badge-info">{paths.length}</div>
-					</div>
-					<div>
-						<button
-							class="btn btn-soft btn-sm font-normal {fState.rootPathsToAdd.length === paths.length
-								? 'btn-error'
-								: 'btn-primary'}"
-							onclick={() => {
-								if (fState.rootPathsToAdd.length === paths.length) {
-									fState.rootPathsToAdd = [];
-								} else {
-									fState.rootPathsToAdd = paths;
-								}
-							}}>{fState.rootPathsToAdd.length === paths.length ? 'DropAll' : 'SelectAll'}</button
-						>
-					</div>
-				</div>
-				<div class="p-2 mt-2 flex items-center border border-base-content/30">
-					{#each paths as path}
-						<label class="label">
-							<input
-								type="checkbox"
-								class="checkbox checkbox-sm checkbox-primary"
-								bind:group={fState.rootPathsToAdd}
-								value={path}
-							/>
-							{path}
-						</label>
-					{/each}
-				</div>
-				<div class="mt-10 flex gap-1 justify-between items-center">
-					<div>
-						<span class="text-primary">{fState.rootPathsToAdd.length} </span>
-						<span class="text-base-content/50">of {paths.length} selected</span>
-					</div>
-					<div>
-						<button class="btn btn-ghost font-normal" onclick={() => modal.close()}>Cancel</button>
-						<button
-							class="btn btn-primary font-normal"
-							onclick={() => {
-								// add to root and close modal
-								FileExploreService.AddRoot(fState.rootPathsToAdd)
-									.then((val) => {
-										fState.items = parseNodes(val);
-										modal.close();
-									})
-									.catch((err) => {
-										msgAlert.error(err);
-										modal.close();
-									});
-							}}>Load</button
-						>
-					</div>
-				</div>
-			</div>
-		{:else}
-			<div class="text-warning h-10 text-center">
-				Not Found Collection in {fState.collectionPath}
-			</div>
-		{/if}
-	{:catch err}
-		<div class="text-error h-10">cause-error: {err}</div>
-	{/await}
-{/snippet}
 {#snippet itemContextMenu()}
 	<!-- TODO: impl the function in explorer context menu -->
 	<ul class="menu p-0 bg-base-100 [&_li>*]:rounded-none" oncontextmenu={(e) => e.preventDefault()}>
