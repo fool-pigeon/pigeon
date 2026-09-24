@@ -5,6 +5,7 @@
 	import ExampleFileExplorer from './ExampleFileExplorer.svelte';
 	import ExampleModal from './ExampleModal.svelte';
 	import ExampleAlert from './ExampleAlert.svelte';
+	import ExampleCMW from './ExampleCMW.svelte';
 
 	let showName = $state<string>('');
 </script>
@@ -25,6 +26,7 @@
 				<ul class="menu bg-base-200 min-h-full p-4">
 					{@render item('Example')}
 					{@render item('Modal')}
+					{@render item('CMW')}
 					{@render item('AlertMsg')}
 					{@render item('DJoin')}
 					{@render item('TreeMenu')}
@@ -33,6 +35,8 @@
 				<div class="min-w-md bg-base-300">
 					{#if showName === 'Modal'}
 						<ExampleModal />
+					{:else if showName === 'CMW'}
+						<ExampleCMW />
 					{:else if showName === 'AlertMsg'}
 						<ExampleAlert />
 					{:else if showName === 'DJoin'}
