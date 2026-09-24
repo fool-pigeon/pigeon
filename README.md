@@ -46,6 +46,10 @@ pg-cli commands
 * User Interface
   * [x] cli
   * [ ] gui
+    * [ ] global file search filter
+    * [ ] global key shortcuts bindings
+    * [ ] theme and change it responsively
+    * [ ] request's send and test history
   * [ ] vscode-extension
 * Protocols
   * [x] HTTP
@@ -61,9 +65,13 @@ pg-cli commands
   * [ ] Data Drive Test
   * [ ] Pre Request
   * [ ] Limit Concurrent
-  * [ ] Optional AI Integration to generate tests for only extra GUI version(do not intergration in main version, I hate ai)
+  * [ ] Set up synchronous running sequence
 * Collection type conversion
   * [ ] OpenAPI
   * [ ] Postman
   * [ ] Apifox
   * [ ] Bruno
+* LLM Feature(do not intergration in main version,because it's probably a redundant function.)
+  * [ ] Optional LLM Integration to generate tests for only extra GUI version
+  * [ ] auto create collection or request
+  * [ ] auto run test
