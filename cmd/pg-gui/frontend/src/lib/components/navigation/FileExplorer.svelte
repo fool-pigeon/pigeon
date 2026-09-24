@@ -10,10 +10,10 @@
 		selectedItem = $state<FSItem>(emptyFSItem);
 		activedItem = $state<FSItem>();
 		rootPathsToAdd = $state<string[]>([]);
-		selectedPath = $state<string>('');
+		collectionPath = $state<string>('');
 
 		reload() {
-			ReloadRootView()
+			FileExploreService.ReloadRootView()
 				.then((val) => {
 					this.items = parseNodes(val);
 					Events.Emit(DataEvent.FileExplorerLoaded);
@@ -37,6 +37,21 @@
 		find(path: string): FSItem | undefined {
 			return this.findItem(this.items, path);
 		}
+		/**
+		 * find the first item parent whose sub has id equals path in items
+		 * @param path
+		 */
+		findPre(path: string): FSItem | undefined {
+			return this.findPreItem(this.items, path);
+		}
+		/**
+		 * find routes to item
+		 * @param path
+		 */
+		findRoutes(path: string): FSItem[] {
+			return this.findItemRoutes(this.items, path);
+		}
+
 		findItem(items: FSItem[], path: string): FSItem | undefined {
 			for (const i of items) {
 				if (path === i.id) {
@@ -47,12 +62,15 @@
 				}
 			}
 		}
-		/**
-		 * find routes to item
-		 * @param path
-		 */
-		findRoutes(path: string): FSItem[] {
-			return this.findItemRoutes(this.items, path);
+		findPreItem(items: FSItem[], path: string): FSItem | undefined {
+			for (const i of items) {
+				if (i.sub?.some((f) => f.id === path)) {
+					return i;
+				}
+				if (i.sub && path.startsWith(i.id)) {
+					return this.findPreItem(i.sub, path);
+				}
+			}
 		}
 		findItemRoutes(items: FSItem[], path: string): FSItem[] {
 			const routes: FSItem[] = [];
@@ -72,41 +90,20 @@
 			}
 			return routes;
 		}
-		/**
-		 * find the first item parent whose sub has id equals path in items
-		 * @param path
-		 */
-		findPre(path: string): FSItem | undefined {
-			return this.findPreItem(this.items, path);
-		}
-		findPreItem(items: FSItem[], path: string): FSItem | undefined {
-			for (const i of items) {
-				if (i.sub?.some((f) => f.id === path)) {
-					return i;
-				}
-				if (i.sub && path.startsWith(i.id)) {
-					return this.findPreItem(i.sub, path);
-				}
-			}
-		}
 	}
 	const fState = new FileExplorerState();
 	// remember the open states of folders
 	const openStates = new Map<string, boolean>();
-	export { fsItemDisplay };
+	export { fsItemDisplay, nodeModeIcon };
 
 	export const fileExplorer = {
 		findRoutes: ((path?: string) => {
-			if (!path) {
-				return [];
-			}
+			if (!path) return [];
 			return fState.findRoutes(path);
 		}).bind(fState),
 		find: fState.find.bind(fState),
 		getActivedFS: (() => fState.activedItem).bind(fState),
-		setActivedFS: ((item: FSItem | undefined) => {
-			fState.activedItem = item;
-		}).bind(fState),
+		setActivedFS: ((item: FSItem | undefined) => (fState.activedItem = item)).bind(fState),
 		getSelectedFS: (() => fState.selectedItem).bind(fState),
 		setSelectedFS: fState.selectItem.bind(fState),
 		// recursively open folder until item
@@ -119,84 +116,59 @@
 			}
 		}).bind(fState),
 	};
-	export function parseNodes(nodes: FS[] | null | undefined): FSItem[] {
+	function parseNodes(nodes: FS[] | null | undefined): FSItem[] {
 		return (nodes ?? []).filter((f) => f !== null).map(nodeToFSItem);
 	}
-	export function nodeToFSItem(node: Node): FSItem {
+	function nodeToFSItem(node: Node): FSItem {
 		if (ModeContains(node.mode, NodeMode.DirMode)) {
-			const dirItem = NewFSGroup(node.path, node.name, {
-				additional: node.mode,
-				sub: parseNodes(node.sub),
-				isOpen: openStates.get(node.path),
-				snippet: fsItemDisplay,
-				on: {
-					// TODO: open editor of file
-					onclick: () => {
-						fState.selectItem(dirItem);
-						LoadSubsCached(node.path)
-							.then((val) => {
-								const target = fState.find(node.path);
-								if (!target) {
-									return;
-								}
-								if (openStates.get(node.path)) {
-									openStates.set(node.path, false);
-								} else {
-									openStates.set(node.path, true);
-								}
-								target.sub = parseNodes(val);
-							})
-							.catch((err) => console.error('load cached sub:', err));
+			const dirItem = $state(
+				NewFSGroup(node.path, node.name, {
+					additional: node.mode,
+					sub: parseNodes(node.sub),
+					isOpen: openStates.get(node.path),
+					snippet: fsItemDisplay,
+					on: {
+						// TODO: open editor of file
+						onclick: () => {
+							fState.selectItem(dirItem);
+							FileExploreService.LoadSubsCached(node.path)
+								.then((val) => {
+									openStates.set(node.path, !openStates.get(node.path));
+									dirItem.sub = parseNodes(val);
+								})
+								.catch((err) => console.error('load cached sub:', err));
+						},
+						// TODO dir context menu
+						oncontextmenu: (e) => {
+							fState.selectItem(dirItem);
+							contextmenu.open(e, itemContextMenu, true);
+						},
 					},
-					// TODO dir context menu
-					oncontextmenu: (e) => {
-						fState.selectItem(dirItem);
-						contextmenu.open(e, itemContextMenu, true);
-					},
-				},
-			});
+				}),
+			);
 			return dirItem;
 		} else {
-			const fileItem = NewFSLeaf(node.path, node.name, {
-				additional: node.mode,
-				snippet: fsItemDisplay,
-				on: {
-					onclick: () => fState.selectItem(fileItem),
-					// TODO file context menu
-					oncontextmenu: (e) => {
-						fState.selectItem(fileItem);
-						contextmenu.open(e, itemContextMenu, true);
+			const fileItem = $state(
+				NewFSLeaf(node.path, node.name, {
+					additional: node.mode,
+					snippet: fsItemDisplay,
+					on: {
+						onclick: () => fState.selectItem(fileItem),
+						// TODO file context menu
+						oncontextmenu: (e) => {
+							fState.selectItem(fileItem);
+							contextmenu.open(e, itemContextMenu, true);
+						},
 					},
-				},
-			});
+				}),
+			);
 			return fileItem;
 		}
 	}
 </script>
 
 <script lang="ts">
-	import { MenuEvent } from '@bindings/gui';
-	import TreeMenu, {
-		NewTreeGroup,
-		NewTreeLeaf,
-		type TreeItem,
-	} from '@components/base/TreeMenu.svelte';
-	import {
-		AddRoot,
-		DeleteNode,
-		AddNode,
-		LoadSubsCached,
-		ReloadSubsCached,
-		ReloadRootView,
-		ParseRootPaths,
-	} from '@services/fileexploreservice';
-	import { NodeMode, type Node } from '@services/models';
-	import { Events } from '@wailsio/runtime';
-	import { onDestroy, onMount, untrack } from 'svelte';
-	import { modal } from '../base/Modal.svelte';
-	import { SelectFolder } from '@bindings/service/pathselectservice';
-	import { contextmenu } from '../base/ContextMenu.svelte';
-	// Import Icons
+	// Icons
 	import IconLoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import IconFolder from '@lucide/svelte/icons/folder';
 	import IconFolderCog from '@lucide/svelte/icons/folder-cog';
@@ -205,16 +177,29 @@
 	import IconFolderPlus from '@lucide/svelte/icons/folder-plus';
 	import IconFilePlusCorner from '@lucide/svelte/icons/file-plus-corner';
 	import IconCopyMinus from '@lucide/svelte/icons/copy-minus';
+
+	import { FileExploreService, PathSelectService } from '@services';
+	import { MenuEvent } from '@bindings/gui';
+	import TreeMenu, {
+		NewTreeGroup,
+		NewTreeLeaf,
+		type TreeItem,
+	} from '@components/base/TreeMenu.svelte';
+	import { NodeMode, type Node } from '@services/models';
+	import { Events } from '@wailsio/runtime';
+	import { onDestroy, onMount } from 'svelte';
+	import { modal } from '../base/Modal.svelte';
+	import { contextmenu } from '../base/ContextMenu.svelte';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { DataEvent } from '@lib/enum/events';
 	import { ModeContains } from '@lib/utils/asserts';
 
 	onMount(() => {
 		Events.On(MenuEvent.OpenCollection, () => {
-			SelectFolder()
+			PathSelectService.SelectFolder()
 				.then((val) => {
 					fState.rootPathsToAdd = [];
-					fState.selectedPath = val;
+					fState.collectionPath = val;
 					modal.open(selectRootPathsModal, 'Open Collection');
 				})
 				.catch(msgAlert.error);
@@ -226,24 +211,12 @@
 	});
 
 	function deleteFSItem(path: string) {
-		DeleteNode(path)
+		FileExploreService.DeleteNode(path)
 			.then(() => {
 				const pre = fState.findPre(path);
 				if (pre) pre.sub = pre.sub?.filter((s) => s.id !== path);
 			})
 			.catch((err) => console.error(err));
-	}
-
-	function addRootInModal() {
-		AddRoot(fState.rootPathsToAdd)
-			.then((val) => {
-				fState.items = parseNodes(val);
-				modal.close();
-			})
-			.catch((err) => {
-				console.error(err);
-				modal.close();
-			});
 	}
 
 	// TODO:finish top bar btns of explorer
@@ -261,10 +234,7 @@
 		{
 			label: 'reload',
 			icon: IconRotateCw,
-			handle: () =>
-				ReloadRootView()
-					.then((val) => (fState.items = parseNodes(val)))
-					.catch((err) => console.error(err)),
+			handle: () => fState.reload(),
 		},
 		{
 			label: 'collapse-all',
@@ -300,7 +270,7 @@
 </div>
 
 {#snippet selectRootPathsModal()}
-	{#await ParseRootPaths(fState.selectedPath)}
+	{#await FileExploreService.ParseRootPaths(fState.collectionPath)}
 		<div class="h-30 w-full flex justify-center items-center">
 			<IconLoaderCircle class="absolute size-10 animate-spin" strokeWidth={2} nonScalingStroke />
 		</div>
@@ -347,13 +317,27 @@
 					</div>
 					<div>
 						<button class="btn btn-ghost font-normal" onclick={() => modal.close()}>Cancel</button>
-						<button class="btn btn-primary font-normal" onclick={addRootInModal}>Load</button>
+						<button
+							class="btn btn-primary font-normal"
+							onclick={() => {
+								// add to root and close modal
+								FileExploreService.AddRoot(fState.rootPathsToAdd)
+									.then((val) => {
+										fState.items = parseNodes(val);
+										modal.close();
+									})
+									.catch((err) => {
+										msgAlert.error(err);
+										modal.close();
+									});
+							}}>Load</button
+						>
 					</div>
 				</div>
 			</div>
 		{:else}
 			<div class="text-warning h-10 text-center">
-				Not Found Collection in {fState.selectedPath}
+				Not Found Collection in {fState.collectionPath}
 			</div>
 		{/if}
 	{:catch err}
@@ -391,7 +375,11 @@
 	{:else if ModeContains(m, NodeMode.DirMode)}
 		<!-- config folder -->
 		{#if ModeContains(m, NodeMode.ConfigDir)}
-			<IconFolderCog class="size-4 text-base-content/80" strokeWidth={1} nonScalingStroke />
+			<IconFolderCog
+				class="size-4 text-base-content/addRootAndCloseModal80"
+				strokeWidth={1}
+				nonScalingStroke
+			/>
 		{:else}
 			<IconFolder class="size-4 text-base-content/80" strokeWidth={1} nonScalingStroke />
 		{/if}

@@ -1,13 +1,13 @@
 <script lang="ts" module>
-	import { NotificationState } from '../base/Notification.svelte';
 	// Icons
 	import IconInfo from '@lucide/svelte/icons/info';
 	import IconCircleCheck from '@lucide/svelte/icons/circle-check';
 	import IconTriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import IconCircleX from '@lucide/svelte/icons/circle-x';
+
+	import { NotificationState } from '../base/Notification.svelte';
 	import { fly } from 'svelte/transition';
 	import { circIn, linear } from 'svelte/easing';
-	import { flip } from 'svelte/animate';
 
 	// position of alert notification on window
 	export type hPosition = 'left' | 'center' | 'right';
