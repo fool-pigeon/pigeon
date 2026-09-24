@@ -16,6 +16,7 @@ const (
 	OpenCollection MenuEvent = "menu:file:open-collection"
 	Save           MenuEvent = "menu:file:save"
 	Preferences    MenuEvent = "menu:file:preferences"
+	CloseEditor    MenuEvent = "menu:file:close-editor"
 	// Help Subs
 	Documentation MenuEvent = "menu:help:docmentation"
 )
@@ -93,14 +94,16 @@ func InitMenu(app *wa.App) {
 			bindRole(wa.Quit, "Quit")
 	}
 	// FileMenu:
-	// 		NewRequest
-	// 		NewProject
+	// 		New Request
+	// 		New Project
 	// 		----------
-	// 		OpenCollection
+	// 		Open Collection
 	// 		----------
 	// 		Save
 	// 		----------
 	// 		Preferences
+	// 		----------
+	// 		Close Editor
 	// 		----------
 	// 		Quit
 	NewMenuWrap(menu.AddSubmenu(FileMenu)).
@@ -126,6 +129,11 @@ func InitMenu(app *wa.App) {
 		bindItemWithShortcut("Preferences", "CmdOrCtrl+,", func(ctx *wa.Context) {
 			app.Logger.Info(Preferences)
 			app.Event.Emit(Preferences)
+		}).
+		addSeparator().
+		bindItemWithShortcut("Close Editor", "CmdOrCtrl+w", func(ctx *wa.Context) {
+			app.Logger.Info(CloseEditor)
+			app.Event.Emit(CloseEditor)
 		}).
 		addSeparator().
 		bindRole(wa.Quit, "Quit", !isDarwin)
