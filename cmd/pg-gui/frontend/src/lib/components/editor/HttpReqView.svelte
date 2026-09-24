@@ -15,8 +15,8 @@
 	let { cur = $bindable<OpenedFS>() }: Prop = $props();
 	let original = $state<ReqData | null>(null);
 	let temp = $state<ReqData | null>(null);
-	onMount(async () => {
-		Events.On(MenuEvent.Save, () => {
+	onMount(() => {
+		const unregister = Events.On(MenuEvent.Save, () => {
 			HttpReqFileService.Write(cur.fs.id, temp)
 				.then((m) => {
 					const fs = fileExplorer.find(cur.fs.id);
@@ -29,12 +29,12 @@
 				})
 				.catch(msgAlert.error);
 		});
-	});
-	onDestroy(() => {
-		Events.Off(MenuEvent.Save);
-		if (!cur.saved) {
-			HttpReqFileService.Stage(cur.fs.id, temp).then((m) => (cur.fs.additional = m));
-		}
+		return () => {
+			unregister();
+			if (!cur.saved) {
+				HttpReqFileService.Stage(cur.fs.id, temp).then((m) => (cur.fs.additional = m));
+			}
+		};
 	});
 	$effect(() => {
 		cur.saved = equal(original, temp);

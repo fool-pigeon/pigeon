@@ -88,9 +88,12 @@
 	import FileView from './FileView.svelte';
 	import HttpReqView from './HttpReqView.svelte';
 	onMount(() => {
-		Events.Once(DataEvent.FileExplorerLoaded, () => eState.reload());
+		const unregister=Events.Once(DataEvent.FileExplorerLoaded, () => eState.reload());
+		return ()=>{
+			unregister()
+			FileService.CloseAll()
+		}
 	});
-	onDestroy(() => FileService.CloseAll());
 	$effect(() => {
 		if (!activedFS || activedFS.type === 'group') {
 			return;

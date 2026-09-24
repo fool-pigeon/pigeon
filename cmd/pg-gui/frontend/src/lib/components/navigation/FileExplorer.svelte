@@ -196,9 +196,6 @@
 	onMount(() => {
 		fState.reload();
 	});
-	onDestroy(() => {
-		Events.Off(MenuEvent.OpenCollection);
-	});
 
 	function deleteFSItem(path: string) {
 		FileExploreService.DeleteNode(path)

@@ -15,7 +15,7 @@
 	let searchPath = $state('');
 	let rootPaths = $state<string[]>([]);
 	onMount(() => {
-		Events.On(MenuEvent.OpenCollection, () => {
+		const unregister = Events.On(MenuEvent.OpenCollection, () => {
 			PathSelectService.SelectFolder()
 				.then((val) => {
 					rootPaths = [];
@@ -24,6 +24,9 @@
 				})
 				.catch(msgAlert.error);
 		});
+		return () => {
+			unregister();
+		};
 	});
 </script>
 
