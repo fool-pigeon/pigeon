@@ -162,7 +162,7 @@
 													class="rounded-none btn btn-info p-2 hover:btn-success"
 													onclick={() => {
 														Events.Emit(MenuEvent.Save);
-														// FIXME: should close after saved
+														modal.close()
 													}}>Save</button
 												>
 											</div>
