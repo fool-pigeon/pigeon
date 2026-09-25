@@ -61,14 +61,14 @@ type (
 	// The request will be [resty.Request] when called [ReqData.InstancedRequest]
 	ReqData struct {
 		request.ReqMeta
-		Method      string              `toml:"mothod" comment:"GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS,TRACE,CONNECT" json:"method"`
-		URL         string              `toml:"url" json:"url"`
-		PathParams  map[string]string   `toml:"path,omitempty,multiline" json:"pathParams"`
-		QueryParams map[string][]string `toml:"query,omitempty,multiline" json:"queryParams"`
-		Header      map[string][]string `toml:"header,omitempty,multiline" json:"header"`
-		Body        Body                `toml:"body,omitempty" json:"body"`
-		Desc        string              `toml:"desc,omitempty,multiline" json:"desc"`
-		Setting     Setting             `toml:"setting,omitempty" json:"setting"`
+		Method  string              `toml:"mothod" comment:"GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS,TRACE,CONNECT" json:"method"`
+		URL     string              `toml:"url" json:"url"`
+		Path    map[string]string   `toml:"path,omitempty,multiline" json:"path"`
+		Query   map[string][]string `toml:"query,omitempty,multiline" json:"query"`
+		Header  map[string][]string `toml:"header,omitempty,multiline" json:"header"`
+		Body    Body                `toml:"body,omitempty" json:"body"`
+		Desc    string              `toml:"desc,omitempty,multiline" json:"desc"`
+		Setting Setting             `toml:"setting,omitempty" json:"setting"`
 
 		// the expr script before send request,could set random data for request
 		PreReq string `toml:"pre_req,omitempty,multiline" json:"preReq"`
@@ -146,18 +146,18 @@ func (r *ReqData) SetURL(url string) *ReqData {
 	return r
 }
 func (r *ReqData) SetPathParams(params map[string]string) *ReqData {
-	r.PathParams = params
+	r.Path = params
 	return r
 }
 func (r *ReqData) SetPathParam(key string, val string) *ReqData {
-	if r.PathParams == nil {
-		r.PathParams = make(map[string]string)
+	if r.Path == nil {
+		r.Path = make(map[string]string)
 	}
-	r.PathParams[key] = val
+	r.Path[key] = val
 	return r
 }
 func (r *ReqData) SetQueryParams(params map[string][]string) *ReqData {
-	r.QueryParams = params
+	r.Query = params
 	return r
 }
 func (r *ReqData) SetHeaders(header map[string][]string) *ReqData {
@@ -263,31 +263,31 @@ func (r *ReqData) ParseRawURL(rawURL string) error {
 	for _, matched := range pathParamRe.FindAllStringSubmatch(r.URL, -1) {
 		name := matched[1]
 		pathMap[name] = ""
-		if r.PathParams == nil {
+		if r.Path == nil {
 			continue
 		}
-		if v, ok := r.PathParams[name]; ok {
+		if v, ok := r.Path[name]; ok {
 			pathMap[name] = v
 		}
 	}
-	r.PathParams = pathMap
+	r.Path = pathMap
 	// set QueryParams
 	if len(s) > 1 {
 		query, err := url.ParseQuery(s[1])
 		if err != nil {
 			return err
 		}
-		r.QueryParams = query
+		r.Query = query
 	} else {
-		r.QueryParams = map[string][]string{}
+		r.Query = map[string][]string{}
 	}
 
 	return nil
 }
 
 func (r *ReqData) RawURL() string {
-	if len(r.QueryParams) > 0 {
-		return r.URL + "?" + toQueryString(r.QueryParams)
+	if len(r.Query) > 0 {
+		return r.URL + "?" + toQueryString(r.Query)
 	}
 	return r.URL
 }
@@ -315,8 +315,8 @@ func (r *ReqData) InstancedRequest() (*Request, error) {
 	req := client.R().
 		SetURL(r.URL).
 		SetMethod(r.Method).
-		SetPathParams(r.PathParams).
-		SetQueryParamsFromValues(r.QueryParams)
+		SetPathParams(r.Path).
+		SetQueryParamsFromValues(r.Query)
 
 	// set raw headers
 	maps.Copy(req.Header, r.Header)

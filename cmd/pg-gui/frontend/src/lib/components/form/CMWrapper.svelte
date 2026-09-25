@@ -1,3 +1,9 @@
+<script lang="ts" module>
+	export const WrapperMeta = {
+		external: Annotation.define<boolean>(),
+	};
+</script>
+
 <script lang="ts">
 	import { Annotation, StateEffect, Transaction } from '@codemirror/state';
 	import { EditorView } from '@codemirror/view';
@@ -21,9 +27,7 @@
 	}: Prop = $props();
 	let view = $state<EditorView>();
 	let el: HTMLDivElement;
-	const Meta = {
-		external: Annotation.define<boolean>(),
-	};
+
 	onMount(() => {
 		view = viewInitFunc();
 		// inject state listener to update state.doc to value
@@ -55,7 +59,10 @@
 	function setDocExternally(text: string) {
 		view?.dispatch({
 			changes: { from: 0, to: view.state.doc.length, insert: text },
-			annotations: [Meta.external.of(true), Transaction.addToHistory.of(enableExternalHistory)],
+			annotations: [
+				WrapperMeta.external.of(true),
+				Transaction.addToHistory.of(enableExternalHistory),
+			],
 		});
 	}
 </script>

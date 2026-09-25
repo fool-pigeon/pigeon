@@ -286,11 +286,11 @@ func TestRawURL(t *testing.T) {
 	})
 	t.Run("parse path params", func(t *testing.T) {
 		r := httpx.ReqData{}
-		r.PathParams = map[string]string{"p2": "114"}
+		r.Path = map[string]string{"p2": "114"}
 
 		rawURL := "{host}/{p1}/{p2}/{}/${}/{${}}/${{}}/{{x}}/{${x}}/{${x}}"
 		r.ParseRawURL(rawURL)
 		expected := map[string]string{"host": "", "p1": "", "p2": "114"}
-		require.Equal(t, expected, r.PathParams)
+		require.Equal(t, expected, r.Path)
 	})
 }

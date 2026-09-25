@@ -65,8 +65,8 @@ var (
 
 type (
 	Redirect struct {
-		MaxCount int      `toml:"max_count"`
-		Domains  []string `toml:"domains"`
+		MaxCount int      `toml:"max_count" json:"maxCount"`
+		Domains  []string `toml:"domains" json:"domains"`
 	}
 	cDataError struct {
 		Msg string
@@ -88,15 +88,15 @@ type (
 	// [ClientData] is wrap to store client's data into toml file for [resty.Client].
 	// The client will be instanced when called [Client.InstancedClient]
 	ClientData struct {
-		BaseURL  string `toml:"base_url"`
-		ProxyURL string `toml:"proxy_url"`
+		BaseURL  string `toml:"base_url" json:"baseURL"`
+		ProxyURL string `toml:"proxy_url" json:"proxyURL"`
 
-		PathParams  map[string]string   `toml:"path"`
-		QueryParams map[string][]string `toml:"query"`
-		Header      map[string][]string `toml:"header"`
+		Path   map[string]string   `toml:"path" json:"path"`
+		Query  map[string][]string `toml:"query" json:"query"`
+		Header map[string][]string `toml:"header" json:"header"`
 
-		Redirect Redirect `toml:"redirect"`
-		Setting  Setting  `toml:"setting"`
+		Redirect Redirect `toml:"redirect" json:"redirect"`
+		Setting  Setting  `toml:"setting" json:"setting"`
 	}
 )
 
@@ -115,11 +115,11 @@ func (c *ClientData) SetProxyURL(url string) *ClientData {
 	return c
 }
 func (c *ClientData) SetPathParams(params map[string]string) *ClientData {
-	c.PathParams = params
+	c.Path = params
 	return c
 }
 func (c *ClientData) SetQueryParams(params map[string][]string) *ClientData {
-	c.QueryParams = params
+	c.Query = params
 	return c
 }
 func (c *ClientData) SetHeaders(headers map[string][]string) *ClientData {
@@ -173,10 +173,10 @@ func (c *ClientData) InstancedClient() (*Client, error) {
 	if proxyURL := c.ProxyURL; proxyURL != "" {
 		client.SetProxy(proxyURL)
 	}
-	if pathParams := c.PathParams; pathParams != nil {
+	if pathParams := c.Path; pathParams != nil {
 		client.SetPathParams(pathParams)
 	}
-	if queryParams := c.QueryParams; queryParams != nil {
+	if queryParams := c.Query; queryParams != nil {
 		for name, values := range queryParams {
 			for _, value := range values {
 				client.SetQueryParam(name, value)

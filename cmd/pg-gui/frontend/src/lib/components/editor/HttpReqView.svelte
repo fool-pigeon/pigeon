@@ -4,7 +4,7 @@
 
 	import type { ReqData } from '@internal/request/httpx';
 	import type { OpenedFS } from './Editor.svelte';
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { HttpReqFileService } from '@bindings/service';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { Events } from '@wailsio/runtime';
@@ -15,6 +15,9 @@
 	import DynamicJoin, { NewPanel } from '../base/DynamicJoin.svelte';
 	import ScrollFlex from '../base/ScrollFlex.svelte';
 	import CMInput from '../form/CMInput.svelte';
+
+	type KV = { [k: string]: string | undefined };
+	type KArr = { [k: string]: string[] | undefined };
 
 	type Prop = {
 		cur: OpenedFS;
@@ -44,7 +47,58 @@
 		Tests: 'Tests',
 	};
 	let currentPart = $state(EditPart.Path);
-
+	/**
+	 * render RawURL from temp
+	 */
+	function getRawURL(): string {
+		if (!temp) {
+			return '';
+		}
+		let u = temp.url;
+		if (temp.query && Object.keys(temp.query).length > 0) {
+			u += '?';
+			u += Object.entries(temp.query)
+				.flatMap(([k, arr]) => (!arr ? [] : arr.map((v) => `${k}=${v}`)))
+				.join('&');
+		}
+		return u;
+	}
+	/**
+	 * parse params from u into temp
+	 * @param u
+	 */
+	function parseRawURL(u: string) {
+		if (!temp) {
+			return;
+		}
+		const splitQuery = u.indexOf('?');
+		temp.url = splitQuery < 0 ? u : u.slice(0, splitQuery);
+		if (splitQuery < 0) {
+			return;
+		}
+		const q: KArr = {};
+		for (const kv of u
+			.slice(splitQuery + 1)
+			.split('&')
+			.filter((v) => v.length > 0)) {
+			const i = kv.indexOf('=');
+			const k = i < 0 ? kv : kv.slice(0, i);
+			const v = i < 0 ? '' : kv.slice(i + 1);
+			// init when undefined
+			q[k] ??= [];
+			q[k].push(v);
+		}
+		temp.query = q;
+	}
+	function equalsRawURL(u1: string, u2: string): boolean {
+		const i1 = u1.indexOf('?');
+		const i2 = u2.indexOf('?');
+		const path1 = i1 === -1 ? u1 : u1.slice(0, i1);
+		const path2 = i2 === -1 ? u2 : u2.slice(0, i2);
+		const query1 = i1 === -1 ? '' : u1.slice(i1 + 1);
+		const query2 = i2 === -1 ? '' : u2.slice(i2 + 1);
+		return path1 === path2 && query1 === query2;
+	}
 	onMount(() => {
 		const unregister = Events.On(MenuEvent.Save, () => {
 			HttpReqFileService.Write(cur.fs.id, temp)
@@ -70,11 +124,18 @@
 	});
 	$effect(() => {
 		cur.saved = equal(original, temp);
-		if (temp !== null) {
-			rawURL = temp.url;
-			if (!temp.queryParams) {
-				return;
-			}
+	});
+	// temp -> rawURL (listen temp)
+	$effect(() => {
+		if (!temp) return;
+		const u = untrack(() => getRawURL());
+		if (untrack(() => equalsRawURL(u, rawURL))) return;
+		untrack(() => (rawURL = u));
+	});
+	// rawURL -> temp (listen rawURL)
+	$effect(() => {
+		if (rawURL && untrack(() => !equalsRawURL(rawURL, getRawURL()))) {
+			untrack(() => parseRawURL(rawURL));
 		}
 	});
 	let methodClassStyle = $derived(
@@ -111,7 +172,7 @@
 		{:else}
 			<!-- TODO finish form input of HttpReq -->
 			<!-- for test view -->
-			<!-- <div>{JSON.stringify(temp, null, 2)}</div> -->
+			<div>{JSON.stringify(temp, null, 2)}</div>
 			<!-- ! outline-1 for test -->
 			<div class="w-full h-full flex flex-col">
 				<!-- URL bar -->
