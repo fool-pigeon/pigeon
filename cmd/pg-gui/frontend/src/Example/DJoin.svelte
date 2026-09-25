@@ -46,5 +46,5 @@
 			</select>
 		</div>
 	</div>
-	<DynamicJoin bind:panels bind:direction />
+	<DynamicJoin bind:panels bind:isRowLayout={direction} />
 </div>

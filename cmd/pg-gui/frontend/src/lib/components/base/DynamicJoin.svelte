@@ -30,9 +30,9 @@
 
 	type Props = {
 		panels: Panel[];
-		direction?: 'horizontal' | 'vertical';
+		isRowLayout?: boolean;
 	};
-	let { panels = $bindable<Panel[]>(), direction = $bindable('horizontal') }: Props = $props();
+	let { panels = $bindable<Panel[]>(), isRowLayout = $bindable(true) }: Props = $props();
 	let container: HTMLDivElement;
 
 	// init panels' size
@@ -47,7 +47,7 @@
 		}
 		untrack(() => {
 			const r = container.getBoundingClientRect();
-			const pxLen = direction === 'horizontal' ? r.width : r.height;
+			const pxLen = isRowLayout ? r.width : r.height;
 			if (pxLen <= 0) {
 				return;
 			}
@@ -80,7 +80,7 @@
 			return;
 		}
 		const ro = new ResizeObserver(([e]) => {
-			const pxLen = direction === 'horizontal' ? e.contentRect.width : e.contentRect.height;
+			const pxLen = isRowLayout ? e.contentRect.width : e.contentRect.height;
 			const needCount = panels.filter((p) => p.size.unit === '%').length;
 			if (needCount <= 0) {
 				return;
@@ -117,7 +117,7 @@
 		const dx = e.clientX - r.left;
 		const dy = e.clientY - r.top;
 
-		const pxLen = direction === 'horizontal' ? r.width : r.height;
+		const pxLen = isRowLayout ? r.width : r.height;
 		const pct = (size: Size) => (size.unit === '%' ? size.value : getPct(size.value, pxLen));
 		const px = (size: Size) => (size.unit === 'px' ? size.value : getPx(size.value, pxLen));
 
@@ -125,7 +125,7 @@
 		const frontSize = panels[i].size;
 		const backSize = panels[i + 1].size;
 		// mapping to first panel size
-		const current = getPct(direction === 'horizontal' ? dx : dy, pxLen);
+		const current = getPct(isRowLayout ? dx : dy, pxLen);
 		const before = panels.slice(0, i).reduce((a, b) => a + pct(b.size), 0);
 		const total = pct(frontSize) + pct(backSize);
 
@@ -151,7 +151,7 @@
 <div
 	bind:this={container}
 	class="flex w-full h-full
-	{direction === 'horizontal' ? 'flex-row' : 'flex-col'}"
+	{isRowLayout ? 'flex-row' : 'flex-col'}"
 >
 	{#each panels as panel, i}
 		<div
@@ -164,10 +164,10 @@
 		{#if i < panels.length - 1}
 			<div
 				role="separator"
-				aria-orientation={direction === 'horizontal' ? 'vertical' : 'horizontal'}
+				aria-orientation={isRowLayout ? 'vertical' : 'horizontal'}
 				// hidden the width
 				class="shrink-0 group relative
-				{direction === 'horizontal' ? 'w-1.5 -mx-0.75 cursor-col-resize' : 'h-1 -my-0.5 cursor-row-resize'}
+				{isRowLayout ? 'w-1.5 -mx-0.75 cursor-col-resize' : 'h-1 -my-0.5 cursor-row-resize'}
 				"
 				onpointerdown={(e) => e.currentTarget.setPointerCapture(e.pointerId)}
 				onpointermove={(e) => e.buttons === 1 && move(i, e)}
@@ -175,7 +175,7 @@
 				<div
 					// Draw the cue line,hidden when not hover
 					class="absolute bg-base-300 transition-colors group-hover:bg-accent
-					{direction === 'horizontal'
+					{isRowLayout
 						? 'inset-y-0 left-1/2 w-px -translate-x-1/2 group-hover:w-full'
 						: 'inset-x-0 top-1/2 h-px -translate-y-1/2 group-hover:h-full'}"
 				></div>

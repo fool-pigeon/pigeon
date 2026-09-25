@@ -8,6 +8,8 @@
 	import { MenuEvent } from '@bindings/gui';
 	import { fileExplorer } from '../navigation/FileExplorer.svelte';
 	import equal from 'fast-deep-equal';
+	import { DataEvent } from '@lib/enum/events';
+	import DynamicJoin from '../base/DynamicJoin.svelte';
 
 	type Prop = {
 		cur: OpenedFS;
@@ -25,6 +27,8 @@
 					}
 					cur.fs.additional = m;
 					original = temp;
+
+					Events.Emit(DataEvent.EditorSaved);
 					msgAlert.success(`Saved ${cur.fs.name} Successfully`);
 				})
 				.catch(msgAlert.error);
