@@ -31,7 +31,7 @@ type (
 		// multipart/form-data
 		Multipart []MultiField `toml:"multipart,multiline" comment:"list of multipart/form-data" json:"multipart"`
 		// x-www-form-url-encoded
-		Form url.Values `toml:"form,multiline" comment:"key-values of x-www-form-url-encoded" json:"form"`
+		Form map[string][]string `toml:"form,multiline" comment:"key-values of x-www-form-url-encoded" json:"form"`
 		// file/binary path
 		Binary string `toml:"binary,multiline" comment:"the file/binary path" json:"binary"`
 		// json,xml,text,or origin string value
@@ -61,14 +61,14 @@ type (
 	// The request will be [resty.Request] when called [ReqData.InstancedRequest]
 	ReqData struct {
 		request.ReqMeta
-		Method      string            `toml:"mothod" comment:"GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS,TRACE,CONNECT" json:"method"`
-		URL         string            `toml:"url" json:"url"`
-		PathParams  map[string]string `toml:"path,omitempty,multiline" json:"pathParams"`
-		QueryParams url.Values        `toml:"query,omitempty,multiline" json:"queryParams"`
-		Header      http.Header       `toml:"header,omitempty,multiline" json:"header"`
-		Body        Body              `toml:"body,omitempty" json:"body"`
-		Desc        string            `toml:"desc,omitempty,multiline" json:"desc"`
-		Setting     Setting           `toml:"setting,omitempty" json:"setting"`
+		Method      string              `toml:"mothod" comment:"GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS,TRACE,CONNECT" json:"method"`
+		URL         string              `toml:"url" json:"url"`
+		PathParams  map[string]string   `toml:"path,omitempty,multiline" json:"pathParams"`
+		QueryParams map[string][]string `toml:"query,omitempty,multiline" json:"queryParams"`
+		Header      map[string][]string `toml:"header,omitempty,multiline" json:"header"`
+		Body        Body                `toml:"body,omitempty" json:"body"`
+		Desc        string              `toml:"desc,omitempty,multiline" json:"desc"`
+		Setting     Setting             `toml:"setting,omitempty" json:"setting"`
 
 		// the expr script before send request,could set random data for request
 		PreReq string `toml:"pre_req,omitempty,multiline" json:"preReq"`
@@ -156,11 +156,11 @@ func (r *ReqData) SetPathParam(key string, val string) *ReqData {
 	r.PathParams[key] = val
 	return r
 }
-func (r *ReqData) SetQueryParams(params url.Values) *ReqData {
+func (r *ReqData) SetQueryParams(params map[string][]string) *ReqData {
 	r.QueryParams = params
 	return r
 }
-func (r *ReqData) SetHeaders(header http.Header) *ReqData {
+func (r *ReqData) SetHeaders(header map[string][]string) *ReqData {
 	r.Header = header
 	return r
 }
@@ -176,7 +176,7 @@ func (r *ReqData) SetBodyMultipart(multipart ...MultiField) *ReqData {
 	r.Body.Multipart = multipart
 	return r
 }
-func (r *ReqData) SetBodyForm(form url.Values) *ReqData {
+func (r *ReqData) SetBodyForm(form map[string][]string) *ReqData {
 	r.Body.Form = form
 	return r
 }

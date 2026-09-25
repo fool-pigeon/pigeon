@@ -1,7 +1,6 @@
 package httpx_test
 
 import (
-	"net/url"
 	"testing"
 
 	"github.com/fool-pigeon/pigeon/internal/project"
@@ -18,7 +17,7 @@ func TestInstanceClient(t *testing.T) {
 		server := NewEchoServer(t)
 		defer server.Close()
 
-		c, _ := httpx.NewClientData().SetQueryParams(url.Values{"a": {"1"}}).InstancedClient()
+		c, _ := httpx.NewClientData().SetQueryParams(map[string][]string{"a": {"1"}}).InstancedClient()
 		req, _ := httpx.NewReqData("t").SetClient(c).SetURL(server.URL).InstancedRequest()
 		res, _ := req.Send()
 		assert.Equal(t, "1", ParseEchoResp(res.Bytes()).Query["a"][0])

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"regexp"
 	"time"
 
@@ -92,9 +91,9 @@ type (
 		BaseURL  string `toml:"base_url"`
 		ProxyURL string `toml:"proxy_url"`
 
-		PathParams  map[string]string `toml:"path"`
-		QueryParams url.Values        `toml:"query"`
-		Header      http.Header       `toml:"header"`
+		PathParams  map[string]string   `toml:"path"`
+		QueryParams map[string][]string `toml:"query"`
+		Header      map[string][]string `toml:"header"`
 
 		Redirect Redirect `toml:"redirect"`
 		Setting  Setting  `toml:"setting"`
@@ -119,11 +118,11 @@ func (c *ClientData) SetPathParams(params map[string]string) *ClientData {
 	c.PathParams = params
 	return c
 }
-func (c *ClientData) SetQueryParams(params url.Values) *ClientData {
+func (c *ClientData) SetQueryParams(params map[string][]string) *ClientData {
 	c.QueryParams = params
 	return c
 }
-func (c *ClientData) SetHeaders(headers http.Header) *ClientData {
+func (c *ClientData) SetHeaders(headers map[string][]string) *ClientData {
 	c.Header = headers
 	return c
 }

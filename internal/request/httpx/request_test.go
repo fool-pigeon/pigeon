@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -210,8 +209,8 @@ func TestReqDataConverts(t *testing.T) {
 			assert.Equal(t, map[string][]string{"a": {"1"}}, ParseEchoResp(res.Bytes()).Multipart)
 		})
 		t.Run("x-www-url-encoded", func(t *testing.T) {
-			req, _ := rData(t).SetBodyForm(url.Values{"a": {"1", "2"}}).InstancedRequest()
-			assert.Equal(t, url.Values{"a": {"1", "2"}}, req.FormData)
+			req, _ := rData(t).SetBodyForm(map[string][]string{"a": {"1", "2"}}).InstancedRequest()
+			assert.Equal(t, map[string][]string{"a": {"1", "2"}}, req.FormData)
 		})
 	})
 	t.Run("Convert Setting", func(t *testing.T) {
