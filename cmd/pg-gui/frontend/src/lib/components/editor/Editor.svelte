@@ -249,9 +249,9 @@
 		<!-- TODO: fill content of editor -->
 		{#if eState.index < 0 || eState.index > eState.ofs.length}{:else}
 			<!-- FOR TEST -->
-			<div>Form Mode</div>
+			<!-- <div>Form Mode</div>
 			<div>{JSON.stringify(eState.index, null, 2)}</div>
-			<div>{JSON.stringify(eState.ofs[eState.index], null, 2)}</div>
+			<div>{JSON.stringify(eState.ofs[eState.index], null, 2)}</div> -->
 			<div class="grow">
 				{let mode = $derived(eState.ofs[eState.index].fs.additional)}
 				{#key eState.index}
@@ -260,7 +260,7 @@
 					{:else if !mode}
 						<div>Unkown File</div>
 					{:else if ModeContains(mode, NodeMode.HttpReq)}
-						<HttpReqView bind:cur={eState.ofs[eState.index]} />
+						<HttpReqView bind:cur={eState.ofs[eState.index]} bind:isFlexRow />
 					{/if}
 				{/key}
 			</div>

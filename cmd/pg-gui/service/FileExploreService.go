@@ -26,13 +26,13 @@ const (
 	Request                          // Req: is a request file
 	HttpReq                          // HTTP:[httpx.ReqData]
 	HttpGet                          // GET: http GET Method
-	HttpHead                         // HEAD: http HEAD Mehtod
 	HttpPost                         // POST: http POST Method
 	HttpPut                          // PUT: http PUT Method
-	HttpPatch                        // PATCH: http PATCH Method
 	HttpDelete                       // DELETE: http DELETE Method
-	HttpConnect                      // CONNECT: http CONNECT Method
+	HttpHead                         // HEAD: http HEAD Mehtod
+	HttpPatch                        // PATCH: http PATCH Method
 	HttpOptions                      // OPTIONS: http OPTIONS Method
+	HttpConnect                      // CONNECT: http CONNECT Method
 	HttpTrace                        // TRACE: http TRACE Method
 )
 
