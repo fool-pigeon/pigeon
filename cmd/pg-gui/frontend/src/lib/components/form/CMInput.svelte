@@ -9,6 +9,7 @@
 		placeholder?: string;
 	};
 	let { value = $bindable(), placeholder: p }: Prop = $props();
+	// TODO add cm_extension for highlight different env params
 </script>
 
 <CMWrapper

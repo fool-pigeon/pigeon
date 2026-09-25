@@ -16,6 +16,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+// TODO refact core/run for expansibility
 type Context struct {
 	path string
 	env  *env.Env

@@ -11,6 +11,7 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
+// TODO: refact env for new project structure
 const DefaultFileName = ".env"
 
 type EnvData = koanf.Koanf

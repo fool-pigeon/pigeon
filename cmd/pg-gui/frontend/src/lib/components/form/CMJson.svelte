@@ -7,6 +7,7 @@
 		value: string;
 	};
 	let { value = $bindable() }: Prop = $props();
+	// TODO a powerful syntax highlight config for json
 </script>
 
 <CMWrapper
