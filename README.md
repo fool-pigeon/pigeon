@@ -5,42 +5,26 @@ Example Project Structure
 ```
 .
 ├── .pg
-│   ├── config-dev.toml
+│   ├── envs
+│   │   ├── dev
+│   │   └── prod
 │   ├── config.toml
 │   ├── run-dev.toml
-│   ├── run.toml
-│   ├── .env
-│   └── .env-dev
-├── .env
-├── dir1
-│   ├── .env
+│   └── run.toml
+├── dir
 │   └── r1.toml
-├── dir2
-│   ├── dir2.1
-│   └── dir2.2
-│       ├── r1.toml
-│       └── r2.toml
 ├── r1.toml
 └── r2.toml
 ```
 
-pg-cli commands
-* init
-  * --tags, Set additional configuration with name suffix tags
-* env
-  * init
-    * --tags, Set additional configuration with name suffix tags
-  * ls
-    * args: directory(default current directory)
-    * --tag, Print env with name suffix tag
-* new
-  * args: rName...
-  * --protocol,-p
-* run
-  * args: paths...
-  * --tag
-* info
-  * args: fName
+## Install
+
+### CLI
+```bash
+go install github.com/fool-pigeon/pigeon/cmd/pg
+```
+### GUI
+check the release
 
 ## TODO: Feature
 * User Interface
@@ -58,6 +42,13 @@ pg-cli commands
   * [ ] WS
   * [ ] GQL
   * [ ] ...
+* Request Editor
+  * [ ] option disable fields such as disable some headers
+* Env Management
+  * [ ] global environment(Specify the path. env)
+  * [ ] collection environment
+  * [ ] optional to use os' environment
+  * [ ] environment on command's flags
 * Test Feature
   * [x] Script inject
   * [ ] Script syntax highlighting 
@@ -75,3 +66,9 @@ pg-cli commands
   * [ ] Optional LLM Integration to generate tests for only extra GUI version
   * [ ] auto create collection or request
   * [ ] auto run test
+
+
+## TODO: For Project
+* ci
+  * [ ] run test and assert
+  * [ ] auto build & release
