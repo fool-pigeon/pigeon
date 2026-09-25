@@ -1,3 +1,4 @@
 export enum DataEvent {
-    FileExplorerLoaded = "data:file-explorer-loaded"
+    FileExplorerLoaded = "data:file-explorer-loaded",
+    EditorSaved = "data:editor-saved"
 }

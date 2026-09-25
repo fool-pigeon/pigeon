@@ -10,6 +10,7 @@
 	import { TextFileService } from '@services';
 	import { fileExplorer } from '../navigation/FileExplorer.svelte';
 	import CMWrapper from '../form/CMWrapper.svelte';
+	import { DataEvent } from '@lib/enum/events';
 	type Prop = {
 		cur: OpenedFS;
 	};
@@ -19,19 +20,21 @@
 	// temp file content
 	let temp = $state('');
 	onMount(() => {
-		const unregister = Events.On(MenuEvent.Save, () =>
-			TextFileService.Write(cur.fs.id, temp)
+		const unregister = Events.On(MenuEvent.Save, () => {
+			const curFS = cur.fs;
+			TextFileService.Write(curFS.id, temp)
 				.then((m) => {
-					const fsItem = fileExplorer.find(cur.fs.id);
+					const fsItem = fileExplorer.find(curFS.id);
 					if (fsItem) {
 						fsItem.additional = m;
 					}
 					cur.fs.additional = m;
 					original = temp;
-					msgAlert.success(`Saved ${cur.fs.name} Successfully`);
+					Events.Emit(DataEvent.EditorSaved);
+					msgAlert.success(`Saved ${curFS.name} Successfully`);
 				})
-				.catch(msgAlert.error),
-		);
+				.catch(msgAlert.error);
+		});
 		return () => {
 			unregister();
 			if (!cur.saved) {

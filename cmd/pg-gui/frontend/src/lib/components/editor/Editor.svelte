@@ -25,6 +25,9 @@
 				.catch(msgAlert.error);
 		}
 		Close(i: number) {
+			if (i < 0 || i >= this.ofs.length) {
+				return;
+			}
 			this.closeIndex = i;
 			if (this.ofs[i].saved) {
 				this.close();
@@ -98,9 +101,11 @@
 	import FileView from './FileView.svelte';
 	import HttpReqView from './HttpReqView.svelte';
 	onMount(() => {
-		const unregister = Events.Once(DataEvent.FileExplorerLoaded, () => eState.reload());
+		const urLoad = Events.Once(DataEvent.FileExplorerLoaded, () => eState.reload());
+		const urCloseEvent = Events.On(MenuEvent.CloseEditor, () => eState.Close(eState.index));
 		return () => {
-			unregister();
+			urLoad();
+			urCloseEvent();
 			FileService.CloseAll();
 		};
 	});
@@ -286,8 +291,12 @@
 				<button
 					class="rounded-none btn btn-info p-2 hover:btn-success"
 					onclick={() => {
+						const unregister = Events.Once(DataEvent.EditorSaved, () => {
+							eState.close();
+							modal.close();
+							unregister();
+						});
 						Events.Emit(MenuEvent.Save);
-						modal.close();
 					}}>Save</button
 				>
 			</div>
