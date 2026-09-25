@@ -57,17 +57,19 @@
 						>
 					</div>
 				</div>
-				<div class="p-2 mt-2 flex items-center border border-base-content/30">
+				<div class="p-2 mt-2 flex flex-col border border-base-content/30">
 					{#each paths as path}
-						<label class="label">
-							<input
-								type="checkbox"
-								class="checkbox checkbox-sm checkbox-primary"
-								bind:group={rootPaths}
-								value={path}
-							/>
-							{path}
-						</label>
+						<div class="flex items-center">
+							<label class="label">
+								<input
+									type="checkbox"
+									class="checkbox checkbox-sm checkbox-primary"
+									bind:group={rootPaths}
+									value={path}
+								/>
+								{path}
+							</label>
+						</div>
 					{/each}
 				</div>
 				<div class="mt-10 flex gap-1 justify-between items-center">
