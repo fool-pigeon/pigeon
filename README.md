@@ -30,9 +30,12 @@ check the release
 * User Interface
   * [x] cli
   * [ ] gui
+    * theme
+      * [ ] a pretty default theme
+      * [ ] theme for codemirror editors
+      * [ ] dark mode and change it responsively
     * [ ] global file search filter
     * [ ] global key shortcuts bindings
-    * [ ] theme and change it responsively
     * [ ] request's send and test history
   * [ ] vscode-extension
 * Protocols
