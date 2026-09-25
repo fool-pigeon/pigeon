@@ -8,6 +8,7 @@
 		ofs = $state<OpenedFS[]>([]);
 		// current fs index
 		index = $state(-1);
+		closeIndex = $state(-1);
 		reload() {
 			FileService.GetOpenedState()
 				.then((val) => {
@@ -23,15 +24,24 @@
 				})
 				.catch(msgAlert.error);
 		}
-		close(i: number) {
+		Close(i: number) {
+			this.closeIndex = i;
+			if (this.ofs[i].saved) {
+				this.close();
+				return;
+			}
+			modal.open(UnsavedChange, 'Unsaved Change');
+		}
+		close() {
+			const i = this.closeIndex;
 			const of = this.ofs[i];
 			FileService.Close(of.fs.id)
 				.then(() => {
 					this.ofs.splice(i, 1);
-					if (i===this.index) {
+					if (i === this.index) {
 						this.selectCurrent(i > 0 ? i - 1 : i + 1);
-					}else if (i<this.index){
-						this.selectCurrent(this.index-1)
+					} else if (i < this.index) {
+						this.selectCurrent(this.index - 1);
 					}
 				})
 				.catch(msgAlert.error);
@@ -77,7 +87,7 @@
 	import { FileService } from '@services';
 	import { fileExplorer, fsItemDisplay, type FSItem } from '../navigation/FileExplorer.svelte';
 	import ScrollFlex from '../base/ScrollFlex.svelte';
-	import { onDestroy, onMount, untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { modal } from '../base/Modal.svelte';
 	import { Events } from '@wailsio/runtime';
@@ -88,18 +98,18 @@
 	import FileView from './FileView.svelte';
 	import HttpReqView from './HttpReqView.svelte';
 	onMount(() => {
-		const unregister=Events.Once(DataEvent.FileExplorerLoaded, () => eState.reload());
-		return ()=>{
-			unregister()
-			FileService.CloseAll()
-		}
+		const unregister = Events.Once(DataEvent.FileExplorerLoaded, () => eState.reload());
+		return () => {
+			unregister();
+			FileService.CloseAll();
+		};
 	});
 	$effect(() => {
 		if (!activedFS || activedFS.type === 'group') {
 			return;
 		}
 		if (untrack(() => eState.includesPath(activedFS.id))) {
-			const i = untrack(()=>eState.findIndex(activedFS.id));
+			const i = untrack(() => eState.findIndex(activedFS.id));
 			if (i >= 0 && eState.index !== i) {
 				eState.selectCurrent(i);
 			}
@@ -108,7 +118,7 @@
 		FileService.Open(activedFS.id)
 			.then(() => {
 				eState.ofs.push({ fs: activedFS, saved: true });
-				eState.selectCurrent(eState.ofs.length-1);
+				eState.selectCurrent(eState.ofs.length - 1);
 			})
 			.catch(msgAlert.error);
 	});
@@ -138,46 +148,11 @@
 								onclick={() => eState.selectCurrent(i)}
 							>
 								{@render fsItemDisplay(of.fs)}
-								{#snippet UnsavedChange()}
-									<div class="p-2 flex flex-col">
-										<div class="p-1 flex items-center">
-											<IconTriangleAlert class="size-8 text-warning" />
-											<span class="text-2xl">Wait a moment..</span>
-										</div>
-										<div>You have unsaved changes in this file.</div>
-										<div class="mt-4 flex justify-between">
-											<button
-												class="rounded-none btn btn-error p-2"
-												onclick={() => {
-													eState.close(i);
-													modal.close();
-												}}>Not Save</button
-											>
-											<div class="flex gap-1">
-												<button
-													class="rounded-none btn btn-ghost p-2 hover:bg-base-content/30"
-													onclick={() => modal.close()}>Cancel</button
-												>
-												<button
-													class="rounded-none btn btn-info p-2 hover:btn-success"
-													onclick={() => {
-														Events.Emit(MenuEvent.Save);
-														modal.close()
-													}}>Save</button
-												>
-											</div>
-										</div>
-									</div>
-								{/snippet}
 								<button
 									class="p-0 size-5 btn btn-ghost btn-sm text-base-content/30 hover:btn-error group"
 									onclick={(e) => {
 										e.stopPropagation();
-										if (of.saved) {
-											eState.close(i);
-											return;
-										}
-										modal.open(UnsavedChange, 'Unsaved Change');
+										eState.Close(i);
 									}}
 								>
 									{#if of.saved}
@@ -268,18 +243,18 @@
 		<!-- content -->
 		<!-- TODO: fill content of editor -->
 		{#if eState.index < 0 || eState.index > eState.ofs.length}{:else}
-		<!-- FOR TEST -->
-		<div>Form Mode</div>
-		<div>{JSON.stringify(eState.index, null, 2)}</div>
-		<div>{JSON.stringify(eState.ofs[eState.index], null, 2)}</div>
-		<div class="grow">
-			{let mode=$derived(eState.ofs[eState.index].fs.additional)}
-			{#key eState.index}
+			<!-- FOR TEST -->
+			<div>Form Mode</div>
+			<div>{JSON.stringify(eState.index, null, 2)}</div>
+			<div>{JSON.stringify(eState.ofs[eState.index], null, 2)}</div>
+			<div class="grow">
+				{let mode = $derived(eState.ofs[eState.index].fs.additional)}
+				{#key eState.index}
 					{#if isRawMode}
 						<FileView bind:cur={eState.ofs[eState.index]} />
-						{:else if !mode}
+					{:else if !mode}
 						<div>Unkown File</div>
-						{:else if ModeContains(mode, NodeMode.HttpReq)}
+					{:else if ModeContains(mode, NodeMode.HttpReq)}
 						<HttpReqView bind:cur={eState.ofs[eState.index]} />
 					{/if}
 				{/key}
@@ -287,3 +262,35 @@
 		{/if}
 	{/if}
 </div>
+
+{#snippet UnsavedChange()}
+	<div class="p-2 flex flex-col">
+		<div class="p-1 flex items-center">
+			<IconTriangleAlert class="size-8 text-warning" />
+			<span class="text-2xl">Wait a moment..</span>
+		</div>
+		<div>You have unsaved changes in this file.</div>
+		<div class="mt-4 flex justify-between">
+			<button
+				class="rounded-none btn btn-error p-2"
+				onclick={() => {
+					eState.close();
+					modal.close();
+				}}>Not Save</button
+			>
+			<div class="flex gap-1">
+				<button
+					class="rounded-none btn btn-ghost p-2 hover:bg-base-content/30"
+					onclick={() => modal.close()}>Cancel</button
+				>
+				<button
+					class="rounded-none btn btn-info p-2 hover:btn-success"
+					onclick={() => {
+						Events.Emit(MenuEvent.Save);
+						modal.close();
+					}}>Save</button
+				>
+			</div>
+		</div>
+	</div>
+{/snippet}
