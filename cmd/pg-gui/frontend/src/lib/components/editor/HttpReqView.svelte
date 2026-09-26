@@ -124,7 +124,7 @@
 								<option value={m}>{m}</option>
 							{/each}
 						</select>
-						<CMFromHttpURL bind:path={temp.url} bind:query={temp.query} />
+						<CMFromHttpURL bind:uri={temp.url} bind:query={temp.query} />
 						<!-- Save file btn -->
 						<button
 							title="Save"
