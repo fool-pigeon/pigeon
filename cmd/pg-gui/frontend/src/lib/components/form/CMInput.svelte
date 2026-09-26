@@ -7,8 +7,9 @@
 	type Prop = {
 		value: string;
 		placeholder?: string;
+		noLineWrap?: boolean;
 	};
-	let { value = $bindable(), placeholder: p }: Prop = $props();
+	let { value = $bindable(), placeholder: p, noLineWrap = false }: Prop = $props();
 	// TODO add cm_extension for highlight different env params
 </script>
 
@@ -19,8 +20,9 @@
 			extensions: [
 				keymap.of(defaultKeymap),
 				placeholder(p ?? ''),
+				noLineWrap ? [] : EditorView.lineWrapping,
 				EditorView.theme({
-					'&': { height: '100%' },
+					'&': { width: '100%', height: '100%' },
 				}),
 			],
 		});

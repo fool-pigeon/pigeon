@@ -2,9 +2,7 @@
   "extends": "@tsconfig/svelte/tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@bindings/*": [
-        "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/*"
-      ],
+      // go wails bindings alias
       "@services": [
         "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/service"
       ],
@@ -17,12 +15,19 @@
       "@internal/*": [
         "./bindings/github.com/fool-pigeon/pigeon/internal/*"
       ],
+      "@bindings/*": [
+        "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/*"
+      ],
+      // src alias
+      "@type/*": [
+        "./src/lib/types/*"
+      ],
+      "@comp/*": [
+        "./src/lib/components/*"
+      ],
       "@lib/*": [
         "./src/lib/*"
       ],
-      "@components/*": [
-        "./src/lib/components/*"
-      ]
     },
     "target": "ESNext",
     "useDefineForClassFields": true,

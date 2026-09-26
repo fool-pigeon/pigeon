@@ -4,7 +4,7 @@
 
 	import type { ReqData } from '@internal/request/httpx';
 	import type { OpenedFS } from './Editor.svelte';
-	import { onDestroy, onMount, untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { HttpReqFileService } from '@bindings/service';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { Events } from '@wailsio/runtime';
@@ -15,9 +15,7 @@
 	import DynamicJoin, { NewPanel } from '../base/DynamicJoin.svelte';
 	import ScrollFlex from '../base/ScrollFlex.svelte';
 	import CMInput from '../form/CMInput.svelte';
-
-	type KV = { [k: string]: string | undefined };
-	type KArr = { [k: string]: string[] | undefined };
+	import type { KArr } from '@type/form';
 
 	type Prop = {
 		cur: OpenedFS;

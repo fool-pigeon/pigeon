@@ -21,7 +21,8 @@ export default defineConfig({
       '@services': path.resolve('./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/service'),
       '@internal': path.resolve('./bindings/github.com/fool-pigeon/pigeon/internal'),
       '@lib': path.resolve('./src/lib'),
-      '@components': path.resolve('./src/lib/components')
+      '@type': path.resolve('./src/lib/types/'),
+      '@comp': path.resolve('./src/lib/components')
     }
   }
 });

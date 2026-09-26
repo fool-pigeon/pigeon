@@ -6,6 +6,7 @@
 	import ExampleModal from './ExampleModal.svelte';
 	import ExampleAlert from './ExampleAlert.svelte';
 	import ExampleCMW from './ExampleCMW.svelte';
+	import ExampleCMFKArr from './ExampleCMFKArr.svelte';
 
 	let showName = $state<string>('');
 </script>
@@ -23,20 +24,25 @@
 		<div class="drawer-side">
 			<label for="my-drawer-1" aria-label="close sidebar" class="drawer-overlay"></label>
 			<div class="join h-full">
-				<ul class="menu bg-base-200 min-h-full p-4">
-					{@render item('Example')}
-					{@render item('Modal')}
-					{@render item('CMW')}
-					{@render item('AlertMsg')}
-					{@render item('DJoin')}
-					{@render item('TreeMenu')}
-					{@render item('FileExplorer')}
-				</ul>
+				<div>
+					<ul class="bg-base-200 min-h-full p-4 flex-col overflow-auto">
+						{@render item('Example')}
+						{@render item('Modal')}
+						{@render item('CMW')}
+						{@render item('CMFKArr')}
+						{@render item('AlertMsg')}
+						{@render item('DJoin')}
+						{@render item('TreeMenu')}
+						{@render item('FileExplorer')}
+					</ul>
+				</div>
 				<div class="min-w-md bg-base-300">
 					{#if showName === 'Modal'}
 						<ExampleModal />
 					{:else if showName === 'CMW'}
 						<ExampleCMW />
+					{:else if showName === 'CMFKArr'}
+						<ExampleCMFKArr />
 					{:else if showName === 'AlertMsg'}
 						<ExampleAlert />
 					{:else if showName === 'DJoin'}
@@ -57,6 +63,7 @@
 {#snippet item(name: string)}
 	<li>
 		<button
+			class="btn btn-sm btn-info"
 			onclick={() => {
 				showName = name;
 			}}>{name}</button

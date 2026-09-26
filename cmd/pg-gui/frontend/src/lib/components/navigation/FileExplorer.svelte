@@ -167,7 +167,6 @@
 
 <script lang="ts">
 	// Icons
-	import IconLoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import IconFolder from '@lucide/svelte/icons/folder';
 	import IconFolderCog from '@lucide/svelte/icons/folder-cog';
 	import IconFile from '@lucide/svelte/icons/file';
@@ -176,17 +175,11 @@
 	import IconFilePlusCorner from '@lucide/svelte/icons/file-plus-corner';
 	import IconCopyMinus from '@lucide/svelte/icons/copy-minus';
 
-	import { FileExploreService, PathSelectService } from '@services';
-	import { MenuEvent } from '@bindings/gui';
-	import TreeMenu, {
-		NewTreeGroup,
-		NewTreeLeaf,
-		type TreeItem,
-	} from '@components/base/TreeMenu.svelte';
+	import { FileExploreService } from '@services';
+	import TreeMenu, { NewTreeGroup, NewTreeLeaf, type TreeItem } from '@comp/base/TreeMenu.svelte';
 	import { NodeMode, type Node } from '@services/models';
 	import { Events } from '@wailsio/runtime';
-	import { onDestroy, onMount } from 'svelte';
-	import { modal } from '../base/Modal.svelte';
+	import { onMount } from 'svelte';
 	import { contextmenu } from '../base/ContextMenu.svelte';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { DataEvent } from '@lib/enum/events';
@@ -196,15 +189,6 @@
 	onMount(() => {
 		fState.reload();
 	});
-
-	function deleteFSItem(path: string) {
-		FileExploreService.DeleteNode(path)
-			.then(() => {
-				const pre = fState.findPre(path);
-				if (pre) pre.sub = pre.sub?.filter((s) => s.id !== path);
-			})
-			.catch((err) => console.error(err));
-	}
 
 	// TODO:finish top bar btns of explorer
 	const topBarBtns = [
