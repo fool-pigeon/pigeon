@@ -18,6 +18,7 @@
 	import type { KArr } from '@type/form';
 	import CMFormKV from '@comp/form/CMFormKV.svelte';
 	import CMFormKArr from '@comp/form/CMFormKArr.svelte';
+	import CMFromHttpURL from '@comp/form/CMFromHttpURL.svelte';
 
 	type Prop = {
 		cur: OpenedFS;
@@ -27,7 +28,6 @@
 	let original = $state<ReqData | null>(null);
 	let temp = $state<ReqData | null>(null);
 
-	let rawURL = $state('');
 	const Method = {
 		GET: 'GET',
 		POST: 'POST',
@@ -47,58 +47,7 @@
 		Tests: 'Tests',
 	};
 	let currentPart = $state(EditPart.Path);
-	/**
-	 * render RawURL from temp
-	 */
-	function getRawURL(): string {
-		if (!temp) {
-			return '';
-		}
-		let u = temp.url;
-		if (temp.query && Object.keys(temp.query).length > 0) {
-			u += '?';
-			u += Object.entries(temp.query)
-				.flatMap(([k, arr]) => (!arr ? [] : arr.map((v) => `${k}=${v}`)))
-				.join('&');
-		}
-		return u;
-	}
-	/**
-	 * parse params from u into temp
-	 * @param u
-	 */
-	function parseRawURL(u: string) {
-		if (!temp) {
-			return;
-		}
-		const splitQuery = u.indexOf('?');
-		temp.url = splitQuery < 0 ? u : u.slice(0, splitQuery);
-		if (splitQuery < 0) {
-			return;
-		}
-		const q: KArr = {};
-		for (const kv of u
-			.slice(splitQuery + 1)
-			.split('&')
-			.filter((v) => v.length > 0)) {
-			const i = kv.indexOf('=');
-			const k = i < 0 ? kv : kv.slice(0, i);
-			const v = i < 0 ? '' : kv.slice(i + 1);
-			// init when undefined
-			q[k] ??= [];
-			q[k].push(v);
-		}
-		temp.query = q;
-	}
-	function equalsRawURL(u1: string, u2: string): boolean {
-		const i1 = u1.indexOf('?');
-		const i2 = u2.indexOf('?');
-		const path1 = i1 === -1 ? u1 : u1.slice(0, i1);
-		const path2 = i2 === -1 ? u2 : u2.slice(0, i2);
-		const query1 = i1 === -1 ? '' : u1.slice(i1 + 1);
-		const query2 = i2 === -1 ? '' : u2.slice(i2 + 1);
-		return path1 === path2 && query1 === query2;
-	}
+
 	onMount(() => {
 		const unregister = Events.On(MenuEvent.Save, () => {
 			HttpReqFileService.Write(cur.fs.id, temp)
@@ -124,19 +73,6 @@
 	});
 	$effect(() => {
 		cur.saved = equal(original, temp);
-	});
-	// temp -> rawURL (listen temp)
-	$effect(() => {
-		if (!temp) return;
-		const u = untrack(() => getRawURL());
-		if (untrack(() => equalsRawURL(u, rawURL))) return;
-		untrack(() => (rawURL = u));
-	});
-	// rawURL -> temp (listen rawURL)
-	$effect(() => {
-		if (rawURL && untrack(() => !equalsRawURL(rawURL, getRawURL()))) {
-			untrack(() => parseRawURL(rawURL));
-		}
 	});
 	let methodClassStyle = $derived(
 		temp === null
@@ -188,7 +124,7 @@
 								<option value={m}>{m}</option>
 							{/each}
 						</select>
-						<CMInput bind:value={rawURL} placeholder={'input URL'} />
+						<CMFromHttpURL bind:path={temp.url} bind:query={temp.query} />
 						<!-- Save file btn -->
 						<button
 							title="Save"
