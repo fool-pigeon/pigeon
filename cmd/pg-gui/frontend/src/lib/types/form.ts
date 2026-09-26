@@ -1,2 +1,2 @@
-export type KV = { [k: string]: string | undefined };
-export type KArr = { [k: string]: string[] | undefined };
+export type KV = { [k: string]: string | undefined } | null
+export type KArr = { [k: string]: string[] | null | undefined } | null

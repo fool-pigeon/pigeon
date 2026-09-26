@@ -235,17 +235,9 @@
 		{#if !temp}
 			<div class="text-error">temp value is null:{temp}</div>
 		{:else if currentPart === EditPart.Path}
-			{#if !temp.path}
-				{@render nullReminder('path')}
-			{:else}
-				<CMFormKV bind:value={temp.path} kReadOnly />
-			{/if}
+			<CMFormKV bind:value={temp.path} kReadOnly />
 		{:else if currentPart === EditPart.Query}
-			{#if !temp.query}
-				{@render nullReminder('query')}
-			{:else}
-				<CMFormKArr bind:value={temp.query} />
-			{/if}
+			<CMFormKArr bind:value={temp.query} />
 		{:else if currentPart === EditPart.Body}
 			Body
 		{:else if currentPart === EditPart.Header}
@@ -261,8 +253,4 @@
 	<div class="w-full h-full flex justify-center items-center">
 		<div class="text-2xl">Response View</div>
 	</div>
-{/snippet}
-
-{#snippet nullReminder(name: string)}
-	<div class="text-warning">{name} is null</div>
 {/snippet}

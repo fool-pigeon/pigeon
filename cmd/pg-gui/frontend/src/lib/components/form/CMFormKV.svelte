@@ -28,9 +28,11 @@
 
 	onMount(() => (kvs = marshal(value)));
 	function marshal(value: KV): kv[] {
+		if (!value) return [];
 		return Object.entries(value).map(([k, v]) => ({ k, v: v ?? '' }));
 	}
 	function unmarshal(kvs: kv[]): KV {
+		if (kvs.length <= 0) return null;
 		const value: KV = {};
 		kvs.forEach(({ k, v }) => {
 			value[k] = v;

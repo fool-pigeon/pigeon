@@ -24,9 +24,11 @@
 	let kvs = $state<kv[]>([]);
 	onMount(() => (kvs = marshal(value)));
 	function marshal(value: KArr): kv[] {
+		if (!value) return [];
 		return Object.entries(value).flatMap(([k, arr]) => (arr ?? ['']).map((v) => ({ k, v })));
 	}
 	function unmarshal(kvs: kv[]): KArr {
+		if (kvs.length <= 0) return null;
 		const value: KArr = {};
 		kvs.forEach(({ k, v }) => {
 			value[k] ??= [];
