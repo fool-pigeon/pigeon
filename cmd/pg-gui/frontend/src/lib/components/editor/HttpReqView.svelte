@@ -16,6 +16,8 @@
 	import ScrollFlex from '../base/ScrollFlex.svelte';
 	import CMInput from '../form/CMInput.svelte';
 	import type { KArr } from '@type/form';
+	import CMFormKV from '@comp/form/CMFormKV.svelte';
+	import CMFormKArr from '@comp/form/CMFormKArr.svelte';
 
 	type Prop = {
 		cur: OpenedFS;
@@ -229,14 +231,25 @@
 			</ScrollFlex>
 		</div>
 		<!-- content -->
-		{#if currentPart === EditPart.Path}
-			Path
+		<!-- TODO :binding form -->
+		{#if !temp}
+			<div class="text-error">temp value is null:{temp}</div>
+		{:else if currentPart === EditPart.Path}
+			{#if !temp.path}
+				{@render nullReminder('path')}
+			{:else}
+				<CMFormKV bind:value={temp.path} kReadOnly />
+			{/if}
 		{:else if currentPart === EditPart.Query}
-			Query
+			{#if !temp.query}
+				{@render nullReminder('query')}
+			{:else}
+				<CMFormKArr bind:value={temp.query} />
+			{/if}
 		{:else if currentPart === EditPart.Body}
 			Body
 		{:else if currentPart === EditPart.Header}
-			Header
+			<CMFormKArr bind:value={temp.header} />
 		{:else if currentPart === EditPart.Tests}
 			Tests
 		{/if}
@@ -248,4 +261,8 @@
 	<div class="w-full h-full flex justify-center items-center">
 		<div class="text-2xl">Response View</div>
 	</div>
+{/snippet}
+
+{#snippet nullReminder(name: string)}
+	<div class="text-warning">{name} is null</div>
 {/snippet}
