@@ -2,13 +2,20 @@ package fsx
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 )
 
 var ErrRootNotExist = errors.New("root tag directory is not existed.")
 
-const RootTagDirName = ".pg"
+const (
+	RootTagDirName = ".pg"
+	EnvDirName     = "envs"
+	RunDirName     = "run"
+
+	ConfigDefaultName = "config.toml"
+)
 
 // find the dir contains .pg dir in dirs from path to os' root dir
 // (not include os' root dir and permission denied)
@@ -79,4 +86,36 @@ func PathsFromRoot(path string) ([]string, error) {
 	}
 	slices.Reverse(paths)
 	return paths, nil
+}
+
+// get Env directory from current path
+func EnvDir(path string) (string, error) {
+	tagDir, err := RootTagDir(path)
+	if err != nil {
+		return "", err
+	}
+	envDir := filepath.Join(tagDir, EnvDirName)
+	info, err := os.Lstat(envDir)
+	if err != nil {
+		return "", err
+	}
+	if !info.IsDir() {
+		return "", ErrNotDir
+	}
+	return envDir, nil
+}
+func RunDir(path string) (string, error) {
+	tagDir, err := RootTagDir(path)
+	if err != nil {
+		return "", err
+	}
+	envDir := filepath.Join(tagDir, EnvDirName)
+	info, err := os.Lstat(envDir)
+	if err != nil {
+		return "", err
+	}
+	if !info.IsDir() {
+		return "", ErrNotDir
+	}
+	return envDir, nil
 }

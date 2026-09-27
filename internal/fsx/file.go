@@ -14,6 +14,9 @@ var (
 	ErrExist      = os.ErrExist      // "file already exists"
 	ErrNotExist   = os.ErrNotExist   // "file does not exist"
 	ErrClosed     = os.ErrClosed     // "file already closed"
+
+	ErrNotDir  = errors.New("not dir type")
+	ErrNotFile = errors.New("not file type")
 )
 
 func IsFileExist(name string) (bool, error) {
@@ -75,4 +78,25 @@ func WriteToml(name string, v interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func IsDirExist(name string) (bool, error) {
+	f, err := os.Lstat(name)
+	if errors.Is(err, ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return f.IsDir(), nil
+}
+func IsDir(name string) bool {
+	f, _ := os.Lstat(name)
+	return f.IsDir()
+}
+func Mkdir(name string) error {
+	return os.Mkdir(name, os.FileMode(0755))
+}
+func MkdirAll(name string) error {
+	return os.MkdirAll(name, os.FileMode(0755))
 }

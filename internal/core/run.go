@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -17,20 +18,19 @@ import (
 )
 
 // TODO refact core/run for expansibility
-type Context struct {
-	path string
-	env  *env.Env
+
+func isTomlExt(path string) bool {
+	return filepath.Ext(path) == ".toml"
 }
 
-func readRequest(name string, ctx *Context, c *config.Config) (request.Request, error) {
-	// Read File
-	b, err := fsx.ReadFile(name)
+func loadReq(path string, env *env.Env, config *config.Config) (request.Request, error) {
+	// Read Flie
+	b, err := fsx.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	// Expand Env
-	b = []byte(ctx.env.Expand(string(b)))
-
+	b = []byte(env.Expand(string(b)))
 	var meta request.ReqMeta
 	if err := toml.Unmarshal(b, &meta); err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func readRequest(name string, ctx *Context, c *config.Config) (request.Request, 
 	default:
 		return nil, fmt.Errorf("the protocol %q not implement yet.", meta.Protocol)
 	case request.P_HTTP:
-		client, err := c.HttpClient()
+		client, err := config.HttpClient()
 		if err != nil {
 			return nil, err
 		}
@@ -57,83 +57,125 @@ func readRequest(name string, ctx *Context, c *config.Config) (request.Request, 
 	}
 }
 
-func isTomlExt(path string) bool {
-	return filepath.Ext(path) == ".toml"
+// exec Request Params
+type execRParam struct {
+	// root dir path
+	root string
+	// the file path
+	path string
+
+	cfg *config.Config
+	env *env.Env
 }
 
-func execTask(name string, ctx *Context, c *config.Config, resCh chan request.Result) {
-	r, err := readRequest(name, ctx, c)
+func execReq(ep execRParam, resCh chan RunResult) {
+	var res RunResult
+	absPath, err := filepath.Abs(ep.path)
 	if err != nil {
-		resCh <- request.ErrResult(name, fmt.Errorf("ReadError:%w", err))
+		res.Err = errors.Join(res.Err, err)
+	}
+	res.AbsPath = absPath
+
+	// ep.root is abs path, should use absPath to rel
+	relPath, err := filepath.Rel(ep.root, absPath)
+	if err != nil {
+		res.Err = errors.Join(res.Err, err)
+	}
+	res.Path = relPath
+
+	if res.Err != nil {
+		resCh <- res
 		return
 	}
-	res := r.Run()
+
+	r, err := loadReq(absPath, ep.env, ep.cfg)
+	if err != nil {
+		res.Err = errors.Join(res.Err, err)
+		resCh <- res
+		return
+	}
+	res.ReqRes = r.Run()
 	resCh <- res
 }
-func Run(startDir string, paths []string, handle func(res request.Result), tag ...string) error {
+func execReqWithContext(ctx context.Context, ep execRParam, resCh chan RunResult) {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		execReq(ep, resCh)
+	}()
+
+	select {
+	case <-done:
+		return
+	case <-ctx.Done():
+		return
+	}
+}
+
+// paths params for run needed
+type RunPaths struct {
+	// root dir's abs path
+	Root string
+	// file for directly and directory for walk
+	Tasks []string
+	// config file path
+	Config string
+	// env file path
+	Env string
+}
+type RunResult struct {
+	// Path relative to the root collection
+	Path    string
+	AbsPath string
+	ReqRes  request.Result
+	Err     error
+}
+
+func Run(ctx context.Context, runParams RunPaths, handle func(res RunResult)) {
 	// load config
-	cfg, err := config.LoadFromPath(startDir, tag...)
+	cfg, err := config.LoadFromFile(runParams.Config)
 	// if err,then use the new config
 	if err != nil {
 		cfg = config.New()
 	}
-
-	// load startEnv in current directory
-	startEnv, err := env.LoadFromPath(startDir, tag...)
-	// use empty start env if not exist root tag dir
-	// return if cause fatal error
-	if errors.Is(err, fsx.ErrRootNotExist) {
-		startEnv = env.New()
-	} else if err != nil {
-		return err
+	// load e in current directory
+	e, err := env.LoadFromFile(runParams.Env)
+	// if err,then use the new empty env
+	if err != nil {
+		e = env.New()
 	}
-	ctxs := []Context{{".", startEnv}}
 
 	var wg sync.WaitGroup
-	resCh := make(chan request.Result)
+	resCh := make(chan RunResult)
 
-	for _, path := range paths {
-		path = filepath.Clean(path)
+	for _, taskPath := range runParams.Tasks {
+		taskPath = filepath.Clean(taskPath)
 
-		info, err := os.Lstat(path)
+		info, err := os.Lstat(taskPath)
 		if err != nil {
-			return err
+			go func() {
+				resCh <- RunResult{Path: taskPath, Err: err}
+			}()
+			continue
 		}
 		// exec if path is file
-		if info.Mode().IsRegular() && isTomlExt(path) {
+		if info.Mode().IsRegular() && isTomlExt(taskPath) {
 			wg.Go(func() {
-				execTask(path, &ctxs[0], cfg, resCh)
+				execReqWithContext(ctx, execRParam{root: runParams.Root, path: taskPath, cfg: cfg, env: e}, resCh)
 			})
 			continue
 		}
 
 		// recursive directory
-		filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+		filepath.WalkDir(taskPath, func(p string, d fs.DirEntry, err error) error {
 			if d.Name() == fsx.RootTagDirName {
 				return filepath.SkipDir
 			}
-
-			parentDir := filepath.Dir(p)
-			// pop the ctx if top ctx's path is not parent directory
-			for len(ctxs) > 1 && filepath.Clean(ctxs[len(ctxs)-1].path) != filepath.Clean(parentDir) {
-				ctxs = ctxs[:len(ctxs)-1]
-			}
-			// the top of ctxs means the parent's ctx
-			ctx := ctxs[len(ctxs)-1]
-			switch {
-			case d.Type().IsRegular() && isTomlExt(p):
-				// exec if file
+			if d.Type().IsRegular() && isTomlExt(p) {
 				wg.Go(func() {
-					execTask(p, &ctx, cfg, resCh)
+					execReqWithContext(ctx, execRParam{root: runParams.Root, path: p, cfg: cfg, env: e}, resCh)
 				})
-			case d.IsDir():
-				// override load for update env
-				ctx.path = p
-				ctx.env.LoadFile(filepath.Join(p, env.FileName(tag...)))
-				// into the next walk
-				ctxs = append(ctxs, ctx)
 			}
-
 			return nil
 		})
 	}
@@ -147,5 +189,4 @@ func Run(startDir string, paths []string, handle func(res request.Result), tag .
 		handle(res)
 	}
 
-	return nil
 }

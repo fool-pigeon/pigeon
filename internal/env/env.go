@@ -1,8 +1,6 @@
 package env
 
 import (
-	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
@@ -12,7 +10,6 @@ import (
 )
 
 // TODO: refact env for new project structure
-const DefaultFileName = ".env"
 
 type EnvData = koanf.Koanf
 
@@ -94,40 +91,10 @@ func getVarName(s string) (string, int) {
 func New() *Env {
 	return &Env{koanf.New(".")}
 }
-func FileName(tag ...string) string {
-	if len(tag) > 0 && tag[0] != "" {
-		return DefaultFileName + "-" + tag[0]
-	}
-	return DefaultFileName
-}
 func LoadFromFile(name string) (*Env, error) {
 	e := New()
 	if err := e.LoadFile(name); err != nil {
 		return nil, err
-	}
-	return e, nil
-}
-func LoadFromPath(path string, tag ...string) (*Env, error) {
-	paths, err := fsx.PathsToRoot(path)
-	if err != nil {
-		return nil, err
-	}
-
-	// add the root tag dir for load the root env
-	fName := FileName(tag...)
-	paths = append(paths, filepath.Join(paths[len(paths)-1], fsx.RootTagDirName))
-	slices.Reverse(paths)
-	e := New()
-	for _, path := range paths {
-		name := filepath.Join(path, fName)
-		isExist, err := fsx.IsFileExist(name)
-		if err != nil {
-			return nil, err
-		}
-		if !isExist {
-			continue
-		}
-		e.LoadFile(name)
 	}
 	return e, nil
 }
