@@ -63,11 +63,9 @@ var infoCmd = &cobra.Command{
 				fields := make([]string, 0, len(b.Multipart))
 				for k, v := range b.Multipart {
 					var sb strings.Builder
-					if v.Name != "" {
-						sb.WriteString(line("Name", v.Name))
-					}
-					if v.Values != nil {
-						sb.WriteString(line("Values", strings.Join(v.Values, formatter.FieldColor(", "))))
+					sb.WriteString(line("Name", v.Name))
+					if v.Value != "" {
+						sb.WriteString(line("Values", v.Value))
 					}
 					if v.FileName != "" {
 						sb.WriteString(line("FileName", v.FileName))

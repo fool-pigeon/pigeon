@@ -19,11 +19,11 @@ import (
 type (
 	// type field of HTTP multipart/form-data
 	MultiField struct {
-		Name        string   `toml:"name" json:"name"`
-		Values      []string `toml:"values" json:"values"`
-		FileName    string   `toml:"file_name" json:"fileName"`
-		FilePath    string   `toml:"file_path" json:"filePath"`
-		ContentType string   `toml:"content_type" json:"contentType"`
+		Name        string `toml:"name" json:"name"`
+		Value       string `toml:"value" json:"value"`
+		FileName    string `toml:"file_name" json:"fileName"`
+		FilePath    string `toml:"file_path" json:"filePath"`
+		ContentType string `toml:"content_type" json:"contentType"`
 	}
 	Body struct {
 		// raw data
@@ -359,11 +359,18 @@ func (r *ReqData) convertBody(req *Request) error {
 	case len(b.Multipart) > 0:
 		fields := make([]*resty.MultipartField, 0, len(r.Body.Multipart))
 		for _, v := range r.Body.Multipart {
+			if v.FilePath != "" {
+				fields = append(fields, &resty.MultipartField{
+					Name:        v.Name,
+					FileName:    v.FileName,
+					FilePath:    v.FilePath,
+					ContentType: v.ContentType,
+				})
+				continue
+			}
 			fields = append(fields, &resty.MultipartField{
 				Name:        v.Name,
-				Values:      v.Values,
-				FileName:    v.FileName,
-				FilePath:    v.FilePath,
+				Values:      []string{v.Value},
 				ContentType: v.ContentType,
 			})
 		}

@@ -2,7 +2,7 @@
 	// Icons
 	import IconSave from '@lucide/svelte/icons/save';
 
-	import type { ReqData } from '@internal/request/httpx';
+	import type { Body, ReqData } from '@internal/request/httpx';
 	import type { OpenedFS } from './Editor.svelte';
 	import { onMount, untrack } from 'svelte';
 	import { HttpReqFileService } from '@bindings/service';
@@ -19,6 +19,9 @@
 	import CMFormKV from '@comp/form/CMFormKV.svelte';
 	import CMFormKArr from '@comp/form/CMFormKArr.svelte';
 	import CMFromHttpURL from '@comp/form/CMFromHttpURL.svelte';
+	import CMTextArea from '@comp/form/CMTextArea.svelte';
+	import CMFormHttpMultipart from '@comp/form/CMFormHttpMultipart.svelte';
+	import FileSelector from '@comp/form/FileSelector.svelte';
 
 	type Prop = {
 		cur: OpenedFS;
@@ -45,11 +48,57 @@
 		Body: 'Body',
 		Header: 'Header',
 		Tests: 'Tests',
+		Desc: 'Description',
+		PreReq: 'PreRequest',
+		// TODO: for more,auth,retry,other setting
 	};
 	let currentPart = $state(EditPart.Path);
-
+	const BodyPart = {
+		None: 'none',
+		Raw: 'raw',
+		Multipart: 'multipart/form-data',
+		UrlEncoded: 'x-www-from-urlencoded',
+		Binary: 'binary',
+	};
+	let bodyPart = $state(BodyPart.None);
+	function purifyTemp() {
+		if (!temp) {
+			return;
+		}
+		temp.body = purifyBody($state.snapshot(temp.body), bodyPart);
+	}
+	/**
+	 * return the body that only has one part of b
+	 * @param b
+	 * @param bodyPart
+	 */
+	function purifyBody(b: Body, bodyPart: string) {
+		const res: Body = {
+			raw: '',
+			multipart: null,
+			form: null,
+			binary: '',
+			contentType: b.contentType,
+		};
+		switch (bodyPart) {
+			case BodyPart.Raw:
+				res.raw = b.raw;
+				break;
+			case BodyPart.Multipart:
+				res.multipart = b.multipart;
+				break;
+			case BodyPart.UrlEncoded:
+				res.form = b.form;
+				break;
+			case BodyPart.Binary:
+				res.binary = b.binary;
+				break;
+		}
+		return res;
+	}
 	onMount(() => {
 		const unregister = Events.On(MenuEvent.Save, () => {
+			purifyTemp();
 			HttpReqFileService.Write(cur.fs.id, temp)
 				.then((m) => {
 					const fs = fileExplorer.find(cur.fs.id);
@@ -66,9 +115,8 @@
 		});
 		return () => {
 			unregister();
-			if (!cur.saved) {
-				HttpReqFileService.Stage(cur.fs.id, temp).then((m) => (cur.fs.additional = m));
-			}
+			purifyTemp();
+			HttpReqFileService.Stage(cur.fs.id, temp).then((m) => (cur.fs.additional = m));
 		};
 	});
 	$effect(() => {
@@ -100,17 +148,34 @@
 </script>
 
 <div class="p-2 w-full h-full">
-	{#await Promise.allSettled( [HttpReqFileService.Read(cur.fs.id).then((v) => (temp = v)), HttpReqFileService.ReadOriginal(cur.fs.id).then((v) => (original = v))], )}
+	{#await Promise.allSettled([HttpReqFileService.Read(cur.fs.id).then((v) => {
+			temp = v;
+			if (temp) {
+				const b = temp.body;
+				if (b.raw !== '') {
+					bodyPart = BodyPart.Raw;
+				} else if (b.multipart && b.multipart.length > 0) {
+					bodyPart = BodyPart.Multipart;
+				} else if (b.form) {
+					bodyPart = BodyPart.UrlEncoded;
+				} else if (b.binary !== '') {
+					bodyPart = BodyPart.Binary;
+				}
+			}
+		}), HttpReqFileService.ReadOriginal(cur.fs.id).then((v) => (original = v))])}
 		<div>loading...</div>
 	{:then}
 		{#if original === null || temp === null}
 			<div class="w-full h-full flex justify-center items-center text-error">the value is null</div>
 		{:else}
 			<!-- TODO finish form input of HttpReq -->
-			<!-- for test view -->
-			<div>{JSON.stringify(temp, null, 2)}</div>
 			<!-- ! outline-1 for test -->
 			<div class="w-full h-full flex flex-col">
+				<!-- for test view -->
+				<div class="w-full h-1/3 flex overflow-auto">
+					<div class="w-1/2 text-info">{JSON.stringify(temp, null, 2)}</div>
+					<div class="w-1/2 text-success">{JSON.stringify(original, null, 2)}</div>
+				</div>
 				<!-- URL bar -->
 				<div class="flex gap-1">
 					<div class="w-full flex gap-1 items-center outline-1">
@@ -175,11 +240,33 @@
 		{:else if currentPart === EditPart.Query}
 			<CMFormKArr bind:value={temp.query} />
 		{:else if currentPart === EditPart.Body}
-			Body
+			<select
+				class="w-48 select select-sm select-primary focus:outline-none text-center [text-align-last:center]"
+				bind:value={bodyPart}
+			>
+				{#each Object.values(BodyPart) as b (b)}
+					<option value={b}>{b}</option>
+				{/each}
+			</select>
+			{#if bodyPart === BodyPart.Raw}
+				<!-- TODO: different raw type such as json,xml,text -->
+				<CMTextArea bind:value={temp.body.raw} />
+			{:else if bodyPart === BodyPart.Multipart}
+				<CMFormHttpMultipart bind:multipart={temp.body.multipart} />
+			{:else if bodyPart === BodyPart.UrlEncoded}
+				<CMFormKArr bind:value={temp.body.form} />
+			{:else if bodyPart === BodyPart.Binary}
+				<FileSelector bind:path={temp.body.binary} />
+			{/if}
 		{:else if currentPart === EditPart.Header}
 			<CMFormKArr bind:value={temp.header} />
 		{:else if currentPart === EditPart.Tests}
-			Tests
+			<!-- TODO: pretty Tests form bindings -->
+			<CMFormKV bind:value={temp.tests} kHeader="name" vHeader="script" />
+		{:else if currentPart === EditPart.Desc}
+			<CMTextArea bind:value={temp.desc} />
+		{:else if currentPart === EditPart.PreReq}
+			<CMTextArea bind:value={temp.preReq} />
 		{/if}
 	</div>
 {/snippet}

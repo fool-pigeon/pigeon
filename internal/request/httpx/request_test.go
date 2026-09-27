@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -204,13 +205,13 @@ func TestReqDataConverts(t *testing.T) {
 			server := NewEchoServer(t)
 			defer server.Close()
 
-			req, _ := rData(t).SetBodyMultipart(httpx.MultiField{Name: "a", Values: []string{"1"}}).InstancedRequest()
+			req, _ := rData(t).SetBodyMultipart(httpx.MultiField{Name: "a", Value: "1"}).InstancedRequest()
 			res, _ := req.SetURL(server.URL).Send()
 			assert.Equal(t, map[string][]string{"a": {"1"}}, ParseEchoResp(res.Bytes()).Multipart)
 		})
 		t.Run("x-www-url-encoded", func(t *testing.T) {
 			req, _ := rData(t).SetBodyForm(map[string][]string{"a": {"1", "2"}}).InstancedRequest()
-			assert.Equal(t, map[string][]string{"a": {"1", "2"}}, req.FormData)
+			assert.Equal(t, url.Values{"a": {"1", "2"}}, req.FormData)
 		})
 	})
 	t.Run("Convert Setting", func(t *testing.T) {

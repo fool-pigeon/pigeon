@@ -204,7 +204,7 @@ func TestToml(t *testing.T) {
 	t.Log(err)
 
 	mfs := []httpx.MultiField{
-		{Name: "name1", Values: []string{"v1", "v2"}},
+		{Name: "name1", Value: "v1"},
 	}
 	mf := mfs[0]
 	b, err = toml.Marshal(mf)

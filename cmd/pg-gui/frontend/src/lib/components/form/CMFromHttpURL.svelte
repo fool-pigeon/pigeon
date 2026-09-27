@@ -9,6 +9,7 @@
 		uri: string;
 		query: KArr;
 	};
+	// TODO: auto parse path params
 	let { uri = $bindable(), query = $bindable() }: Prop = $props();
 	let url = $state('');
 	onMount(() => (url = marshal({ uri, query })));
