@@ -257,12 +257,12 @@
 				{#key eState.index}
 					{#if isRawMode}
 						<!-- the cur should not be bindable -->
-						<FileView cur={eState.ofs[eState.index]} />
+						<FileView openedFS={eState.ofs[eState.index]} />
 					{:else if !mode}
 						<div>Unkown File</div>
 					{:else if ModeContains(mode, NodeMode.HttpReq)}
 						<!-- the cur should not be bindable -->
-						<HttpReqView cur={eState.ofs[eState.index]} bind:isFlexRow />
+						<HttpReqView openedFS={eState.ofs[eState.index]} bind:isFlexRow />
 					{/if}
 				{/key}
 			</div>

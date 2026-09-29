@@ -11,48 +11,54 @@
 	import { fileExplorer } from '../navigation/FileExplorer.svelte';
 	import CMWrapper from '../form/CMWrapper.svelte';
 	import { DataEvent } from '@lib/enum/events';
+	import type { PageLoadStatus } from '@type/page';
 	type Prop = {
-		cur: OpenedFS;
+		openedFS: OpenedFS;
 	};
-	let { cur }: Prop = $props();
+	let { openedFS }: Prop = $props();
 	// original file content
 	let original = $state('');
 	// temp file content
 	let temp = $state('');
+	let loadStatus = $state<PageLoadStatus>({ err: null, loaded: false });
 	onMount(() => {
+		const cur = { ...openedFS };
+		const fs = cur.fs;
+		Promise.allSettled([
+			TextFileService.Read(fs.id).then((v) => (temp = v)),
+			TextFileService.ReadOriginal(fs.id).then((v) => (original = v)),
+		])
+			.catch((err) => (loadStatus.err = err))
+			.finally(() => (loadStatus.loaded = true));
+
 		const unregister = Events.On(MenuEvent.Save, () => {
-			const curFS = cur.fs;
-			TextFileService.Write(curFS.id, temp)
+			TextFileService.Write(fs.id, temp)
 				.then((m) => {
-					const fsItem = fileExplorer.find(curFS.id);
-					if (fsItem) {
-						fsItem.additional = m;
-					}
-					cur.fs.additional = m;
+					fs.additional = m;
 					// original should be set to the copy of temp
 					original = $state.snapshot(temp);
 					Events.Emit(DataEvent.EditorSaved);
-					msgAlert.success(`Saved ${curFS.name} Successfully`);
+					msgAlert.success(`Saved ${fs.name} Successfully`);
 				})
 				.catch(msgAlert.error);
 		});
-		return () => {
+		return async () => {
 			unregister();
-			if (!cur.saved) {
-				TextFileService.Stage(cur.fs.id, temp).then((m) => (cur.fs.additional = m));
-			}
+			await TextFileService.Stage(fs.id, temp).then((m) => (fs.additional = m));
 		};
 	});
 	$effect(() => {
-		cur.saved = original === temp;
+		openedFS.saved = original === temp;
 	});
 </script>
 
-{#await Promise.allSettled([TextFileService.Read(cur.fs.id)
-		.then((v) => (temp = v))
-		.catch(msgAlert.error), TextFileService.ReadOriginal(cur.fs.id)
-		.then((v) => (original = v))
-		.catch(msgAlert.error)]) then}
+{#if !loadStatus.loaded}
+	<div>loading...</div>
+{:else if loadStatus.err}
+	<div class="w-full h-full flex justify-center items-center">
+		<div class="text-2xl text-error">Load data error: {loadStatus.err}</div>
+	</div>
+{:else}
 	<CMWrapper
 		bind:value={temp}
 		viewInitFunc={() => {
@@ -67,4 +73,4 @@
 			});
 		}}
 	/>
-{/await}
+{/if}

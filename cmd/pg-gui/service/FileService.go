@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"maps"
 	"slices"
 	"sync"
 
@@ -50,6 +51,13 @@ func (f *FileCache) delete(path string) {
 	defer f.mu.Unlock()
 	delete(f.cache, path)
 }
+func (f *FileCache) copy() map[string][]byte {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	res := make(map[string][]byte)
+	maps.Copy(res, f.cache)
+	return res
+}
 
 // func (f *FileCache) length() int {
 // 	f.mu.RLock()
@@ -69,6 +77,16 @@ type FileService struct {
 
 func NewFileService() *FileService {
 	return &FileService{}
+}
+func (f *FileService) Original() map[string][]byte {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return f.original.copy()
+}
+func (f *FileService) Temp() map[string][]byte {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return f.temp.copy()
 }
 func (f *FileService) GetOpenedState() ([]OpenedState, error) {
 	f.mu.RLock()
@@ -290,5 +308,10 @@ func (r *HttpReqFileService) Stage(path string, data *httpx.ReqData) (NodeMode, 
 		return 0, err
 	}
 	r.fs.stage(path, b)
+	// temp := r.fs.Temp()
+	// pterm.Warning.Println("TEMP:")
+	// for k, v := range temp {
+	// 	pterm.Info.Println(k, string(v))
+	// }
 	return FileMode | Request | parseModeFromHttpReq(data), nil
 }

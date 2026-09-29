@@ -22,12 +22,13 @@
 	import CMTextArea from '@comp/form/CMTextArea.svelte';
 	import CMFormHttpMultipart from '@comp/form/CMFormHttpMultipart.svelte';
 	import FileSelector from '@comp/form/FileSelector.svelte';
+	import type { PageLoadStatus } from '@type/page';
 
 	type Prop = {
-		cur: OpenedFS;
+		openedFS: OpenedFS;
 		isFlexRow: boolean;
 	};
-	let { cur, isFlexRow = $bindable() }: Prop = $props();
+	let { openedFS, isFlexRow = $bindable() }: Prop = $props();
 	let original = $state<ReqData | null>(null);
 	let temp = $state<ReqData | null>(null);
 
@@ -106,33 +107,57 @@
 		}
 		return res;
 	}
+	let loadStatus = $state<PageLoadStatus>({ loaded: false, err: null });
 	onMount(() => {
+		const cur = { ...openedFS };
+		const fs = cur.fs;
 		const unregister = Events.On(MenuEvent.Save, () => {
 			purifyTemp();
-			HttpReqFileService.Write(cur.fs.id, temp)
+			HttpReqFileService.Write(fs.id, temp)
 				.then((m) => {
-					const fs = fileExplorer.find(cur.fs.id);
-					if (fs) {
-						fs.additional = m;
-					}
-					cur.fs.additional = m;
+					fs.additional = m;
 					// original should be set to copy of temp
 					original = $state.snapshot(temp);
 
 					Events.Emit(DataEvent.EditorSaved);
-					msgAlert.success(`Saved ${cur.fs.name} Successfully`);
+					msgAlert.success(`Saved ${fs.name} Successfully`);
 				})
 				.catch(msgAlert.error);
 		});
-		return () => {
+		Promise.allSettled([
+			HttpReqFileService.Read(fs.id).then((v) => {
+				temp = v;
+				if (temp) {
+					const b = temp.body;
+					if (b.raw !== '') {
+						bodyPart = BodyPart.Raw;
+					} else if (b.multipart && b.multipart.length > 0) {
+						bodyPart = BodyPart.Multipart;
+					} else if (b.form) {
+						bodyPart = BodyPart.UrlEncoded;
+					} else if (b.binary !== '') {
+						bodyPart = BodyPart.Binary;
+					}
+				}
+			}),
+			HttpReqFileService.ReadOriginal(fs.id).then((v) => {
+				original = v;
+			}),
+		])
+			.catch((err) => {
+				loadStatus.err = err;
+			})
+			.finally(() => {
+				loadStatus.loaded = true;
+			});
+		return async () => {
 			unregister();
 			purifyTemp();
-			const fs = cur.fs;
-			HttpReqFileService.Stage(fs.id, temp).then((m) => (fs.additional = m));
+			await HttpReqFileService.Stage(fs.id, temp).then((m) => (fs.additional = m));
 		};
 	});
 	$effect(() => {
-		cur.saved = equal(original, temp);
+		openedFS.saved = equal(original, temp);
 	});
 	const METHOD_STYLE_CLASS = {
 		[Method.GET]: 'text-req-get hover:bg-req-get/50',
@@ -156,81 +181,65 @@
 
 <div class="p-2 w-full h-full">
 	<!-- FIXME:Out-of-date assignments during concurrent reads; use ‘cancelled’ -->
-	{#await Promise.allSettled([HttpReqFileService.Read(cur.fs.id).then((v) => {
-			temp = v;
-			if (temp) {
-				const b = temp.body;
-				if (b.raw !== '') {
-					bodyPart = BodyPart.Raw;
-				} else if (b.multipart && b.multipart.length > 0) {
-					bodyPart = BodyPart.Multipart;
-				} else if (b.form) {
-					bodyPart = BodyPart.UrlEncoded;
-				} else if (b.binary !== '') {
-					bodyPart = BodyPart.Binary;
-				}
-			}
-		}), HttpReqFileService.ReadOriginal(cur.fs.id).then((v) => (original = v))])}
+	{#if !loadStatus.loaded}
 		<div>loading...</div>
-	{:then}
-		{#if original === null || temp === null}
-			<div class="w-full h-full flex justify-center items-center text-error">the value is null</div>
-		{:else}
-			<!-- TODO finish form input of HttpReq -->
-			<!-- ! outline-1 for test -->
-			<div class="w-full h-full flex flex-col">
-				<!-- for test view -->
-				<div class="w-full h-1/3 flex overflow-auto">
-					<div class="w-1/2 text-info">{JSON.stringify(temp, null, 2)}</div>
-					<div class="w-1/2 text-success">{JSON.stringify(original, null, 2)}</div>
-				</div>
-				<!-- URL bar -->
-				<div class="flex gap-1">
-					<div class="w-full flex gap-1 items-center outline-1">
-						<!-- HTTP Method Selector -->
-						<select
-							class="appearance-none focus:outline-none text-center [text-align-last:center]
-							{METHOD_STYLE_CLASS[temp?.method ?? ''] ?? ''}"
-							bind:value={temp.method}
-						>
-							{#each Object.values(Method) as m (m)}
-								<option value={m}>{m}</option>
-							{/each}
-						</select>
-						<CMFromHttpURL bind:uri={temp.url} bind:query={temp.query} />
-						<!-- Save file btn -->
-						<button
-							title="Save"
-							class="mr-1 h-full text-base-content/80 hover:text-primary"
-							onclick={() => Events.Emit(MenuEvent.Save)}
-						>
-							<IconSave class="size-5" />
-						</button>
-					</div>
-					<!-- TODO Send Http request -->
-					<button
-						class="outline"
-						onclick={() => {
-							ReqCtxService.SendHttp($state.snapshot(temp))
-								.then((v) => {
-									resState.loaded = true;
-									resState.current = v;
-									resState.history.push(v);
-								})
-								.catch(msgAlert.error);
-						}}>Send</button
-					>
-				</div>
-				<div class="mt-1 w-full grow">
-					<DynamicJoin bind:isFlexRow panels={[NewPanel(reqEditor), NewPanel(respViewer)]} />
-				</div>
-			</div>
-		{/if}
-	{:catch err}
+	{:else if loadStatus.err}
 		<div class="w-full h-full flex justify-center items-center">
-			<div class="text-2xl text-error">Load data error: {err}</div>
+			<div class="text-2xl text-error">Load data error: {loadStatus.err}</div>
 		</div>
-	{/await}
+	{:else if original === null || temp === null}
+		<div class="w-full h-full flex justify-center items-center text-error">the value is null</div>
+	{:else}
+		<!-- TODO finish form input of HttpReq -->
+		<!-- ! outline-1 for test -->
+		<div class="w-full h-full flex flex-col">
+			<!-- for test view -->
+			<div class="w-full h-1/3 flex overflow-auto">
+				<div class="w-1/2 text-info">{JSON.stringify(temp, null, 2)}</div>
+				<div class="w-1/2 text-success">{JSON.stringify(original, null, 2)}</div>
+			</div>
+			<!-- URL bar -->
+			<div class="flex gap-1">
+				<div class="w-full flex gap-1 items-center outline-1">
+					<!-- HTTP Method Selector -->
+					<select
+						class="appearance-none focus:outline-none text-center [text-align-last:center]
+							{METHOD_STYLE_CLASS[temp?.method ?? ''] ?? ''}"
+						bind:value={temp.method}
+					>
+						{#each Object.values(Method) as m (m)}
+							<option value={m}>{m}</option>
+						{/each}
+					</select>
+					<CMFromHttpURL bind:uri={temp.url} bind:query={temp.query} />
+					<!-- Save file btn -->
+					<button
+						title="Save"
+						class="mr-1 h-full text-base-content/80 hover:text-primary"
+						onclick={() => Events.Emit(MenuEvent.Save)}
+					>
+						<IconSave class="size-5" />
+					</button>
+				</div>
+				<!-- TODO Send Http request -->
+				<button
+					class="outline"
+					onclick={() => {
+						ReqCtxService.SendHttp($state.snapshot(temp))
+							.then((v) => {
+								resState.loaded = true;
+								resState.current = v;
+								resState.history.push(v);
+							})
+							.catch(msgAlert.error);
+					}}>Send</button
+				>
+			</div>
+			<div class="mt-1 w-full grow">
+				<DynamicJoin bind:isFlexRow panels={[NewPanel(reqEditor), NewPanel(respViewer)]} />
+			</div>
+		</div>
+	{/if}
 </div>
 
 {#snippet reqEditor()}
