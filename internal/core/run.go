@@ -17,6 +17,11 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+var (
+	ErrInvalidValue = errors.New("value is invalid")
+	ErrNilValue     = errors.New("value is nil.")
+)
+
 // TODO refact core/run for expansibility
 
 func isTomlExt(path string) bool {
@@ -57,15 +62,18 @@ func loadReq(path string, env *env.Env, config *config.Config) (request.Request,
 	}
 }
 
+type ReqCtx struct {
+	Config *config.Config
+	Env    *env.Env
+}
+
 // exec Request Params
 type execRParam struct {
+	ReqCtx
 	// root dir path
 	root string
 	// the file path
 	path string
-
-	cfg *config.Config
-	env *env.Env
 }
 
 func execReq(ep execRParam, resCh chan RunResult) {
@@ -88,7 +96,7 @@ func execReq(ep execRParam, resCh chan RunResult) {
 		return
 	}
 
-	r, err := loadReq(absPath, ep.env, ep.cfg)
+	r, err := loadReq(absPath, ep.Env, ep.Config)
 	if err != nil {
 		res.Err = errors.Join(res.Err, err)
 		resCh <- res
@@ -114,14 +122,12 @@ func execReqWithContext(ctx context.Context, ep execRParam, resCh chan RunResult
 
 // paths params for run needed
 type RunPaths struct {
+	// readonly
+	ReqCtx
 	// root dir's abs path
 	Root string
 	// file for directly and directory for walk
 	Tasks []string
-	// config file path
-	Config string
-	// env file path
-	Env string
 }
 type RunResult struct {
 	// Path relative to the root collection
@@ -131,18 +137,12 @@ type RunResult struct {
 	Err     error
 }
 
-func Run(ctx context.Context, runParams RunPaths, handle func(res RunResult)) {
-	// load config
-	cfg, err := config.LoadFromFile(runParams.Config)
-	// if err,then use the new config
-	if err != nil {
-		cfg = config.New()
+func Run(ctx context.Context, runParams RunPaths, handle func(res RunResult)) error {
+	if runParams.Config == nil {
+		return fmt.Errorf("config:%w", ErrNilValue)
 	}
-	// load e in current directory
-	e, err := env.LoadFromFile(runParams.Env)
-	// if err,then use the new empty env
-	if err != nil {
-		e = env.New()
+	if runParams.Env == nil {
+		return fmt.Errorf("env:%w", ErrNilValue)
 	}
 
 	var wg sync.WaitGroup
@@ -161,7 +161,7 @@ func Run(ctx context.Context, runParams RunPaths, handle func(res RunResult)) {
 		// exec if path is file
 		if info.Mode().IsRegular() && isTomlExt(taskPath) {
 			wg.Go(func() {
-				execReqWithContext(ctx, execRParam{root: runParams.Root, path: taskPath, cfg: cfg, env: e}, resCh)
+				execReqWithContext(ctx, execRParam{root: runParams.Root, path: taskPath, ReqCtx: runParams.ReqCtx}, resCh)
 			})
 			continue
 		}
@@ -173,7 +173,7 @@ func Run(ctx context.Context, runParams RunPaths, handle func(res RunResult)) {
 			}
 			if d.Type().IsRegular() && isTomlExt(p) {
 				wg.Go(func() {
-					execReqWithContext(ctx, execRParam{root: runParams.Root, path: p, cfg: cfg, env: e}, resCh)
+					execReqWithContext(ctx, execRParam{root: runParams.Root, path: p, ReqCtx: runParams.ReqCtx}, resCh)
 				})
 			}
 			return nil
@@ -188,5 +188,5 @@ func Run(ctx context.Context, runParams RunPaths, handle func(res RunResult)) {
 	for res := range resCh {
 		handle(res)
 	}
-
+	return ctx.Err()
 }

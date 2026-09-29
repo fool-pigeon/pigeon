@@ -27,6 +27,8 @@
 			if (item.type === 'leaf') {
 				this.activedItem = item;
 			}
+			// update req context
+			Events.Emit(DataEvent.UpdateReqCtx, item.id);
 		}
 		/**
 		 * find the first item whose id equals path in items

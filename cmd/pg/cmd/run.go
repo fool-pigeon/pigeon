@@ -13,7 +13,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/fool-pigeon/pigeon/internal/core"
+	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/fool-pigeon/pigeon/internal/request/httpx"
 	"github.com/pterm/pterm"
@@ -50,14 +52,27 @@ var runCmd = &cobra.Command{
 		if envFile == "" {
 			envFile = filepath.Join(root, envName)
 		}
+
+		// load config
+		cfg, err := config.LoadFromFile(filepath.Join(root, fsx.ConfigDefaultName))
+		// if err,then use the new config
+		if err != nil {
+			cfg = config.New()
+		}
+		// load e in current directory
+		e, err := env.LoadFromFile(envFile)
+		// if err,then use the new empty env
+		if err != nil {
+			e = env.New()
+		}
+
 		// Ctrl+C to cancel
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
 		rp := core.RunPaths{
+			ReqCtx: core.ReqCtx{Config: cfg, Env: e},
 			Root:   root,
 			Tasks:  paths,
-			Config: filepath.Join(root, fsx.ConfigDefaultName),
-			Env:    envFile,
 		}
 
 		taskTotal, taskPassed := 0, 0
@@ -119,10 +134,18 @@ func taskResPrint(res core.RunResult, showRaw bool, rawLine int) {
 	}
 
 	// print status
+	var sb strings.Builder
+	sb.WriteString(rRes.Proto)
+	sb.WriteRune(' ')
+	sb.WriteString(rRes.ReqName)
+	sb.WriteRune(' ')
+	sb.WriteString(rRes.Status)
+	sb.WriteRune(' ')
+	sb.WriteString(rRes.Duration.Round(time.Millisecond / 10).String())
 	if rRes.Success {
-		pterm.Success.Println(rRes.ReqName, rRes.Status, rRes.Duration.Round(time.Millisecond/10))
+		pterm.Success.Println(sb.String())
 	} else {
-		pterm.Error.Println(rRes.ReqName, rRes.Status, rRes.Duration.Round(time.Millisecond/10))
+		pterm.Error.Println(sb.String())
 	}
 
 	for _, t := range rRes.Tests {

@@ -55,6 +55,7 @@ func main() {
 	app.RegisterService(application.NewService(service.NewTextFileService(fileService)))
 	app.RegisterService(application.NewService(service.NewHttpReqFileService(fileService)))
 	app.RegisterService(application.NewService(service.NewFileExploreService(app.Event)))
+	app.RegisterService(application.NewService(service.NewReqCtxService(app)))
 
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.

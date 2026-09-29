@@ -1,26 +1,14 @@
 <script lang="ts">
-	import { basicSetup, EditorView } from 'codemirror';
-	import CMWrapper from './CMWrapper.svelte';
 	import { json } from '@codemirror/lang-json';
+	import CMTextArea from './CMTextArea.svelte';
+	import { EditorState } from '@codemirror/state';
 
 	type Prop = {
 		value: string;
+		readonly?: boolean;
 	};
-	let { value = $bindable() }: Prop = $props();
+	let { value = $bindable(), readonly = false }: Prop = $props();
 	// TODO a powerful syntax highlight config for json
 </script>
 
-<CMWrapper
-	bind:value
-	viewInitFunc={() => {
-		return new EditorView({
-			extensions: [
-				basicSetup,
-				json(),
-				EditorView.theme({
-					'&': { width: '100%', height: '100%' },
-				}),
-			],
-		});
-	}}
-/>
+<CMTextArea bind:value extensions={[json(), EditorState.readOnly.of(readonly)]} />

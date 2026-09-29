@@ -26,10 +26,8 @@ func RootDir(path string) (string, error) {
 	}
 	for {
 		isExist, err := IsDirExist(filepath.Join(absPath, RootTagDirName))
-		if err != nil {
-			return "", err
-		}
-		if isExist {
+
+		if err == nil && isExist {
 			return absPath, nil
 		}
 
@@ -61,12 +59,8 @@ func PathsToRoot(path string) ([]string, error) {
 	res := make([]string, 0)
 	for {
 		isExist, err := IsDirExist(filepath.Join(absPath, RootTagDirName))
-		if err != nil {
-			return nil, err
-		}
-
 		res = append(res, absPath)
-		if isExist {
+		if err == nil && isExist {
 			return res, nil
 		}
 

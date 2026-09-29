@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"net/http"
@@ -79,19 +80,27 @@ type (
 		Tests map[string]string `toml:"tests,omitempty,multiline" json:"tests"`
 
 		client *Client
+		req    *Request
 	}
 )
 
 // Run implements [request.Request].
 func (r *ReqData) Run() request.Result {
+	if r.req == nil {
+		req, err := r.InstancedRequest()
+		if err != nil {
+			return request.ErrResult(r.Name, err)
+		}
+		r.req = req
+	}
 	// send request
-	res, err := r.Send()
+	res, err := r.req.Send()
 	if err != nil {
 		return request.ErrResult(r.Name, err)
 	}
 	// set raw response
 	result := request.NewResult()
-	result.SetReqName(r.ReqName()).SetRaw(res).SetStatus(res.Status())
+	result.SetRaw(res).SetReqName(r.ReqName()).SetProto(res.Proto()).SetStatus(res.Status())
 	result.SetSuccess(res.StatusCode() >= 200 && res.StatusCode() < 300)
 	result.SetDuration(res.Duration())
 
@@ -128,6 +137,20 @@ func (r *ReqData) Run() request.Result {
 	return result
 }
 
+// RunWithContext implements [request.Request].
+func (r *ReqData) RunWithContext(ctx context.Context) request.Result {
+	ch := make(chan request.Result, 1)
+	go func() {
+		defer close(ch)
+		ch <- r.Run()
+	}()
+	select {
+	case result := <-ch:
+		return result
+	case <-ctx.Done():
+		return request.ErrResult(r.ReqName(), ctx.Err())
+	}
+}
 func NewReqData(requestName string) *ReqData {
 	return &ReqData{ReqMeta: request.ReqMeta{
 		Name:     requestName,
@@ -244,6 +267,9 @@ func (r *ReqData) SetClient(client *Client) *ReqData {
 	r.client = client
 	return r
 }
+func (r *ReqData) Req() *Request {
+	return r.req
+}
 
 func (r *ReqData) ParseRawURL(rawURL string) error {
 	if rawURL == "" {
@@ -290,14 +316,6 @@ func (r *ReqData) RawURL() string {
 		return r.URL + "?" + toQueryString(r.Query)
 	}
 	return r.URL
-}
-
-func (r *ReqData) Send() (*Response, error) {
-	req, err := r.InstancedRequest()
-	if err != nil {
-		return nil, err
-	}
-	return req.Send()
 }
 
 // instanced the [Request] from [ReqData],if r.client is nil,then create a new client to use
@@ -348,6 +366,7 @@ func (r *ReqData) InstancedRequest() (*Request, error) {
 
 	}
 
+	r.req = req
 	return req, nil
 }
 func (r *ReqData) convertBody(req *Request) error {

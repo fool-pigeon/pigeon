@@ -17,6 +17,9 @@ const (
 	Save           MenuEvent = "menu:file:save"
 	Preferences    MenuEvent = "menu:file:preferences"
 	CloseEditor    MenuEvent = "menu:file:close-editor"
+	// Run Subs
+	RunRequest    MenuEvent = "menu:run:run-request"
+	CancelRequest MenuEvent = "menu:run:cancel-request"
 	// Help Subs
 	Documentation MenuEvent = "menu:help:docmentation"
 )
@@ -76,6 +79,7 @@ func InitMenu(app *wa.App) {
 		FileMenu = "File"
 		EditMenu = "Edit"
 		ViewMenu = "View"
+		RunMenu  = "Run"
 		HelpMenu = "Help"
 	)
 
@@ -94,18 +98,18 @@ func InitMenu(app *wa.App) {
 			bindRole(wa.Quit, "Quit")
 	}
 	// FileMenu:
-	// 		New Request
-	// 		New Project
-	// 		----------
-	// 		Open Collection
-	// 		----------
-	// 		Save
-	// 		----------
-	// 		Preferences
-	// 		----------
-	// 		Close Editor
-	// 		----------
-	// 		Quit
+	// 	New Request
+	// 	New Project
+	// 	----------
+	// 	Open Collection
+	// 	----------
+	// 	Save
+	// 	----------
+	// 	Preferences
+	// 	----------
+	// 	Close Editor
+	// 	----------
+	// 	Quit
 	NewMenuWrap(menu.AddSubmenu(FileMenu)).
 		bindItemWithShortcut("New Request", "CmdOrCtrl+n", func(ctx *wa.Context) {
 			app.Logger.Info(NewRequest)
@@ -139,6 +143,16 @@ func InitMenu(app *wa.App) {
 		bindRole(wa.Quit, "Quit", !isDarwin)
 
 	// EditMenu:
+	// 	Undo
+	// 	Redo
+	// 	----------
+	// 	Cut
+	// 	Copy
+	// 	Paste
+	// 	(Paste & Match Style)
+	// 	----------
+	// 	(Speech)
+	// 	SelectAll
 	NewMenuWrap(menu.AddSubmenu(EditMenu)).
 		bindRole(wa.Undo, "Undo").
 		bindRole(wa.Redo, "Redo").
@@ -156,6 +170,14 @@ func InitMenu(app *wa.App) {
 		bindRole(wa.SelectAll, "Selete All")
 
 	// ViewMenu:
+	// 	Reload
+	// 	Force Reload
+	// 	----------
+	// 	Reset Zoom
+	// 	Zoom In
+	// 	Zoom Out
+	// 	----------
+	// 	Toggle Fullscreen
 	NewMenuWrap(menu.AddSubmenu(ViewMenu)).
 		bindRole(wa.Reload, "Reload").
 		bindRole(wa.ForceReload, "Force Reload").
@@ -165,16 +187,32 @@ func InitMenu(app *wa.App) {
 		bindRoleWithShortcut(wa.ZoomOut, "Zoom Out", "CmdOrCtrl+-").
 		addSeparator().
 		bindRole(wa.ToggleFullscreen, "Toggle Fullscreen")
-	// go:build !productioin || devtools
-	menu.FindByLabel(ViewMenu).GetSubmenu().AddRole(wa.OpenDevTools)
+
+	// RunMenu:
+	// 	Run Request
+	// 	Cancel Request
+	NewMenuWrap(menu.AddSubmenu(RunMenu)).
+		bindItemWithShortcut("Run Request", "CmdOrCtrl+Enter", func(ctx *wa.Context) {
+			app.Logger.Info(RunRequest)
+			app.Event.Emit(RunRequest)
+		}).
+		bindItem("Cancel Request", func(ctx *wa.Context) {
+			app.Logger.Info(CancelRequest)
+			app.Event.Emit(CancelRequest)
+		})
 
 	// HelpMenu:
+	// 	About
+	// 	Documentation
 	NewMenuWrap(menu.AddSubmenu(HelpMenu)).
 		bindRole(wa.About, "About", !isDarwin).
 		bindItem("Documentation", func(ctx *wa.Context) {
 			app.Logger.Info(Documentation)
 			app.Event.Emit(Documentation)
 		})
+
+	// go:build !productioin || devtools
+	menu.FindByLabel(HelpMenu).GetSubmenu().AddRole(wa.OpenDevTools)
 }
 
 // this is a empty Service to export the enum to js/ts

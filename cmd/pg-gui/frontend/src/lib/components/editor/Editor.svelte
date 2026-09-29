@@ -256,11 +256,13 @@
 				{let mode = $derived(eState.ofs[eState.index].fs.additional)}
 				{#key eState.index}
 					{#if isRawMode}
-						<FileView bind:cur={eState.ofs[eState.index]} />
+						<!-- the cur should not be bindable -->
+						<FileView cur={eState.ofs[eState.index]} />
 					{:else if !mode}
 						<div>Unkown File</div>
 					{:else if ModeContains(mode, NodeMode.HttpReq)}
-						<HttpReqView bind:cur={eState.ofs[eState.index]} bind:isFlexRow />
+						<!-- the cur should not be bindable -->
+						<HttpReqView cur={eState.ofs[eState.index]} bind:isFlexRow />
 					{/if}
 				{/key}
 			</div>

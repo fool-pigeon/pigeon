@@ -5,7 +5,7 @@
 	import type { Body, ReqData } from '@internal/request/httpx';
 	import type { OpenedFS } from './Editor.svelte';
 	import { onMount, untrack } from 'svelte';
-	import { HttpReqFileService } from '@bindings/service';
+	import { HttpReqFileService, ReqCtxService, type HttpRes } from '@bindings/service';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { Events } from '@wailsio/runtime';
 	import { MenuEvent } from '@bindings/gui';
@@ -27,7 +27,7 @@
 		cur: OpenedFS;
 		isFlexRow: boolean;
 	};
-	let { cur = $bindable<OpenedFS>(), isFlexRow = $bindable() }: Prop = $props();
+	let { cur, isFlexRow = $bindable() }: Prop = $props();
 	let original = $state<ReqData | null>(null);
 	let temp = $state<ReqData | null>(null);
 
@@ -51,16 +51,26 @@
 		Desc: 'Description',
 		PreReq: 'PreRequest',
 		// TODO: for more,auth,retry,other setting
-	};
-	let currentPart = $state(EditPart.Path);
+	} as const;
+	type EditPart = (typeof EditPart)[keyof typeof EditPart];
+	let reqEditPart = $state<EditPart>(EditPart.Path);
 	const BodyPart = {
 		None: 'none',
 		Raw: 'raw',
 		Multipart: 'multipart/form-data',
-		UrlEncoded: 'x-www-from-urlencoded',
+		UrlEncoded: 'x-www-form-urlencoded',
 		Binary: 'binary',
-	};
-	let bodyPart = $state(BodyPart.None);
+	} as const;
+	type BodyPart = (typeof BodyPart)[keyof typeof BodyPart];
+	let bodyPart = $state<BodyPart>(BodyPart.None);
+	const ResViewPart = {
+		ResBody: 'Response',
+		ResHeader: 'Header',
+		Tests: 'Tests',
+		History: 'History',
+	} as const;
+	type ResViewPart = (typeof ResViewPart)[keyof typeof ResViewPart];
+	let viewPart = $state<ResViewPart>(ResViewPart.ResBody);
 	function purifyTemp() {
 		if (!temp) {
 			return;
@@ -106,7 +116,8 @@
 						fs.additional = m;
 					}
 					cur.fs.additional = m;
-					original = temp;
+					// original should be set to copy of temp
+					original = $state.snapshot(temp);
 
 					Events.Emit(DataEvent.EditorSaved);
 					msgAlert.success(`Saved ${cur.fs.name} Successfully`);
@@ -116,38 +127,35 @@
 		return () => {
 			unregister();
 			purifyTemp();
-			HttpReqFileService.Stage(cur.fs.id, temp).then((m) => (cur.fs.additional = m));
+			const fs = cur.fs;
+			HttpReqFileService.Stage(fs.id, temp).then((m) => (fs.additional = m));
 		};
 	});
 	$effect(() => {
 		cur.saved = equal(original, temp);
 	});
-	let methodClassStyle = $derived(
-		temp === null
-			? ''
-			: temp.method === Method.GET
-				? 'text-req-get hover:bg-req-get/50'
-				: temp.method === Method.POST
-					? 'text-req-post hover:bg-req-post/50'
-					: temp.method === Method.PUT
-						? 'text-req-put hover:bg-req-put/50'
-						: temp.method === Method.DELETE
-							? 'text-req-delete hover:bg-req-delete/50'
-							: temp.method === Method.HEAD
-								? 'text-req-head hover:bg-req-head/50'
-								: temp.method === Method.PATCH
-									? 'text-req-patch hover:bg-req-patch/50'
-									: temp.method === Method.OPTIONS
-										? 'text-req-options hover:bg-req-options/50'
-										: temp.method === Method.CONNECT
-											? 'text-req-connect hover:bg-req-connect/50'
-											: temp.method === Method.TRACE
-												? 'text-req-trace hover:bg-req-trace/50'
-												: '',
-	);
+	const METHOD_STYLE_CLASS = {
+		[Method.GET]: 'text-req-get hover:bg-req-get/50',
+		[Method.POST]: 'text-req-post hover:bg-req-post/50',
+		[Method.PUT]: 'text-req-put hover:bg-req-put/50',
+		[Method.DELETE]: 'text-req-delete hover:bg-req-delete/50',
+		[Method.HEAD]: 'text-req-head hover:bg-req-head/50',
+		[Method.PATCH]: 'text-req-patch hover:bg-req-patch/50',
+		[Method.OPTIONS]: 'text-req-options hover:bg-req-options/50',
+		[Method.CONNECT]: 'text-req-connect hover:bg-req-connect/50',
+		[Method.TRACE]: 'text-req-trace hover:bg-req-trace/50',
+	};
+
+	type ResViewState = {
+		loaded: boolean;
+		current?: HttpRes;
+		history: HttpRes[];
+	};
+	let resState = $state<ResViewState>({ loaded: false, history: [] });
 </script>
 
 <div class="p-2 w-full h-full">
+	<!-- FIXME:Out-of-date assignments during concurrent reads; use ‘cancelled’ -->
 	{#await Promise.allSettled([HttpReqFileService.Read(cur.fs.id).then((v) => {
 			temp = v;
 			if (temp) {
@@ -182,7 +190,7 @@
 						<!-- HTTP Method Selector -->
 						<select
 							class="appearance-none focus:outline-none text-center [text-align-last:center]
-							{methodClassStyle}"
+							{METHOD_STYLE_CLASS[temp?.method ?? ''] ?? ''}"
 							bind:value={temp.method}
 						>
 							{#each Object.values(Method) as m (m)}
@@ -200,7 +208,18 @@
 						</button>
 					</div>
 					<!-- TODO Send Http request -->
-					<button class="outline">Send</button>
+					<button
+						class="outline"
+						onclick={() => {
+							ReqCtxService.SendHttp($state.snapshot(temp))
+								.then((v) => {
+									resState.loaded = true;
+									resState.current = v;
+									resState.history.push(v);
+								})
+								.catch(msgAlert.error);
+						}}>Send</button
+					>
 				</div>
 				<div class="mt-1 w-full grow">
 					<DynamicJoin bind:isFlexRow panels={[NewPanel(reqEditor), NewPanel(respViewer)]} />
@@ -217,15 +236,14 @@
 {#snippet reqEditor()}
 	<div class="w-full h-full flex flex-col gap-1">
 		<!-- edit part select -->
-		<div role="tablist" class="w-full text-base-content/50 border-b border-primary">
+		<div role="tablist" class="w-full border-b border-primary/50">
 			<ScrollFlex>
 				{#snippet content()}
 					{#each Object.values(EditPart) as p (p)}
 						<button
-							class="p-1 cursor-pointer hover:text-base-content {p === currentPart
-								? 'text-base-content bg-primary'
-								: ''}"
-							onclick={() => (currentPart = p)}>{p}</button
+							class="p-1 cursor-pointer text-base-content/50
+							{p === reqEditPart ? 'text-primary-content bg-primary' : 'hover:text-base-content'}"
+							onclick={() => (reqEditPart = p)}>{p}</button
 						>
 					{/each}
 				{/snippet}
@@ -235,11 +253,11 @@
 		<!-- TODO :binding form -->
 		{#if !temp}
 			<div class="text-error">temp value is null:{temp}</div>
-		{:else if currentPart === EditPart.Path}
+		{:else if reqEditPart === EditPart.Path}
 			<CMFormKV bind:value={temp.path} kReadOnly />
-		{:else if currentPart === EditPart.Query}
+		{:else if reqEditPart === EditPart.Query}
 			<CMFormKArr bind:value={temp.query} />
-		{:else if currentPart === EditPart.Body}
+		{:else if reqEditPart === EditPart.Body}
 			<select
 				class="w-48 select select-sm select-primary focus:outline-none text-center [text-align-last:center]"
 				bind:value={bodyPart}
@@ -258,14 +276,14 @@
 			{:else if bodyPart === BodyPart.Binary}
 				<FileSelector bind:path={temp.body.binary} />
 			{/if}
-		{:else if currentPart === EditPart.Header}
+		{:else if reqEditPart === EditPart.Header}
 			<CMFormKArr bind:value={temp.header} />
-		{:else if currentPart === EditPart.Tests}
+		{:else if reqEditPart === EditPart.Tests}
 			<!-- TODO: pretty Tests form bindings -->
 			<CMFormKV bind:value={temp.tests} kHeader="name" vHeader="script" />
-		{:else if currentPart === EditPart.Desc}
+		{:else if reqEditPart === EditPart.Desc}
 			<CMTextArea bind:value={temp.desc} />
-		{:else if currentPart === EditPart.PreReq}
+		{:else if reqEditPart === EditPart.PreReq}
 			<CMTextArea bind:value={temp.preReq} />
 		{/if}
 	</div>
@@ -273,7 +291,49 @@
 
 {#snippet respViewer()}
 	<!-- TODO finish response viewer -->
-	<div class="w-full h-full flex justify-center items-center">
-		<div class="text-2xl">Response View</div>
+	<div class="w-full h-full flex flex-col">
+		{#if !resState.loaded || !resState.history || resState.history.length <= 0}
+			<p>tip here</p>
+		{:else}
+			<div class="w-full flex border-b border-primary/50">
+				<!-- view part select -->
+				<div role="tablist">
+					<ScrollFlex>
+						{#snippet content()}
+							{#each Object.values(ResViewPart) as p (p)}
+								<button
+									class="p-1 cursor-pointer text-base-content/50
+									{p === viewPart ? 'text-primary-content bg-primary' : 'hover:text-base-content'}"
+									onclick={() => (viewPart = p)}>{p}</button
+								>
+							{/each}
+						{/snippet}
+					</ScrollFlex>
+				</div>
+				{#if resState.current}
+					{#if viewPart === 'Response'}
+						<!-- Change response body preview type -->
+						change view type
+					{/if}
+					<!-- current response view status -->
+					<div>{resState.current.status}</div>
+				{/if}
+			</div>
+			{#if viewPart === 'Response'}
+				<iframe
+					title="response-body"
+					class="w-full h-full"
+					sandbox="allow-same-origin allow-modals allow-forms"
+					// srcdoc={resViewState}
+				>
+				</iframe>
+			{:else if viewPart === 'Header'}
+				Header
+			{:else if viewPart === 'Tests'}
+				Tests
+			{:else if viewPart === 'History'}
+				History
+			{/if}
+		{/if}
 	</div>
 {/snippet}

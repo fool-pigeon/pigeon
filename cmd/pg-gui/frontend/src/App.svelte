@@ -5,6 +5,7 @@
 	import Editor from '@lib/components/editor/Editor.svelte';
 	import AlertNotify from '@lib/components/message/AlertNotify.svelte';
 	import FileExplorer from '@lib/components/navigation/FileExplorer.svelte';
+	import ReqCtx from '@lib/hooks/ReqCtx.svelte';
 	import { WML } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
 
@@ -22,6 +23,7 @@
 <div class="w-lvw h-lvh bg-base-100/50">
 	<DynamicJoin panels={[NewPanel(fileExplorer, { unit: 'px', value: 200 }), NewPanel(editor)]} />
 </div>
+<ReqCtx />
 <Modal />
 <ContextMenu />
 <AlertNotify />

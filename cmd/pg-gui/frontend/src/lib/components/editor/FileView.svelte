@@ -14,7 +14,7 @@
 	type Prop = {
 		cur: OpenedFS;
 	};
-	let { cur = $bindable<OpenedFS>() }: Prop = $props();
+	let { cur }: Prop = $props();
 	// original file content
 	let original = $state('');
 	// temp file content
@@ -29,7 +29,8 @@
 						fsItem.additional = m;
 					}
 					cur.fs.additional = m;
-					original = temp;
+					// original should be set to the copy of temp
+					original = $state.snapshot(temp);
 					Events.Emit(DataEvent.EditorSaved);
 					msgAlert.success(`Saved ${curFS.name} Successfully`);
 				})
