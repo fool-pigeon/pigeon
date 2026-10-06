@@ -1,19 +1,29 @@
+<!--
+ Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+ 
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 <script lang="ts">
 	// Icons
-	import type { KArr } from '@type/form';
+	import type { KArr, KV } from '@type/form';
 
 	import { onMount, untrack } from 'svelte';
 	import CMInput from './CMInput.svelte';
 	import equal from 'fast-deep-equal';
-	type Prop = {
+	import { regex } from '@lib/utils/regex';
+	import { msgAlert } from '@comp/message/AlertNotify.svelte';
+	type UrlPart = {
 		uri: string;
 		query: KArr;
 	};
+	type Prop = { path: KV } & UrlPart;
 	// TODO: auto parse path params
-	let { uri = $bindable(), query = $bindable() }: Prop = $props();
+	let { uri = $bindable(), query = $bindable(), path = $bindable() }: Prop = $props();
 	let url = $state('');
 	onMount(() => (url = marshal({ uri, query })));
-	function marshal({ uri, query }: Prop): string {
+	function marshal({ uri, query }: UrlPart): string {
 		let u = uri;
 		if (query && Object.keys(query).length > 0) {
 			u += '?';
@@ -23,7 +33,7 @@
 		}
 		return u;
 	}
-	function unmarshal(u: string): Prop {
+	function unmarshal(u: string): UrlPart {
 		const splitQuery = u.indexOf('?');
 		const uri = splitQuery < 0 ? u : u.slice(0, splitQuery);
 		if (splitQuery < 0) return { uri: uri, query: null };
@@ -61,11 +71,22 @@
 			const data = unmarshal(u);
 			uri = data.uri;
 			query = data.query;
+			// refresh path params
+			const pathParams = Array.from(regex.urlPathParams(u));
+			if (pathParams.length <= 0) {
+				path = null;
+			} else {
+				const newPath: KV = {};
+				for (const p of pathParams) {
+					newPath[p] = path?.[p] ?? '';
+				}
+				path = newPath;
+			}
 		});
 	});
 	// uri,query->url
 	$effect(() => {
-		const p: Prop = { uri: uri, query: $state.snapshot(query) };
+		const p: UrlPart = { uri: uri, query: $state.snapshot(query) };
 		if (untrack(() => equal(p, unmarshal(url)))) return;
 		untrack(() => (url = marshal(p)));
 	});

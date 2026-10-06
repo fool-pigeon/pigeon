@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+ 
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 <script lang="ts" module>
 	import type { Snippet } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
@@ -100,17 +107,19 @@
 {#snippet tree(items: TreeItem[], offset: number)}
 	{#each items as item (item.id)}
 		<li>
+			{let extraStyleClass = $derived(
+				enableSelectedStyle && selectedId === item.id
+					? 'text-primary-content bg-primary border-primary'
+					: enableActiveStyle && activedId === item.id
+						? 'bg-primary/10 border-primary'
+						: enableHoverStyle
+							? 'border-dashed border-transparent hover:bg-primary/5 hover:border-primary/70'
+							: 'border-transparent',
+			)}
 			{#if item.type === 'group'}
 				<details bind:open={item.isOpen} ontoggle={item.on?.ontoggle}>
 					<summary
-						class="flex items-center cursor-pointer border
-						{enableSelectedStyle && selectedId === item.id
-							? 'bg-primary border-primary'
-							: enableActiveStyle && activedId === item.id
-								? 'bg-primary/20 border-primary'
-								: enableHoverStyle
-									? 'border-dashed border-transparent hover:bg-primary/5 hover:border-primary/70'
-									: 'border-transparent'}"
+						class="flex items-center cursor-pointer border {extraStyleClass}"
 						style={item.style}
 						style:padding-left="{offset}rem"
 						onclick={item.on?.onclick}
@@ -122,7 +131,6 @@
 							style="width: {indentSize * indentScale}rem;height: {indentSize * indentScale}rem;"
 						>
 							<ChevronRight
-								class="text-base-content"
 								strokeWidth={1}
 								nonScalingStroke
 								style="width: {indentSize * indentScale}rem;height: {indentSize * indentScale}rem;"
@@ -145,14 +153,7 @@
 				</details>
 			{:else}
 				<button
-					class="w-full text-left cursor-pointer border
-						{enableSelectedStyle && selectedId === item.id
-						? 'bg-primary border-primary'
-						: enableActiveStyle && activedId === item.id
-							? 'bg-primary/20 border-primary'
-							: enableHoverStyle
-								? 'border-dashed border-transparent hover:bg-primary/5 hover:border-primary/70'
-								: 'border-transparent'}"
+					class="w-full text-left cursor-pointer border {extraStyleClass}"
 					style={item.style}
 					style:padding-left="{offset}rem"
 					onclick={item.on?.onclick}

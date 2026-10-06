@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+ 
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 <script lang="ts" module>
 	import { msgAlert } from '@comp/message/AlertNotify.svelte';
 	import { DataEvent } from '@lib/enum/events';

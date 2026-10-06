@@ -1,6 +1,12 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+// 
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package service
 
 import (
+	"bytes"
 	"errors"
 	"maps"
 	"slices"
@@ -32,6 +38,12 @@ func (f *FileCache) find(path string) ([]byte, bool) {
 	b, ok := f.cache[path]
 	return b, ok
 }
+func (f *FileCache) get(path string) []byte {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return f.cache[path]
+
+}
 func (f *FileCache) hasKey(path string) bool {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
@@ -59,11 +71,13 @@ func (f *FileCache) copy() map[string][]byte {
 	return res
 }
 
-// func (f *FileCache) length() int {
-// 	f.mu.RLock()
-// 	defer f.mu.RUnlock()
-// 	return len(f.cache)
-// }
+type FsEvent = string
+
+const (
+	// Send data:
+	// []OpenedState
+	FsUpdatePaths FsEvent = "file-service:update-paths"
+)
 
 type FileService struct {
 	mu sync.RWMutex
@@ -88,17 +102,17 @@ func (f *FileService) Temp() map[string][]byte {
 	defer f.mu.RUnlock()
 	return f.temp.copy()
 }
-func (f *FileService) GetOpenedState() ([]OpenedState, error) {
+func (f *FileService) GetOpenedPaths() []OpenedState {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	if len(f.opendPaths) <= 0 {
-		return []OpenedState{}, nil
+		return []OpenedState{}
 	}
 	states := make([]OpenedState, 0, len(f.opendPaths))
 	for _, path := range f.opendPaths {
-		states = append(states, OpenedState{path, !f.temp.hasKey(path)})
+		states = append(states, OpenedState{path, !f.temp.hasKey(path) || bytes.Equal(f.temp.get(path), f.original.get(path))})
 	}
-	return states, nil
+	return states
 }
 func (f *FileService) Open(path string) error {
 	_, err := f.open(path)
@@ -170,6 +184,24 @@ func (f *FileService) readOriginal(path string) ([]byte, error) {
 	return nil, ErrNotOpened
 }
 
+func (f *FileService) renameKey(old string, newKey string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if b, ok := f.temp.find(old); ok {
+		f.temp.delete(old)
+		f.temp.set(newKey, b)
+	}
+	if b, ok := f.original.find(old); ok {
+		f.original.delete(old)
+		f.original.set(newKey, b)
+	}
+	for i, p := range f.opendPaths {
+		if old == p {
+			f.opendPaths[i] = newKey
+		}
+	}
+}
+
 // write file content into [FileService.temp] if is opened
 func (f *FileService) stage(path string, b []byte) error {
 	if f.original.hasKey(path) {
@@ -231,46 +263,40 @@ type FileServiceWrapper[T any] interface {
 
 // FileServiceWrapper[string]
 type TextFileService struct {
-	fs *FileService
+	fa *FileAccessService
 }
 
-func NewTextFileService(fs *FileService) *TextFileService {
-	return &TextFileService{fs}
+func NewTextFileService(fa *FileAccessService) *TextFileService {
+	return &TextFileService{fa}
 }
 func (t *TextFileService) Read(path string) (string, error) {
-	b, err := t.fs.read(path)
+	b, err := t.fa.Read(path)
 	return string(b), err
 }
 
 func (t *TextFileService) ReadOriginal(path string) (string, error) {
-	b, err := t.fs.readOriginal(path)
+	b, err := t.fa.ReadOriginal(path)
 	return string(b), err
 }
 
 func (t *TextFileService) Write(path string, data string) (NodeMode, error) {
-	if err := t.fs.write(path, []byte(data)); err != nil {
-		return 0, err
-	}
-	return getFileMode([]byte(data)), nil
+	return t.fa.Write(path, []byte(data))
 }
 
 func (t *TextFileService) Stage(path string, data string) (NodeMode, error) {
-	if err := t.fs.stage(path, []byte(data)); err != nil {
-		return 0, err
-	}
-	return getFileMode([]byte(data)), nil
+	return t.fa.Stage(path, []byte(data))
 }
 
 // FileServiceWrapper[http.ReqData]
 type HttpReqFileService struct {
-	fs *FileService
+	fa *FileAccessService
 }
 
-func NewHttpReqFileService(fs *FileService) *HttpReqFileService {
-	return &HttpReqFileService{fs}
+func NewHttpReqFileService(fa *FileAccessService) *HttpReqFileService {
+	return &HttpReqFileService{fa}
 }
 func (r *HttpReqFileService) Read(path string) (*httpx.ReqData, error) {
-	b, err := r.fs.read(path)
+	b, err := r.fa.Read(path)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +308,7 @@ func (r *HttpReqFileService) Read(path string) (*httpx.ReqData, error) {
 }
 
 func (r *HttpReqFileService) ReadOriginal(path string) (*httpx.ReqData, error) {
-	b, err := r.fs.readOriginal(path)
+	b, err := r.fa.ReadOriginal(path)
 	if err != nil {
 		return nil, err
 	}
@@ -298,8 +324,7 @@ func (r *HttpReqFileService) Write(path string, data *httpx.ReqData) (NodeMode, 
 	if err != nil {
 		return 0, err
 	}
-	r.fs.write(path, b)
-	return FileMode | Request | parseModeFromHttpReq(data), nil
+	return r.fa.Write(path, b)
 }
 
 func (r *HttpReqFileService) Stage(path string, data *httpx.ReqData) (NodeMode, error) {
@@ -307,11 +332,5 @@ func (r *HttpReqFileService) Stage(path string, data *httpx.ReqData) (NodeMode, 
 	if err != nil {
 		return 0, err
 	}
-	r.fs.stage(path, b)
-	// temp := r.fs.Temp()
-	// pterm.Warning.Println("TEMP:")
-	// for k, v := range temp {
-	// 	pterm.Info.Println(k, string(v))
-	// }
-	return FileMode | Request | parseModeFromHttpReq(data), nil
+	return r.fa.Stage(path, b)
 }

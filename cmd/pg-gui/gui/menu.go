@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package gui
 
 import (
@@ -11,13 +16,16 @@ type MenuEvent = string
 
 const (
 	// File Subs
-	NewRequest     MenuEvent = "menu:file:new-request"
+	NewFile        MenuEvent = "menu:file:new-file"
 	NewCollection  MenuEvent = "menu:file:new-collection"
 	OpenCollection MenuEvent = "menu:file:open-collection"
 	Save           MenuEvent = "menu:file:save"
 	Preferences    MenuEvent = "menu:file:preferences"
 	CloseEditor    MenuEvent = "menu:file:close-editor"
+	// View Subs
+	ToggleRunBoard MenuEvent = "menu:view:toggle-run-board"
 	// Run Subs
+	RunTask       MenuEvent = "menu:run:run-task"
 	RunRequest    MenuEvent = "menu:run:run-request"
 	CancelRequest MenuEvent = "menu:run:cancel-request"
 	// Help Subs
@@ -111,9 +119,9 @@ func InitMenu(app *wa.App) {
 	// 	----------
 	// 	Quit
 	NewMenuWrap(menu.AddSubmenu(FileMenu)).
-		bindItemWithShortcut("New Request", "CmdOrCtrl+n", func(ctx *wa.Context) {
-			app.Logger.Info(NewRequest)
-			app.Event.Emit(NewRequest)
+		bindItemWithShortcut("New File", "CmdOrCtrl+n", func(ctx *wa.Context) {
+			app.Logger.Info(NewFile)
+			app.Event.Emit(NewFile)
 		}).
 		bindItemWithShortcut("New Collection", "CmdOrCtrl+Shift+n", func(ctx *wa.Context) {
 			app.Logger.Info(NewCollection)
@@ -170,6 +178,8 @@ func InitMenu(app *wa.App) {
 		bindRole(wa.SelectAll, "Selete All")
 
 	// ViewMenu:
+	// 	----------
+	//  Toggle Run Board
 	// 	Reload
 	// 	Force Reload
 	// 	----------
@@ -179,6 +189,11 @@ func InitMenu(app *wa.App) {
 	// 	----------
 	// 	Toggle Fullscreen
 	NewMenuWrap(menu.AddSubmenu(ViewMenu)).
+		bindItem("Toggle Run Board", func(ctx *wa.Context) {
+			app.Logger.Info(ToggleRunBoard)
+			app.Event.Emit(ToggleRunBoard)
+		}).
+		addSeparator().
 		bindRole(wa.Reload, "Reload").
 		bindRole(wa.ForceReload, "Force Reload").
 		addSeparator().
@@ -189,9 +204,16 @@ func InitMenu(app *wa.App) {
 		bindRole(wa.ToggleFullscreen, "Toggle Fullscreen")
 
 	// RunMenu:
+	//  Run Task
+	// 	----------
 	// 	Run Request
 	// 	Cancel Request
 	NewMenuWrap(menu.AddSubmenu(RunMenu)).
+		bindItem("Run Task", func(ctx *wa.Context) {
+			app.Logger.Info(RunTask)
+			app.Event.Emit(RunTask)
+		}).
+		addSeparator().
 		bindItemWithShortcut("Run Request", "CmdOrCtrl+Enter", func(ctx *wa.Context) {
 			app.Logger.Info(RunRequest)
 			app.Event.Emit(RunRequest)
@@ -213,13 +235,4 @@ func InitMenu(app *wa.App) {
 
 	// go:build !productioin || devtools
 	menu.FindByLabel(HelpMenu).GetSubmenu().AddRole(wa.OpenDevTools)
-}
-
-// this is a empty Service to export the enum to js/ts
-type MenuService struct {
-	me MenuEvent
-}
-
-func (ms *MenuService) Example() MenuEvent {
-	return ms.me
 }

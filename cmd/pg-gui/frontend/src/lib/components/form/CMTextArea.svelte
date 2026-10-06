@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+ 
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 <!-- @component
 a text editor of codemirror basicSetup.
 the value will be bindabled.
@@ -11,6 +18,7 @@ the value will be bindabled.
 	import { basicSetup, EditorView } from 'codemirror';
 	import CMWrapper from './CMWrapper.svelte';
 	import type { Extension } from '@codemirror/state';
+	import { daisyColorTheme, daisyThemeExtension } from './cmConfig';
 
 	/**
 	 * @type value: the bindabled string value of area
@@ -30,9 +38,17 @@ the value will be bindabled.
 			extensions: [
 				basicSetup,
 				extensions,
+				// prevent drag selection
+				EditorView.domEventHandlers({
+					dragstart: (event) => {
+						event.preventDefault();
+						return true;
+					},
+				}),
 				EditorView.theme({
 					'&': { width: '100%', height: '100%' },
 				}),
+				daisyThemeExtension,
 			],
 		});
 	}}

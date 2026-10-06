@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+// 
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 import path from "node:path";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from '@tailwindcss/vite';

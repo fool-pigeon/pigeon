@@ -1,7 +1,13 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+// 
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package service
 
 import (
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
@@ -9,6 +15,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/fool-pigeon/pigeon/internal/request"
 	"github.com/fool-pigeon/pigeon/internal/request/httpx"
@@ -23,6 +30,8 @@ const (
 	ConfigDir                        // ConfigDir: the .pg/ directory
 	NormalDir                        // NormalDir: redundancy
 	FileMode                         // File: is a file
+	ConfigFile                       // ConfigFile: toml file, config.toml
+	EnvFile                          // EnvFile: dotenv file
 	Request                          // Req: is a request file
 	HttpReq                          // HTTP:[httpx.ReqData]
 	HttpGet                          // GET: http GET Method
@@ -36,12 +45,19 @@ const (
 	HttpTrace                        // TRACE: http TRACE Method
 )
 
-func (m NodeMode) HasRole(role NodeMode) bool {
+func (m NodeMode) Has(role NodeMode) bool {
 	return m&role != 0
 }
 func (m NodeMode) IsDir() bool {
 	return m&DirMode != 0
 }
+
+var (
+	ErrNodeNotDir  = errors.New("Node is not a directory.")
+	ErrNodeDir     = errors.New("Node is a directory.")
+	ErrNodeNotFile = errors.New("Node is not a file.")
+	ErrNodeFile    = errors.New("Node is a file.")
+)
 
 type Node struct {
 	Mode NodeMode `json:"mode"`
@@ -366,6 +382,29 @@ func parseModeFromHttpReq(req *httpx.ReqData) NodeMode {
 	return res
 }
 
+// FileExploreService Event
+type FesEvent = string
+
+const (
+	// Send data:
+	// {path:string,subs:[]*Node}
+	FesUpdateSubs FesEvent = "file-explore-service:update-subs"
+	// Send data:
+	// (path:string)
+	FesDeletedNode FesEvent = "file-explore-service:deleted-node"
+	// Send data:
+	// {path:string,subs:[]*Node}
+	FesRename FesEvent = "file-explore-service:rename"
+	// Send data:
+	// {path:string,subs:[]*Node}
+	FesReloadRoot FesEvent = "file-explore-service:rename"
+)
+
+type FesEvtUpdateSubs struct {
+	Path string  `json:"path"`
+	Subs []*Node `json:"subs"`
+}
+
 var (
 	ErrNilRoot      = errors.New("root is nil")
 	ErrNodeNotExist = errors.New("node not exist")
@@ -373,13 +412,51 @@ var (
 )
 
 type FileExploreService struct {
-	mu   sync.RWMutex
-	root *Node
-	em   *application.EventManager
+	mu    sync.RWMutex
+	root  *Node
+	alert *AlertService
+	app   *application.App
 }
 
-func NewFileExploreService(em *application.EventManager) *FileExploreService {
-	return &FileExploreService{root: &Node{Mode: DirMode}, em: em}
+func NewFileExploreService(alertService *AlertService, app *application.App) *FileExploreService {
+	return &FileExploreService{root: &Node{Mode: DirMode}, alert: alertService, app: app}
+}
+
+// Find the node whose path equals the param.
+// returns nil if not found.
+func (f *FileExploreService) FindNode(path string) *Node {
+	path = filepath.Clean(path)
+	q := f.root.Subs()
+	for len(q) > 0 {
+		cur := q[0]
+		q = q[1:]
+		curPath := cur.GetPath()
+		if curPath == path {
+			return cur
+		}
+		if IsStrictParent(curPath, path) && cur.Loaded() && cur.SubLen() > 0 {
+			rel, _ := filepath.Rel(curPath, path)
+			parts := strings.Split(rel, string(filepath.Separator))
+			if node, ok := cur.Sub(filepath.Join(curPath, parts[0])); ok {
+				q = append(q, node)
+			}
+		}
+	}
+	return nil
+}
+
+// IsStrictParent reports whether base is a strict parent directory of target.
+// base itself is not a parent of base.
+// Lexical comparison only; symbolic links are not resolved.
+func IsStrictParent(base, target string) bool {
+	rel, err := filepath.Rel(base, target)
+	if err != nil {
+		return false // different volumes on Windows, or invalid path
+	}
+	// rel == "." means base == target → not a parent
+	// rel == ".." means target is base's parent → not a parent
+	// rel starts with ".." + separator means target escapes base → not a parent
+	return rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // ServiceStartup implements [application.ServiceStartup].
@@ -425,10 +502,10 @@ func (f *FileExploreService) ParseRootPaths(dir string) []string {
 }
 
 // add workspace's root dir
-func (f *FileExploreService) AddRoot(paths []string) ([]*Node, error) {
+func (f *FileExploreService) AddRoot(paths []string) error {
 	f.mu.RLock()
 	if f.root == nil {
-		return nil, ErrNilRoot
+		return ErrNilRoot
 	}
 	f.mu.RUnlock()
 
@@ -450,12 +527,16 @@ func (f *FileExploreService) AddRoot(paths []string) ([]*Node, error) {
 
 	f.root.SetLoaded(true)
 	f.root.updateCache()
-	return f.root.SubsCache(), nil
+	f.app.Event.Emit(FesUpdateSubs, FesEvtUpdateSubs{
+		Path: f.root.GetPath(),
+		Subs: f.root.SubsCache(),
+	})
+	return nil
 }
 
 // load the dir
 func (f *FileExploreService) LoadSubs(dir string) error {
-	node, err := f.getNodeExact(dir)
+	node, err := f.GetNodeExact(dir)
 	if err != nil {
 		return err
 	}
@@ -463,21 +544,25 @@ func (f *FileExploreService) LoadSubs(dir string) error {
 }
 
 // load the dir and return subsCache
-func (f *FileExploreService) LoadSubsCached(dir string) ([]*Node, error) {
-	node, err := f.getNodeExact(dir)
+func (f *FileExploreService) LoadSubsCached(dir string) error {
+	node, err := f.GetNodeExact(dir)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if err := node.load(); err != nil {
-		return nil, err
+		return err
 	}
 	node.updateCache()
-	return node.SubsCache(), nil
+	f.app.Event.Emit(FesUpdateSubs, FesEvtUpdateSubs{
+		Path: node.GetPath(),
+		Subs: node.SubsCache(),
+	})
+	return nil
 }
 
 // reload dir
 func (f *FileExploreService) ReloadSubs(dir string) error {
-	node, err := f.getNodeExact(dir)
+	node, err := f.GetNodeExact(dir)
 	if err != nil {
 		return err
 	}
@@ -485,24 +570,48 @@ func (f *FileExploreService) ReloadSubs(dir string) error {
 }
 
 // reload dir and return subsCache
-func (f *FileExploreService) ReloadSubsCached(dir string) ([]*Node, error) {
-	node, err := f.getNodeExact(dir)
+func (f *FileExploreService) ReloadSubsCached(dir string, evt ...FesEvent) error {
+	node, err := f.GetNodeExact(dir)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	return f.reloadSubsCached(node, evt...)
+}
+
+// reload parent's dir and update the cache
+func (f *FileExploreService) ReloadPreCached(path string, evt ...FesEvent) error {
+	node, err := f.GetNodeExact(path)
+	if err != nil {
+		return err
+	}
+	return f.reloadSubsCached(node.Pre(), evt...)
+}
+func (f *FileExploreService) reloadSubsCached(node *Node, evt ...FesEvent) error {
+	if node == nil {
+		return fmt.Errorf("node:%w", ErrNilValue)
 	}
 	if err := node.reload(); err != nil {
-		return nil, err
+		return err
 	}
 	node.updateCache()
-	return node.SubsCache(), nil
+
+	event := FesUpdateSubs
+	if len(evt) > 0 {
+		event = evt[0]
+	}
+	f.app.Event.Emit(event, FesEvtUpdateSubs{
+		Path: node.GetPath(),
+		Subs: node.SubsCache(),
+	})
+	return nil
 }
 
 // return current [Node.SubsCache] after called [FileExploreService.UpdateView]
-func (f *FileExploreService) ReloadRootView() ([]*Node, error) {
+func (f *FileExploreService) ReloadRootView() error {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	if f.root == nil {
-		return nil, ErrNilRoot
+		return ErrNilRoot
 	}
 
 	var wg sync.WaitGroup
@@ -528,12 +637,16 @@ func (f *FileExploreService) ReloadRootView() ([]*Node, error) {
 		})
 	}
 	wg.Wait()
-	return f.root.SubsCache(), nil
+	f.app.Event.Emit(FesReloadRoot, FesEvtUpdateSubs{
+		Path: f.root.GetPath(),
+		Subs: f.root.SubsCache(),
+	})
+	return nil
 }
 
 // Delete Node
 func (f *FileExploreService) DeleteNode(path string) error {
-	node, err := f.getNodeExact(path)
+	node, err := f.GetNodeExact(path)
 	if err != nil {
 		return err
 	}
@@ -548,18 +661,107 @@ func (f *FileExploreService) DeleteNode(path string) error {
 	}
 
 	pre.DelSub(path)
+	f.app.Event.Emit(FesDeletedNode, path)
 
 	return nil
 }
 
-// Add Node
-func (f *FileExploreService) AddNode(parent string, node *Node) error {
-	pre, err := f.getNodeExact(parent)
+// mkdir and reload parent subs
+// returns parent node's sub cache
+func (f *FileExploreService) AddDirNode(parent string, dirName string) error {
+	// parent node
+	node, err := f.GetNodeExact(parent)
 	if err != nil {
 		return err
 	}
-	node.SetPath(filepath.Join(pre.GetPath(), node.GetName())).SetPre(pre)
-	pre.AddSub(node)
+	if !node.Mode.IsDir() {
+		return fmt.Errorf("%s:%w", parent, ErrNodeNotDir)
+	}
+	if err := fsx.Mkdir(filepath.Join(node.GetPath(), dirName)); err != nil {
+		return err
+	}
+	node.reload()
+	node.updateCache()
+	f.app.Event.Emit(FesUpdateSubs, FesEvtUpdateSubs{
+		Path: node.GetPath(),
+		Subs: node.SubsCache(),
+	})
+	return nil
+}
+
+// create file and reload parent subs
+// returns parent node's sub cache
+func (f *FileExploreService) AddFileNode(parent string, fileName string, mode NodeMode) error {
+	node, err := f.GetNodeExact(parent)
+	if err != nil {
+		return err
+	}
+	if !node.Mode.IsDir() {
+		return fmt.Errorf("%s:%w", parent, ErrNodeNotDir)
+	}
+	if mode.IsDir() {
+		return ErrNodeNotFile
+	}
+	if err := createFile(filepath.Join(node.GetPath(), fileName), mode); err != nil {
+		return err
+	}
+	node.reload()
+	node.updateCache()
+	f.app.Event.Emit(FesUpdateSubs, FesEvtUpdateSubs{
+		Path: node.GetPath(),
+		Subs: node.SubsCache(),
+	})
+	return nil
+}
+
+// create file and set the default file content according to the mode
+func createFile(path string, mode NodeMode) error {
+	if mode.IsDir() {
+		return ErrNodeDir
+	}
+
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0664)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("file already exist:%w", err)
+		}
+		return err
+	}
+	defer f.Close()
+
+	var content []byte
+	base := filepath.Base(path)
+
+	switch m := mode; {
+	case m.Has(HttpReq):
+		reqName := strings.TrimSuffix(base, filepath.Ext(base))
+		req := httpx.NewReqData(reqName)
+		switch {
+		case m.Has(HttpGet):
+			req.SetMethod(httpx.MethodGet)
+		case m.Has(HttpPost):
+			req.SetMethod(httpx.MethodPost)
+		case m.Has(HttpPut):
+			req.SetMethod(httpx.MethodPut)
+		case m.Has(HttpDelete):
+			req.SetMethod(httpx.MethodDelete)
+		case m.Has(HttpHead):
+			req.SetMethod(httpx.MethodHead)
+		case m.Has(HttpPatch):
+			req.SetMethod(httpx.MethodPatch)
+		case m.Has(HttpOptions):
+			req.SetMethod(httpx.MethodOptions)
+		case m.Has(HttpConnect):
+			req.SetMethod(httpx.MethodConnect)
+		case m.Has(HttpTrace):
+			req.SetMethod(httpx.MethodTrace)
+		}
+		content, _ = toml.Marshal(req)
+	case m.Has(ConfigFile):
+		content, _ = toml.Marshal(config.New())
+	}
+	f.Write(content)
+
 	return nil
 }
 
@@ -592,7 +794,7 @@ func (f *FileExploreService) getNode(path string) (*Node, error) {
 }
 
 // get node whose path equals <path>
-func (f *FileExploreService) getNodeExact(path string) (*Node, error) {
+func (f *FileExploreService) GetNodeExact(path string) (*Node, error) {
 	node, err := f.getNode(filepath.Clean(path))
 	if err != nil {
 		return nil, err

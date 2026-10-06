@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+ 
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 <script lang="ts" module>
 	// Icons
 	import IconInfo from '@lucide/svelte/icons/info';
@@ -8,6 +15,9 @@
 	import { NotificationState } from '../base/Notification.svelte';
 	import { fly } from 'svelte/transition';
 	import { circIn, linear } from 'svelte/easing';
+	import { onMount } from 'svelte';
+	import { Events } from '@wailsio/runtime';
+	import { AlertEvent } from '@services/models';
 
 	// position of alert notification on window
 	export type hPosition = 'left' | 'center' | 'right';
@@ -20,7 +30,7 @@
 
 	type Alert = {
 		type: number;
-		msg: string;
+		msg: unknown;
 	};
 	// alert state
 	const aState = new NotificationState<Alert>();
@@ -30,19 +40,47 @@
 		Warn: 2,
 		Error: 3,
 	};
-	function add(msg: string, type: number, duration: number) {
+	function add(msg: unknown, type: number, duration: number) {
 		aState.add(alertNotify, duration, { msg, type });
 	}
 	const d = 3000;
 	export const msgAlert = {
-		info: ((msg: string, duration = d) => add(msg, Alerts.Info, duration)).bind(aState),
-		success: ((msg: string, duration = d) => add(msg, Alerts.Success, duration)).bind(aState),
-		warn: ((msg: string, duration = d) => add(msg, Alerts.Warn, duration)).bind(aState),
-		error: ((msg: string, duration = d) => add(msg, Alerts.Error, duration)).bind(aState),
+		info: ((msg: unknown, duration = d) => add(msg, Alerts.Info, duration)).bind(aState),
+		success: ((msg: unknown, duration = d) => add(msg, Alerts.Success, duration)).bind(aState),
+		warn: ((msg: unknown, duration = d) => add(msg, Alerts.Warn, duration)).bind(aState),
+		error: ((msg: unknown, duration = d) => add(msg, Alerts.Error, duration)).bind(aState),
 
 		setHPos: ((h: hPosition) => (pos.h = h)).bind(pos),
 		setVPos: ((v: vPosition) => (pos.v = v)).bind(pos),
 	};
+
+	const alertStyle = {
+		[Alerts.Info]: 'alert-info',
+		[Alerts.Success]: 'alert-success',
+		[Alerts.Warn]: 'alert-warning',
+		[Alerts.Error]: 'alert-error',
+	};
+	const alertIcon = {
+		[Alerts.Info]: IconInfo,
+		[Alerts.Success]: IconCircleCheck,
+		[Alerts.Warn]: IconTriangleAlert,
+		[Alerts.Error]: IconCircleX,
+	};
+</script>
+
+<script lang="ts">
+	onMount(() => {
+		const unInfo = Events.On(AlertEvent.AlertInfo, (msg) => msgAlert.info(msg));
+		const unSuccess = Events.On(AlertEvent.AlertSuccess, (msg) => msgAlert.success(msg));
+		const unWarn = Events.On(AlertEvent.AlertWarn, (msg) => msgAlert.warn(msg));
+		const unError = Events.On(AlertEvent.AlertError, (msg) => msgAlert.error(msg));
+		return () => {
+			unInfo();
+			unSuccess();
+			unWarn();
+			unError();
+		};
+	});
 </script>
 
 <div
@@ -63,27 +101,10 @@
 	{/each}
 </div>
 {#snippet alertNotify(alert: Alert)}
-	<div
-		class="p-2 alert alert-soft {alert.type === Alerts.Info
-			? 'alert-info'
-			: alert.type === Alerts.Success
-				? 'alert-success'
-				: alert.type === Alerts.Warn
-					? 'alert-warning'
-					: alert.type === Alerts.Error
-						? 'alert-error'
-						: ''}"
-	>
+	{const Icon = alertIcon[alert.type]}
+	<div class="p-2 alert alert-soft {alertStyle[alert.type]}">
 		<div class="flex gap-1 items-center">
-			{#if alert.type === Alerts.Info}
-				<IconInfo class="size-4" />
-			{:else if alert.type === Alerts.Success}
-				<IconCircleCheck class="size-4" />
-			{:else if alert.type === Alerts.Warn}
-				<IconTriangleAlert class="size-4" />
-			{:else if alert.type === Alerts.Error}
-				<IconCircleX class="size-4" />
-			{/if}
+			<Icon class="size-4" />
 			<span>{alert.msg}</span>
 		</div>
 	</div>

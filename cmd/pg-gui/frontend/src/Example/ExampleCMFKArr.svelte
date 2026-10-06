@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+ 
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 <script lang="ts">
 	import CMFormKArr from '@comp/form/CMFormKArr.svelte';
 	import CMFormKV from '@comp/form/CMFormKV.svelte';

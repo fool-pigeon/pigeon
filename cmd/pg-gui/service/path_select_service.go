@@ -1,6 +1,16 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+// 
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package service
 
-import "github.com/wailsapp/wails/v3/pkg/application"
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
 
 // A wrapper of [application.DialogManager] for using simplely
 type PathSelectService struct {
@@ -10,17 +20,20 @@ type PathSelectService struct {
 func NewPathSelectService(app *application.App) *PathSelectService {
 	return &PathSelectService{app}
 }
-func (f *PathSelectService) ShowInFileManager(path string) {
+func (f *PathSelectService) ShowInFileManager(path string) error {
 	err := f.app.Env.OpenFileManager(path, true)
 	if err != nil {
-		f.app.Logger.Error("Could not open file manager", "path", path, "error", err)
+		// Fallback: try opening just the directory
+		dir := filepath.Dir(path)
+		err = f.app.Env.OpenFileManager(dir, false)
+		if err != nil {
+			f.app.Logger.Error("Could not open file manager", "path", path, "error", err)
 
-		// Show error to user
-		f.app.Dialog.Error().
-			SetTitle("File Manager Error").
-			SetMessage("Could not open file manager").
-			Show()
+			// Show error to user
+			return fmt.Errorf("Could not open file manager\npath:%s\nerr:%w", path, err)
+		}
 	}
+	return nil
 }
 func (f *PathSelectService) SelectFolder() (string, error) {
 	return f.app.Dialog.OpenFile().

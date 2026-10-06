@@ -1,3 +1,10 @@
+<!--
+ Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+ 
+ This software is released under the MIT License.
+ https://opensource.org/licenses/MIT
+-->
+
 <script lang="ts" module>
 	type Unit = '%' | 'px';
 	type Size = {
@@ -45,6 +52,7 @@
 		if (!panels.some((p) => p.size.value < 0)) {
 			return;
 		}
+		// Divide the remaining space as a percentage of the size given to unallocated size panels
 		untrack(() => {
 			const r = container.getBoundingClientRect();
 			const pxLen = isFlexRow ? r.width : r.height;
@@ -57,12 +65,19 @@
 				return;
 			}
 
+			// stats the remaining space
 			let totalPercentSize = panels
 				.map((p) => (p.size.unit === '%' ? p.size.value : getPct(p.size.value, pxLen)))
 				.reduce((a, b) => a - b, 100);
 			if (totalPercentSize < 0) {
 				needCount = panels.length;
 				totalPercentSize = 100;
+				const needSize = totalPercentSize / needCount;
+				panels = panels.map((p) => {
+					p.size = { value: needSize, unit: '%' };
+					return p;
+				});
+				return;
 			}
 
 			const needSize = totalPercentSize / needCount;
@@ -74,7 +89,7 @@
 			});
 		});
 	});
-	// auto resize panels when the container is resizing
+	// auto resize panels when the container's size is resetting
 	$effect(() => {
 		if (untrack(() => panels.some((p) => p.size.value < 0))) {
 			return;
@@ -150,13 +165,13 @@
 
 <div
 	bind:this={container}
-	class="flex w-full h-full
+	class="flex w-full h-full min-h-0
 	{isFlexRow ? 'flex-row' : 'flex-col'}"
 >
 	{#each panels as panel, i}
 		<div
 			class="flex min-w-0 min-h-0 overflow-auto"
-			style:flex="{panel.size.value}{panel.size.unit} 0 0"
+			style:flex="0 0 {panel.size.value}{panel.size.unit}"
 		>
 			{@render panel.snippet()}
 		</div>
