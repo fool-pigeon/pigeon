@@ -1,12 +1,16 @@
-/*
-Copyright © 2026 Homoarea <homoarea114@gmail.com>
-*/
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package cmd
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -36,44 +40,88 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		tagDir := filepath.Join(root, fsx.RootTagDirName)
 
-		paths := make([]string, 0)
+		var runPaths core.RunPaths
+		var runFilePath string
+		if name, _ := cmd.Flags().GetString("run"); name != "" {
+			name = strings.TrimSuffix(name, ".toml") + ".toml"
+			runFilePath = filepath.Join(tagDir, fsx.RunDirName, name)
+		}
+		if p, _ := cmd.Flags().GetString("run-file"); p != "" {
+			runFilePath = p
+		}
+		fsx.ReadToml(runFilePath, &runPaths)
+
+		// root
+		var currentRoot string
+		switch {
+		case runPaths.Root != "":
+			currentRoot = filepath.Join(root, runPaths.Root)
+			info, err := os.Lstat(currentRoot)
+			if err != nil {
+				return fmt.Errorf("%s:%w", currentRoot, err)
+			}
+			if !info.IsDir() {
+				return fmt.Errorf("%s:%w", currentRoot, err)
+			}
+		default:
+			currentRoot, err = filepath.Abs(".")
+			if err != nil {
+				return err
+			}
+		}
+		// tasks
+		tasks := runPaths.Tasks
+		if tasks == nil {
+			tasks = make([]string, 0)
+		}
 		if len(args) > 0 {
-			paths = append(paths, args...)
-		} else {
-			paths = append(paths, ".")
+			tasks = append(tasks, args...)
+		} else if len(tasks) <= 0 {
+			tasks = append(tasks, ".")
+		}
+		for i := range tasks {
+			tasks[i] = filepath.Join(currentRoot, tasks[i])
 		}
 
-		showRaw, _ := cmd.Flags().GetBool("raw")
-		rawLine, _ := cmd.Flags().GetInt("line")
-
-		envName, _ := cmd.Flags().GetString("env")
-		envFile, _ := cmd.Flags().GetString("env-file")
-		if envFile == "" {
-			envFile = filepath.Join(root, envName)
-		}
-
-		// load config
-		cfg, err := config.LoadFromFile(filepath.Join(root, fsx.ConfigDefaultName))
-		// if err,then use the new config
+		// TODO optional multi config select
+		// config
+		cfg, err := config.LoadFromFile(filepath.Join(tagDir, fsx.ConfigDefaultName))
 		if err != nil {
+			// if err,then use the new config
+			pterm.Warning.Println("not found config.toml,use empty config")
 			cfg = config.New()
 		}
-		// load e in current directory
-		e, err := env.LoadFromFile(envFile)
-		// if err,then use the new empty env
+
+		// env
+		envFilePath := runPaths.Env
+		if name, _ := cmd.Flags().GetString("env"); name != "" {
+			envFilePath = filepath.Join(tagDir, fsx.EnvDirName, name)
+		}
+		if p, _ := cmd.Flags().GetString("env-file"); p != "" {
+			envFilePath = p
+		}
+		e, err := env.LoadFromFile(envFilePath)
 		if err != nil {
+			// if err,then use the new empty env
+			if envFilePath != "" {
+				pterm.Warning.Printfln("not found %s,use empty env", envFilePath)
+			}
 			e = env.New()
 		}
 
 		// Ctrl+C to cancel
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
-		rp := core.RunPaths{
+		rp := core.RunParams{
 			ReqCtx: core.ReqCtx{Config: cfg, Env: e},
-			Root:   root,
-			Tasks:  paths,
+			Root:   currentRoot,
+			Tasks:  tasks,
 		}
+
+		showRaw, err := cmd.Flags().GetBool("show-raw")
+		rawLine, _ := cmd.Flags().GetInt("line")
 
 		taskTotal, taskPassed := 0, 0
 		core.Run(ctx, rp, func(res core.RunResult) {
@@ -106,9 +154,11 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 
-	runCmd.Flags().String("env-file", "", "set full env file path")
-	runCmd.Flags().StringP("env", "e", "", "set env file name in collection,such as dev mean that .pg/envs/dev")
-	runCmd.Flags().BoolP("raw", "r", false, "show raw response")
+	runCmd.Flags().StringP("run", "r", "", "set run file name in collectinon,e.g. dev means .pg/run/dev.toml")
+	runCmd.Flags().String("run-file", "", "set full run file path,like .pg/run/dev.toml")
+	runCmd.Flags().StringP("env", "e", "", "set env file name in collection,such as dev mean that .pg/env/dev")
+	runCmd.Flags().String("env-file", "", "set full env file path,like .pg/env/dev")
+	runCmd.Flags().Bool("show-raw", false, "show raw response")
 	runCmd.Flags().IntP("line", "l", -1, "Set the number of lines displayed for raw")
 }
 func taskResPrint(res core.RunResult, showRaw bool, rawLine int) {
@@ -129,12 +179,14 @@ func taskResPrint(res core.RunResult, showRaw bool, rawLine int) {
 
 	rRes := res.ReqRes
 	if rRes.Err != nil {
-		pterm.Error.Println(rRes.ReqName, rRes.Err)
+		pterm.Error.Println(res.Path, rRes.ReqName, rRes.Err)
 		return
 	}
 
 	// print status
 	var sb strings.Builder
+	sb.WriteString(res.Path)
+	sb.WriteRune(' ')
 	sb.WriteString(rRes.Proto)
 	sb.WriteRune(' ')
 	sb.WriteString(rRes.ReqName)

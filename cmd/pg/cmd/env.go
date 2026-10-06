@@ -1,6 +1,8 @@
-/*
-Copyright © 2026 Homoarea <homoarea114@gmail.com>
-*/
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package cmd
 
 import (
@@ -20,7 +22,7 @@ var envCmd = &cobra.Command{
 	Aliases: []string{"e"},
 	GroupID: GROUP_ID_MANAGE,
 	Short:   "alias e, Manage the env vars",
-	Long: `The env vars will be stored in the dotenv file and in .pg/envs
+	Long: `The env vars will be stored in the dotenv file and in .pg/env
 Env vars will be overwritten by new ones.
 `,
 }
@@ -76,5 +78,5 @@ func init() {
 	envCmd.AddCommand(listEnvCmd)
 	rootCmd.AddCommand(envCmd)
 
-	listEnvCmd.Flags().StringP("name", "n", "", "list env vars in the .pg/envs/<name>")
+	listEnvCmd.Flags().StringP("name", "n", "", "list env vars in the .pg/env/<name>")
 }
