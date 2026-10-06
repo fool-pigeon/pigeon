@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+// 
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package env
 
 import (
@@ -8,8 +13,6 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 )
-
-// TODO: refact env for new project structure
 
 type EnvData = koanf.Koanf
 

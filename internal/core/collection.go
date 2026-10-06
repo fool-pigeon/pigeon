@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package core
 
 import (
@@ -23,7 +28,7 @@ func InitCollection(dir string) error {
 	if err := fsx.Mkdir(tagDir); err != nil {
 		return err
 	}
-	// create envs and runs dir
+	// create env directory and run directory
 	for _, d := range []string{filepath.Join(tagDir, fsx.EnvDirName), filepath.Join(tagDir, fsx.RunDirName)} {
 		fsx.MkdirAll(d)
 	}

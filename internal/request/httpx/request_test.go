@@ -1,79 +1,28 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+// 
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package httpx_test
 
 import (
-	"encoding/base64"
-	"encoding/json"
-	"io"
-	"net/http"
-	"net/http/httptest"
+	"maps"
 	"net/url"
-	"strings"
+	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
+	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/internal/request"
 	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	"github.com/fool-pigeon/pigeon/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type EchoReq struct {
-	Method      string              `json:"method"`
-	URL         string              `json:"url"`
-	Proto       string              `json:"proto"`
-	Headers     map[string][]string `json:"headers"`
-	Query       map[string][]string `json:"query"`
-	Form        map[string][]string `json:"form"`
-	Multipart   map[string][]string `json:"multipart"`
-	Body        string              `json:"body"`
-	BodyBase64  string              `json:"body_base64"`
-	ContentType string              `json:"content_type"`
-}
-
-func EchoHandler(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
-		_ = r.ParseMultipartForm(32 << 20)
-	} else {
-		_ = r.ParseForm()
-	}
-
-	b, _ := io.ReadAll(r.Body)
-	bstr := string(b)
-	bBase64 := base64.StdEncoding.EncodeToString(b)
-
-	var multipart map[string][]string
-	if form := r.MultipartForm; form != nil {
-		multipart = form.Value
-	}
-	echoReq := EchoReq{
-		Method:      r.Method,
-		URL:         r.URL.String(),
-		Proto:       r.Proto,
-		Headers:     r.Header,
-		Query:       r.URL.Query(),
-		Form:        r.Form,
-		Multipart:   multipart,
-		Body:        bstr,
-		BodyBase64:  bBase64,
-		ContentType: r.Header.Get("Content-Type"),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(echoReq)
-
-}
-func ParseEchoResp(res []byte) EchoReq {
-	var e EchoReq
-	json.Unmarshal(res, &e)
-	return e
-}
-func NewEchoServer(t *testing.T) *httptest.Server {
-	t.Helper()
-	return httptest.NewServer(http.HandlerFunc(EchoHandler))
-}
-
 func TestRun(t *testing.T) {
-	server := NewEchoServer(t)
+	server := testutil.NewEchoServer(t)
 	defer server.Close()
 
 	newReqData := func() *httpx.ReqData {
@@ -86,8 +35,8 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, "r", result.ReqName)
 		assert.Equal(t, "200 OK", result.Status)
 		assert.Nil(t, result.Tests)
-		assert.Equal(t, "abc", ParseEchoResp(raw.Bytes()).Body)
-		assert.Equal(t, "POST", ParseEchoResp(raw.Bytes()).Method)
+		assert.Equal(t, "abc", testutil.ParseEchoResp(raw.Bytes()).Body)
+		assert.Equal(t, "POST", testutil.ParseEchoResp(raw.Bytes()).Method)
 		assert.Nil(t, result.Err)
 	})
 	t.Run("send bad request", func(t *testing.T) {
@@ -95,6 +44,61 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, false, result.Success)
 		assert.Equal(t, "r", result.ReqName)
 		assert.Error(t, result.Err)
+	})
+	t.Run("send GET request with payload", func(t *testing.T) {
+		kArr := map[string][]string{"Abc": {"123"}}
+		reqData := httpx.NewReqData("r").
+			SetURL(server.URL).
+			SetMethod(httpx.MethodGet).
+			SetPathParam("", "").
+			SetQueryParams(kArr).
+			SetHeaders(kArr).
+			SetBody(httpx.Body{Raw: "", Form: kArr})
+		res := reqData.Run()
+		raw := request.View[*httpx.Response](res).Raw
+		parsed := testutil.ParseEchoResp(raw.Bytes())
+		t.Logf("%+v", res)
+		assert.True(t, res.Success)
+		assert.Contains(t, slices.AppendSeq([]string{}, maps.Keys(parsed.Headers)), "Abc")
+		assert.Equal(t, kArr, parsed.Query)
+		assert.Equal(t, kArr, parsed.Form)
+		assert.Nil(t, res.Err)
+	})
+	t.Run("send GET request with raw body", func(t *testing.T) {
+		bodyContent := "123"
+		reqData := httpx.NewReqData("r").
+			SetURL(server.URL).
+			SetMethod(httpx.MethodGet).
+			SetBody(httpx.Body{Raw: bodyContent})
+		res := reqData.Run()
+		raw := request.View[*httpx.Response](res).Raw
+		t.Logf("%+v", res)
+		assert.True(t, res.Success)
+		assert.Equal(t, bodyContent, testutil.ParseEchoResp(raw.Bytes()).Body)
+		assert.Nil(t, res.Err)
+	})
+	t.Run("send GET request with multipart/form-data", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testFilePath := filepath.Join(tmpDir, "test_file")
+		fsx.WriteFile(testFilePath, []byte("123foo秦始皇😭😭"))
+		fds := []httpx.MultiField{
+			{Name: "", Value: "", FileName: "", FilePath: "", ContentType: ""},
+			{Name: "abc", Value: "123"},
+			{Name: "aaa", Value: "111", ContentType: "application/json"},
+			{Name: "aaa", Value: "111"},
+			{Name: "f", FileName: "file_name", FilePath: testFilePath},
+		}
+		reqData := httpx.NewReqData("r").
+			SetURL(server.URL).
+			SetMethod(httpx.MethodGet).
+			SetBody(httpx.Body{Multipart: fds})
+		req, _ := reqData.InstancedRequest()
+		req.SetMethodGetAllowPayload(true)
+		res := reqData.Run()
+
+		t.Logf("%+v", res)
+		assert.True(t, res.Success)
+		assert.Nil(t, res.Err)
 	})
 	t.Run("run success with tests expression", func(t *testing.T) {
 		tName := "t1"
@@ -202,12 +206,12 @@ func TestReqDataConverts(t *testing.T) {
 			assert.Equal(t, "application/xml", req.Header.Get("Content-Type"))
 		})
 		t.Run("multipart/form-data", func(t *testing.T) {
-			server := NewEchoServer(t)
+			server := testutil.NewEchoServer(t)
 			defer server.Close()
 
 			req, _ := rData(t).SetBodyMultipart(httpx.MultiField{Name: "a", Value: "1"}).InstancedRequest()
 			res, _ := req.SetURL(server.URL).Send()
-			assert.Equal(t, map[string][]string{"a": {"1"}}, ParseEchoResp(res.Bytes()).Multipart)
+			assert.Equal(t, map[string][]string{"a": {"1"}}, testutil.ParseEchoResp(res.Bytes()).Multipart)
 		})
 		t.Run("x-www-url-encoded", func(t *testing.T) {
 			req, _ := rData(t).SetBodyForm(map[string][]string{"a": {"1", "2"}}).InstancedRequest()

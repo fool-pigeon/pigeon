@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package core
 
 import (
@@ -120,8 +125,17 @@ func execReqWithContext(ctx context.Context, ep execRParam, resCh chan RunResult
 	}
 }
 
-// paths params for run needed
+// run paths needed
+// paths are relative paths from collection's root path
 type RunPaths struct {
+	Root   string   `toml:"root" json:"root"`
+	Tasks  []string `toml:"tasks" json:"tasks"`
+	Config string   `toml:"config" json:"config"`
+	Env    string   `toml:"env" json:"env"`
+}
+
+// paths params for run needed
+type RunParams struct {
 	// readonly
 	ReqCtx
 	// root dir's abs path
@@ -137,7 +151,7 @@ type RunResult struct {
 	Err     error
 }
 
-func Run(ctx context.Context, runParams RunPaths, handle func(res RunResult)) error {
+func Run(ctx context.Context, runParams RunParams, handle func(res RunResult)) error {
 	if runParams.Config == nil {
 		return fmt.Errorf("config:%w", ErrNilValue)
 	}

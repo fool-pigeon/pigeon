@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+// 
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package httpx
 
 import (
@@ -11,25 +16,18 @@ import (
 	"resty.dev/v3"
 )
 
+type Method = string
+
 const (
-	// MethodGet is the HTTP GET method.
-	MethodGet = http.MethodGet
-	// MethodPost is the HTTP POST method.
-	MethodPost = http.MethodPost
-	// MethodPut is the HTTP PUT method.
-	MethodPut = http.MethodPut
-	// MethodDelete is the HTTP DELETE method.
-	MethodDelete = http.MethodDelete
-	// MethodPatch is the HTTP PATCH method.
-	MethodPatch = http.MethodPatch
-	// MethodHead is the HTTP HEAD method.
-	MethodHead = http.MethodHead
-	// MethodOptions is the HTTP OPTIONS method.
-	MethodOptions = http.MethodOptions
-	// MethodTrace is the HTTP TRACE method.
-	MethodTrace = http.MethodTrace
-	// MethodConnect is the HTTP CONNECT method.
-	MethodConnect = http.MethodConnect
+	MethodGet     Method = http.MethodGet
+	MethodPost    Method = http.MethodPost
+	MethodPut     Method = http.MethodPut
+	MethodDelete  Method = http.MethodDelete
+	MethodPatch   Method = http.MethodPatch
+	MethodHead    Method = http.MethodHead
+	MethodOptions Method = http.MethodOptions
+	MethodTrace   Method = http.MethodTrace
+	MethodConnect Method = http.MethodConnect
 )
 
 var (
@@ -165,6 +163,10 @@ func (c *ClientData) SetResponseBodyLimit(limit int64) *ClientData {
 
 func (c *ClientData) InstancedClient() (*Client, error) {
 	client := resty.New()
+
+	// allow the payload for GET and DELETE
+	client.SetMethodGetAllowPayload(true).SetMethodDeleteAllowPayload(true)
+
 	client.SetHeader(hdrUserAgentKey, hdrUserAgentValue)
 
 	if baseURL := c.BaseURL; baseURL != "" {

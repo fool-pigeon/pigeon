@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package request
 
 import (
@@ -21,6 +26,8 @@ type TestRes struct {
 type ResultMeta struct {
 	Success bool   `json:"success"`
 	ReqName string `json:"reqName"`
+	// the mini and most important info of request and will view when cause errror
+	ReqInfo string `json:"reqInfo"`
 	// e.g. HTTP/1.1,HTTP/2,gPRC,
 	Proto string `json:"proto"`
 	// this means the tag of status,such as "2xx","4xx","5xx","err","failed"
@@ -40,6 +47,10 @@ func (r *ResultMeta) SetSuccess(Success bool) *ResultMeta {
 
 func (r *ResultMeta) SetReqName(ReqName string) *ResultMeta {
 	r.ReqName = ReqName
+	return r
+}
+func (r *ResultMeta) SetReqInfo(ReqInfo string) *ResultMeta {
+	r.ReqInfo = ReqInfo
 	return r
 }
 

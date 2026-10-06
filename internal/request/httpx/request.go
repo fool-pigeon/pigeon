@@ -1,10 +1,19 @@
+// Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
 package httpx
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"maps"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	"slices"
 	"strings"
@@ -62,7 +71,7 @@ type (
 	// The request will be [resty.Request] when called [ReqData.InstancedRequest]
 	ReqData struct {
 		request.ReqMeta
-		Method  string              `toml:"mothod" comment:"GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS,TRACE,CONNECT" json:"method"`
+		Method  Method              `toml:"mothod" comment:"GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS,TRACE,CONNECT" json:"method"`
 		URL     string              `toml:"url" json:"url"`
 		Path    map[string]string   `toml:"path,omitempty,multiline" json:"path"`
 		Query   map[string][]string `toml:"query,omitempty,multiline" json:"query"`
@@ -86,21 +95,26 @@ type (
 
 // Run implements [request.Request].
 func (r *ReqData) Run() request.Result {
+	info := fmt.Sprintf("%s %s", r.Method, r.URL)
 	if r.req == nil {
 		req, err := r.InstancedRequest()
 		if err != nil {
-			return request.ErrResult(r.Name, err)
+			errRes := request.ErrResult(r.Name, err)
+			errRes.SetReqInfo(info)
+			return errRes
 		}
 		r.req = req
 	}
 	// send request
 	res, err := r.req.Send()
 	if err != nil {
-		return request.ErrResult(r.Name, err)
+		errRes := request.ErrResult(r.Name, err)
+		errRes.SetReqInfo(info)
+		return errRes
 	}
 	// set raw response
 	result := request.NewResult()
-	result.SetRaw(res).SetReqName(r.ReqName()).SetProto(res.Proto()).SetStatus(res.Status())
+	result.SetRaw(res).SetReqName(r.ReqName()).SetReqInfo(info).SetProto(res.Proto()).SetStatus(res.Status())
 	result.SetSuccess(res.StatusCode() >= 200 && res.StatusCode() < 300)
 	result.SetDuration(res.Duration())
 
@@ -148,7 +162,9 @@ func (r *ReqData) RunWithContext(ctx context.Context) request.Result {
 	case result := <-ch:
 		return result
 	case <-ctx.Done():
-		return request.ErrResult(r.ReqName(), ctx.Err())
+		errRes := request.ErrResult(r.ReqName(), ctx.Err())
+		errRes.SetReqInfo(fmt.Sprintf("%s %s", r.Method, r.URL))
+		return errRes
 	}
 }
 func NewReqData(requestName string) *ReqData {
@@ -160,7 +176,7 @@ func NewReqData(requestName string) *ReqData {
 
 // Setters
 
-func (r *ReqData) SetMethod(m string) *ReqData {
+func (r *ReqData) SetMethod(m Method) *ReqData {
 	r.Method = m
 	return r
 }
@@ -336,7 +352,9 @@ func (r *ReqData) InstancedRequest() (*Request, error) {
 		SetPathParams(r.Path).
 		SetQueryParamsFromValues(r.Query)
 
+	// Filter out empty string keys
 	// set raw headers
+	delete(r.Header, "")
 	maps.Copy(req.Header, r.Header)
 
 	if err := r.convertBody(req); err != nil {
@@ -376,24 +394,51 @@ func (r *ReqData) convertBody(req *Request) error {
 		req.SetBody(r.Body.Raw)
 
 	case len(b.Multipart) > 0:
-		fields := make([]*resty.MultipartField, 0, len(r.Body.Multipart))
-		for _, v := range r.Body.Multipart {
-			if v.FilePath != "" {
-				fields = append(fields, &resty.MultipartField{
-					Name:        v.Name,
-					FileName:    v.FileName,
-					FilePath:    v.FilePath,
-					ContentType: v.ContentType,
-				})
-				continue
+		var buf bytes.Buffer
+		mWriter := multipart.NewWriter(&buf)
+		for _, fd := range b.Multipart {
+			isSetContentType := fd.ContentType != ""
+			isSetFile := fd.FilePath != ""
+			var part io.Writer
+			var err error
+			// set part
+			switch {
+			case isSetContentType:
+				h := make(textproto.MIMEHeader)
+				h.Set(hdrContentTypeKey, fd.ContentType)
+				if isSetFile {
+					h.Set(hdrContentDisposition, fmt.Sprintf(`form-data; name="%s"; filename="%s"`, fd.Name, fd.FileName))
+				} else {
+					h.Set(hdrContentDisposition, fmt.Sprintf(`form-data; name="%s"`, fd.Name))
+				}
+				if part, err = mWriter.CreatePart(h); err != nil {
+					return fmt.Errorf("set part %s failed:%w", fd.Name, err)
+				}
+			case isSetFile:
+				if part, err = mWriter.CreateFormFile(fd.Name, fd.FileName); err != nil {
+					return fmt.Errorf("set part %s failed:%w", fd.Name, err)
+				}
+			default:
+				if part, err = mWriter.CreateFormField(fd.Name); err != nil {
+					return fmt.Errorf("set part %s failed:%w", fd.Name, err)
+				}
 			}
-			fields = append(fields, &resty.MultipartField{
-				Name:        v.Name,
-				Values:      []string{v.Value},
-				ContentType: v.ContentType,
-			})
+			// write content
+			if !isSetFile {
+				part.Write([]byte(fd.Value))
+			} else {
+				fileBytes, err := fsx.ReadFile(fd.FilePath)
+				if err != nil {
+					return fmt.Errorf("read %s failed:%w", fd.FilePath, err)
+				}
+				part.Write(fileBytes)
+			}
 		}
-		req.SetMultipartFields(fields...)
+		if err := mWriter.Close(); err != nil {
+			return fmt.Errorf("close multipart writer failed:%w", err)
+		}
+		req.SetContentType(mWriter.FormDataContentType()).
+			SetBody(buf.Bytes())
 
 	case len(b.Form) > 0:
 		req.SetFormDataFromValues(r.Body.Form)
