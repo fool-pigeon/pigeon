@@ -11,7 +11,7 @@ var ErrRootNotExist = errors.New("root tag directory is not existed.")
 
 const (
 	RootTagDirName = ".pg"
-	EnvDirName     = "envs"
+	EnvDirName     = "env"
 	RunDirName     = "run"
 
 	ConfigDefaultName = "config.toml"

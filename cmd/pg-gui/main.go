@@ -40,7 +40,7 @@ func main() {
 		Name:        "Pigeon",
 		Description: "Version: 0.1\ngo: 1.26.5\nwails: v3/beta\n",
 		Services: []application.Service{
-			application.NewService(&gui.MenuService{}),
+			application.NewService(&service.EventConstExposeService{}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -49,13 +49,28 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
-	app.RegisterService(application.NewService(service.NewPathSelectService(app)))
+
+	alertService := service.NewAlertService(app)
+
+	pathSelectService := service.NewPathSelectService(app)
+	app.RegisterService(application.NewService(pathSelectService))
+
 	fileService := service.NewFileService()
 	app.RegisterService(application.NewService(fileService))
-	app.RegisterService(application.NewService(service.NewTextFileService(fileService)))
-	app.RegisterService(application.NewService(service.NewHttpReqFileService(fileService)))
-	app.RegisterService(application.NewService(service.NewFileExploreService(app.Event)))
-	app.RegisterService(application.NewService(service.NewReqCtxService(app)))
+
+	fileExploreService := service.NewFileExploreService(alertService, app)
+	app.RegisterService(application.NewService(fileExploreService))
+
+	fileAccessService := service.NewFileAccessService(fileService, fileExploreService, pathSelectService, app)
+	app.RegisterService(application.NewService(fileAccessService))
+	app.RegisterService(application.NewService(service.NewTextFileService(fileAccessService)))
+	app.RegisterService(application.NewService(service.NewHttpReqFileService(fileAccessService)))
+
+	reqCtxService := service.NewReqCtxService(app)
+	app.RegisterService(application.NewService(reqCtxService))
+
+	taskRunService := service.NewTaskRunService(reqCtxService, alertService, app)
+	app.RegisterService(application.NewService(taskRunService))
 
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.
