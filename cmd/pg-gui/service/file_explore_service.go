@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -646,6 +646,28 @@ func (f *FileExploreService) ReloadRootView() error {
 
 // Delete Node
 func (f *FileExploreService) DeleteNode(path string) error {
+	node, err := f.GetNodeExact(path)
+	if err != nil {
+		return err
+	}
+
+	path = node.GetPath()
+	pre := node.Pre()
+	if pre == nil {
+		return ErrNodeNilPre
+	}
+	if err := os.Remove(path); err != nil {
+		return err
+	}
+
+	pre.DelSub(path)
+	f.app.Event.Emit(FesDeletedNode, path)
+
+	return nil
+}
+
+// Delete Node
+func (f *FileExploreService) DeleteAllNode(path string) error {
 	node, err := f.GetNodeExact(path)
 	if err != nil {
 		return err

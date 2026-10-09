@@ -18,6 +18,7 @@
 	import IconTrash from '@lucide/svelte/icons/trash';
 	import IconSquarePen from '@lucide/svelte/icons/square-pen';
 	import IconPlay from '@lucide/svelte/icons/play';
+	import IconEject from '@lucide/svelte/icons/eject';
 
 	import { FileAccessService, FileExploreService, PathSelectService } from '@services';
 	import TreeMenu, { NewTreeGroup, NewTreeLeaf, type TreeItem } from '@comp/base/TreeMenu.svelte';
@@ -47,6 +48,9 @@
 
 		reload() {
 			FileExploreService.ReloadRootView().catch(msgAlert.error);
+		}
+		isCollection(id: string): boolean {
+			return (this.root.sub ?? []).some((v) => v.id === id);
 		}
 		selectItem(item: FSItem | undefined) {
 			if (!item) {
@@ -136,6 +140,7 @@
 		Reveal: 'file-explorer:reveal',
 		Rename: 'file-explorer:rename',
 		Delete: 'file-explorer:delete',
+		DeleteAll: 'file-explorer:delete-all',
 		RunFolder: 'file-explorer:run-folder',
 	} as const;
 	export type FEEvent = (typeof FEEvent)[keyof typeof FEEvent];
@@ -277,9 +282,15 @@
 		const unDelete = Events.On(FEEvent.Delete, () => {
 			const path = fState.selectedItem.id;
 			if (path === '') return;
-			// TODO open a modal to hold when need delete think twice
 			FileAccessService.Delete(path)
 				.then(() => msgAlert.success('Delete Success'))
+				.catch(msgAlert.error);
+		});
+		const unDeleteAll = Events.On(FEEvent.DeleteAll, () => {
+			const path = fState.selectedItem.id;
+			if (path === '') return;
+			FileAccessService.DeleteAll(path)
+				.then(() => msgAlert.success('DeleteAll Success'))
 				.catch(msgAlert.error);
 		});
 		return () => {
@@ -296,6 +307,7 @@
 			unReveal();
 			unRename();
 			unDelete();
+			unDeleteAll();
 		};
 	});
 
@@ -571,19 +583,36 @@
 		oncontextmenu={(e) => e.preventDefault()}
 	>
 		{const Labels = {
+			UnmountCollection: 'Unmount',
 			NewFile: 'New File',
 			NewFolder: 'New Folder',
 			Rename: 'Rename',
 			Reveal: 'Reveal In File Manager',
 			Delete: 'Delete',
+			DeleteAll: 'Delete All',
 			RunFolder: 'Run Folder',
 		} as const}
 		{const Fields = {
+			[Labels.UnmountCollection]: {
+				on: () => {
+					const path = fState.selectedItem.id;
+					if (!fState.isCollection(path)) return;
+					FileAccessService.Unmount(path)
+						.then(() => {
+							fState.reload();
+							Events.Emit(EditorEvent.Reload);
+							msgAlert.success(`Unmount ${path} Success`);
+						})
+						.catch(msgAlert.error);
+				},
+				icon: IconEject,
+			},
 			[Labels.NewFile]: { on: () => Events.Emit(MenuEvent.NewFile), icon: IconFilePlusCorner },
 			[Labels.NewFolder]: { on: () => Events.Emit(FEEvent.NewFolder), icon: IconFolderPlus },
 			[Labels.Rename]: { on: () => Events.Emit(FEEvent.Rename), icon: IconSquarePen },
 			[Labels.Reveal]: { on: () => Events.Emit(FEEvent.Reveal), icon: IconFolderOpenDot },
-			[Labels.Delete]: { on: () => Events.Emit(FEEvent.Delete), icon: IconTrash },
+			[Labels.Delete]: { on: () => modal.open(DeleteModal, 'Delete'), icon: IconTrash },
+			[Labels.DeleteAll]: { on: () => modal.open(DeleteAllModal, 'DeleteAll'), icon: IconTrash },
 			[Labels.RunFolder]: { on: () => Events.Emit(FEEvent.RunFolder), icon: IconPlay },
 		} as const}
 		{#snippet btn(label: (typeof Labels)[keyof typeof Labels])}
@@ -601,6 +630,9 @@
 			</button>
 		{/snippet}
 		{#if fState.selectedItem.type === 'group'}
+			{#if fState.isCollection(fState.selectedItem.id)}
+				<li class="text-warning [&>button]:hover:bg-warning/10">{@render btn('Unmount')}</li>
+			{/if}
 			<li>{@render btn('New File')}</li>
 			<li>{@render btn('New Folder')}</li>
 			<li>{@render btn('Run Folder')}</li>
@@ -609,7 +641,58 @@
 		<li>{@render btn('Reveal In File Manager')}</li>
 		<div class="divider p-0 m-0 h-1"></div>
 		<li class="text-error [&>button]:hover:bg-error/10">{@render btn('Delete')}</li>
+		{#if fState.selectedItem.type === 'group'}
+			<li class="text-error [&>button]:hover:bg-error/10">{@render btn('Delete All')}</li>
+		{/if}
 	</ul>
+{/snippet}
+{#snippet DeleteModal()}
+	<div class="p-1 bg-base-200">
+		<div class="p-2 text-lg">Are You Sure To Delete?</div>
+		<div class="p-2">the will delete {fState.selectedItem.id}</div>
+		<div class="flex gap-1 justify-end *:shadow-none *:outline-none *:font-normal">
+			<button
+				class="btn btn-ghost border-transparent hover:bg-base-content/30"
+				onclick={() => modal.close()}
+			>
+				Cancel
+			</button>
+			<button
+				class="btn btn-error"
+				onclick={() => {
+					Events.Emit(FEEvent.Delete);
+					modal.close();
+				}}
+			>
+				Delete
+			</button>
+		</div>
+	</div>
+{/snippet}
+{#snippet DeleteAllModal()}
+	<div class="p-1 bg-base-200">
+		<div class="p-2 text-lg">Are You Sure To Delete All?</div>
+		<div class="p-2">
+			the will <span class="text-error">DELETE ALL</span> of {fState.selectedItem.id}
+		</div>
+		<div class="flex gap-1 justify-end *:shadow-none *:outline-none *:font-normal">
+			<button
+				class="btn btn-ghost border-transparent hover:bg-base-content/30"
+				onclick={() => modal.close()}
+			>
+				Cancel
+			</button>
+			<button
+				class="btn btn-error"
+				onclick={() => {
+					Events.Emit(FEEvent.DeleteAll);
+					modal.close();
+				}}
+			>
+				Delete
+			</button>
+		</div>
+	</div>
 {/snippet}
 
 {#snippet fsItemDisplay(item: FSItem)}

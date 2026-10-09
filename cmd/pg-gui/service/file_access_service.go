@@ -124,7 +124,7 @@ func (fa *FileAccessService) DeleteAll(path string) error {
 		fa.app.Event.Emit(FsUpdatePaths, fa.fs.GetOpenedPaths())
 	}()
 	go func() {
-		fa.fes.DeleteNode(path)
+		fa.fes.DeleteAllNode(path)
 	}()
 	return nil
 }
@@ -139,7 +139,7 @@ func (fa *FileAccessService) Unmount(path string) error {
 		return fmt.Errorf("%s is not collection", path)
 	}
 	go func() {
-		fa.fes.DeleteNode(path)
+		fa.fes.root.DelSub(path)
 	}()
 	return nil
 }
