@@ -5,10 +5,10 @@
 	import type { Body, ReqData } from '@internal/request/httpx';
 	import type { OpenedFS } from './Editor.svelte';
 	import { onMount, untrack } from 'svelte';
-	import { HttpReqFileService, ReqCtxService, type HttpRes } from '@bindings/service';
+	import { HttpReqFileService, ReqCtxService, type HttpRes } from '@pg/service';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { Events } from '@wailsio/runtime';
-	import { MenuEvent } from '@bindings/gui';
+	import { MenuEvent } from '@pg/gui';
 	import { fileExplorer } from '../navigation/FileExplorer.svelte';
 	import equal from 'fast-deep-equal';
 	import { DataEvent } from '@lib/enum/events';

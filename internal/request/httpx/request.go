@@ -94,7 +94,14 @@ type (
 )
 
 // Run implements [request.Request].
-func (r *ReqData) Run() request.Result {
+func (r *ReqData) Run(ctxs ...context.Context) request.Result {
+	var ctx context.Context
+	if len(ctxs) > 0 {
+		ctx = ctxs[0]
+	} else {
+		ctx = context.Background()
+	}
+
 	info := fmt.Sprintf("%s %s", r.Method, r.URL)
 	if r.req == nil {
 		req, err := r.InstancedRequest()
@@ -106,7 +113,7 @@ func (r *ReqData) Run() request.Result {
 		r.req = req
 	}
 	// send request
-	res, err := r.req.Send()
+	res, err := r.req.SetContext(ctx).Send()
 	if err != nil {
 		errRes := request.ErrResult(r.Name, err)
 		errRes.SetReqInfo(info)
@@ -153,20 +160,15 @@ func (r *ReqData) Run() request.Result {
 
 // RunWithContext implements [request.Request].
 func (r *ReqData) RunWithContext(ctx context.Context) request.Result {
-	ch := make(chan request.Result, 1)
-	go func() {
-		defer close(ch)
-		ch <- r.Run()
-	}()
-	select {
-	case result := <-ch:
-		return result
-	case <-ctx.Done():
-		errRes := request.ErrResult(r.ReqName(), ctx.Err())
+	res := r.Run(ctx)
+	if err := ctx.Err(); err != nil {
+		errRes := request.ErrResult(r.ReqName(), err)
 		errRes.SetReqInfo(fmt.Sprintf("%s %s", r.Method, r.URL))
 		return errRes
 	}
+	return res
 }
+
 func NewReqData(requestName string) *ReqData {
 	return &ReqData{ReqMeta: request.ReqMeta{
 		Name:     requestName,

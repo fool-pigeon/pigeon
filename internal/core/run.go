@@ -33,10 +33,13 @@ func isTomlExt(path string) bool {
 	return filepath.Ext(path) == ".toml"
 }
 
-func loadReq(path string, env *env.Env, config *config.Config) (request.Request, error) {
+func loadReq(ctx context.Context, path string, env *env.Env, config *config.Config) (request.Request, error) {
 	// Read Flie
 	b, err := fsx.ReadFile(path)
 	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	// Expand Env
@@ -81,7 +84,7 @@ type execRParam struct {
 	path string
 }
 
-func execReq(ep execRParam, resCh chan RunResult) {
+func execReq(ctx context.Context, ep execRParam) RunResult {
 	var res RunResult
 	absPath, err := filepath.Abs(ep.path)
 	if err != nil {
@@ -97,29 +100,36 @@ func execReq(ep execRParam, resCh chan RunResult) {
 	res.Path = relPath
 
 	if res.Err != nil {
-		resCh <- res
-		return
+		return res
 	}
 
-	r, err := loadReq(absPath, ep.Env, ep.Config)
+	r, err := loadReq(ctx, absPath, ep.Env, ep.Config)
 	if err != nil {
 		res.Err = errors.Join(res.Err, err)
-		resCh <- res
-		return
+		return res
 	}
-	res.ReqRes = r.Run()
-	resCh <- res
+	if err := ctx.Err(); err != nil {
+		res.Err = errors.Join(res.Err, err)
+		return res
+	}
+
+	res.ReqRes = r.RunWithContext(ctx)
+	return res
 }
 func execReqWithContext(ctx context.Context, ep execRParam, resCh chan RunResult) {
-	done := make(chan struct{})
+	done := make(chan RunResult)
+	var res RunResult
 	go func() {
 		defer close(done)
-		execReq(ep, resCh)
+		res = execReq(ctx, ep)
 	}()
 
 	select {
 	case <-done:
-		return
+		if ctx.Err() != nil {
+			return
+		}
+		resCh <- res
 	case <-ctx.Done():
 		return
 	}

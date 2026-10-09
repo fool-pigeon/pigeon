@@ -29,7 +29,7 @@
 </script>
 
 <div class="w-lvw h-lvh bg-base-100/50">
-	<DynamicJoin panels={[NewPanel(fileExplorer, { unit: 'px', value: 200 }), NewPanel(editor)]} />
+	<DynamicJoin panels={[NewPanel(fileExplorer, { unit: 'px', value: 170 }), NewPanel(editor)]} />
 </div>
 <ReqCtx />
 <Modal />

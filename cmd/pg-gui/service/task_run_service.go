@@ -26,10 +26,15 @@ type TrsEvent = string
 
 const (
 	// go receive data:
-	// path:string
+	// id:string
 	//
-	// it will cancel the task whose run file's path equals that
+	// it will cancel the task whose task's id equals that
 	TrsCancel TrsEvent = "task-run-service:cancel"
+	// go send data:
+	// id:string
+	//
+	// it will send the cancelled task's id
+	TrsCancelld TrsEvent = "task-run-service:cancelled"
 	// go Send data:
 	// [TaskResErr]
 	TrsResultErr TrsEvent = "task-run-service:result-error"
@@ -77,25 +82,33 @@ func NewTaskRunService(reqCtx *ReqCtxService, alertService *AlertService, app *a
 	return &TaskRunService{reqCtx, alertService, app}
 }
 
-func (tr *TaskRunService) RunDir(id string, path string) error {
+func (tr *TaskRunService) RunDir(id string, path string) (Task, error) {
 	path = filepath.Clean(path)
 	info, err := os.Lstat(path)
 	if err != nil {
-		return fmt.Errorf("%s:%w", path, err)
+		return Task{}, fmt.Errorf("%s:%w", path, err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("%s:%w", path, fsx.ErrNotDir)
+		return Task{}, fmt.Errorf("%s:%w", path, fsx.ErrNotDir)
 	}
+	root, err := fsx.RootDir(path)
+	if err != nil {
+		return Task{}, err
+	}
+	relRoot, err := filepath.Rel(root, path)
 	task := Task{
 		TaskMeta{Id: id, Path: path},
 		core.RunPaths{
-			Root:   ".",
+			Root:   relRoot,
 			Tasks:  []string{"."},
 			Config: tr.reqCtx.CfgRelPath(),
 			Env:    tr.reqCtx.EnvRelPath(),
 		},
 	}
-	return tr.Run(task)
+	go func() {
+		tr.Run(task)
+	}()
+	return task, nil
 }
 
 // param: file path and file content of run file
@@ -176,11 +189,10 @@ func (tr *TaskRunService) run(id string, params core.RunParams) error {
 
 		switch raw := rRes.Raw.(type) {
 		case *httpx.Response:
-			taskResHttp := tr.reqCtx.parseResHttp(request.ResultView[*httpx.Response]{
+			evt.Emit(TrsResultHttp, tr.reqCtx.parseResHttp(request.ResultView[*httpx.Response]{
 				ResultMeta: res.ReqRes.ResultMeta,
 				Raw:        raw,
-			})
-			evt.Emit(TrsResultHttp, taskResHttp)
+			}, meta))
 
 		default:
 			evt.Emit(TrsResultAny, TaskResAny{ResultMeta: rMeta, Meta: meta, Data: raw})
@@ -189,6 +201,7 @@ func (tr *TaskRunService) run(id string, params core.RunParams) error {
 
 	if ctx.Err() != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
+			tr.app.Event.Emit(TrsCancelld, id)
 			return fmt.Errorf("cancelled task:%w", ctx.Err())
 		}
 	}

@@ -30,8 +30,9 @@
 	import { ModeContains } from '@lib/utils/asserts';
 	import OpenCollectionModal from './OpenCollectionModal.svelte';
 	import { modal } from '@comp/base/Modal.svelte';
-	import { MenuEvent } from '@bindings/gui';
+	import { MenuEvent } from '@pg/gui';
 	import { EditorEvent } from '@comp/editor/Editor.svelte';
+	import { taskRunner } from '@comp/runner/TaskRunner.svelte';
 
 	type FS = Node | null;
 	// addtional data is FSTag
@@ -135,6 +136,7 @@
 		Reveal: 'file-explorer:reveal',
 		Rename: 'file-explorer:rename',
 		Delete: 'file-explorer:delete',
+		RunFolder: 'file-explorer:run-folder',
 	} as const;
 	export type FEEvent = (typeof FEEvent)[keyof typeof FEEvent];
 
@@ -252,6 +254,11 @@
 		const unNewFolder = Events.On(FEEvent.NewFolder, () => {
 			modal.open(NewFolderModal, 'New Folder');
 		});
+		const unRunFolder = Events.On(FEEvent.RunFolder, () => {
+			const path = fState.selectedItem.id;
+			if (path === '') return;
+			taskRunner.runFolder(path);
+		});
 		const unReload = Events.On(FEEvent.Reload, () => fState.reload());
 		const unCollapseAll = Events.On(FEEvent.CollapseAll, () => {
 			openStates.clear();
@@ -283,6 +290,7 @@
 			unNewCollection();
 			unNewFile();
 			unNewFolder();
+			unRunFolder();
 			unReload();
 			unCollapseAll();
 			unReveal();
@@ -568,6 +576,7 @@
 			Rename: 'Rename',
 			Reveal: 'Reveal In File Manager',
 			Delete: 'Delete',
+			RunFolder: 'Run Folder',
 		} as const}
 		{const Fields = {
 			[Labels.NewFile]: { on: () => Events.Emit(MenuEvent.NewFile), icon: IconFilePlusCorner },
@@ -575,6 +584,7 @@
 			[Labels.Rename]: { on: () => Events.Emit(FEEvent.Rename), icon: IconSquarePen },
 			[Labels.Reveal]: { on: () => Events.Emit(FEEvent.Reveal), icon: IconFolderOpenDot },
 			[Labels.Delete]: { on: () => Events.Emit(FEEvent.Delete), icon: IconTrash },
+			[Labels.RunFolder]: { on: () => Events.Emit(FEEvent.RunFolder), icon: IconPlay },
 		} as const}
 		{#snippet btn(label: (typeof Labels)[keyof typeof Labels])}
 			<button
@@ -593,6 +603,7 @@
 		{#if fState.selectedItem.type === 'group'}
 			<li>{@render btn('New File')}</li>
 			<li>{@render btn('New Folder')}</li>
+			<li>{@render btn('Run Folder')}</li>
 		{/if}
 		<li>{@render btn('Rename')}</li>
 		<li>{@render btn('Reveal In File Manager')}</li>
@@ -604,7 +615,7 @@
 {#snippet fsItemDisplay(item: FSItem)}
 	<div title={item.id} class="flex gap-1 items-center">
 		{@render nodeModeIcon(item.additional)}
-		{item.name}
+		<span class="truncate">{item.name}</span>
 	</div>
 {/snippet}
 {#snippet nodeModeIcon(m?: NodeMode)}

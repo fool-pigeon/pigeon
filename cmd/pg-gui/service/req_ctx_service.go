@@ -261,9 +261,11 @@ func (r *ReqCtxService) SendHttp(data *httpx.ReqData) (TaskResHttp, error) {
 
 	return r.parseResHttp(res), nil
 }
-func (r *ReqCtxService) parseResHttp(res request.ResultView[*httpx.Response]) TaskResHttp {
+func (r *ReqCtxService) parseResHttp(res request.ResultView[*httpx.Response], meta ...TaskMeta) TaskResHttp {
 	var taskRes TaskResHttp
-
+	if len(meta) > 0 {
+		taskRes.Meta = meta[0]
+	}
 	// set meta of result
 	taskRes.ResultMeta = res.ResultMeta
 	taskRes.Data.Spent = res.Duration.Round(time.Millisecond / 10).String()
@@ -275,7 +277,7 @@ func (r *ReqCtxService) parseResHttp(res request.ResultView[*httpx.Response]) Ta
 	// Parse the result for request
 	if req := res.Raw.Request; req != nil {
 		// get request body
-		body := req.Context().Value(HttpBodyKey{}).([]byte)
+		body, _ := req.Context().Value(HttpBodyKey{}).([]byte)
 		taskRes.Data.Request.Body = string(body)
 		// set request header
 		taskRes.Data.Request.Header = req.Header

@@ -92,4 +92,4 @@
 	});
 </script>
 
-<CMInput bind:value={url} placeholder={'URL'} noLineWrap />
+<CMInput bind:value={url} placeholder={'URL'} />

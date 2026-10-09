@@ -11,7 +11,7 @@ import (
 )
 
 type Request interface {
-	Run() Result
+	Run(...context.Context) Result
 	RunWithContext(ctx context.Context) Result
 	ReqName() string
 	ReqProtocol() string

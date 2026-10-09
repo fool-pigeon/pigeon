@@ -27,10 +27,10 @@
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { modal } from '../base/Modal.svelte';
 	import { Events } from '@wailsio/runtime';
-	import { MenuEvent } from '@bindings/gui';
+	import { MenuEvent } from '@pg/gui';
 	import { DataEvent } from '@lib/enum/events';
 	import { ModeContains } from '@lib/utils/asserts';
-	import { NodeMode } from '@bindings/service';
+	import { NodeMode } from '@pg/service';
 	import FileView from './FileView.svelte';
 	import HttpView from './HttpView.svelte';
 

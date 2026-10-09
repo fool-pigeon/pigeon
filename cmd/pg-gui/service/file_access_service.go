@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -86,8 +86,34 @@ func (fa *FileAccessService) Rename(path string, name string) error {
 	fa.fs.renameKey(path, newPath)
 	return nil
 }
+
+// Remove file or empty directory in collection
 func (fa *FileAccessService) Delete(path string) error {
 	path = filepath.Clean(path)
+	if _, err := fsx.RootDir(path); err != nil {
+		return fmt.Errorf("%s:%w", path, err)
+	}
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("os remove failed:%w", err)
+	}
+	go func() {
+		if err := fa.fs.Close(path); err != nil {
+			return
+		}
+		fa.app.Event.Emit(FsUpdatePaths, fa.fs.GetOpenedPaths())
+	}()
+	go func() {
+		fa.fes.DeleteNode(path)
+	}()
+	return nil
+}
+
+// Remove all of path,danager operation
+func (fa *FileAccessService) DeleteAll(path string) error {
+	path = filepath.Clean(path)
+	if _, err := fsx.RootDir(path); err != nil {
+		return fmt.Errorf("%s:%w", path, err)
+	}
 	if err := os.RemoveAll(path); err != nil {
 		return fmt.Errorf("os remove failed:%w", err)
 	}
@@ -103,6 +129,22 @@ func (fa *FileAccessService) Delete(path string) error {
 	return nil
 }
 
+// Unmount the collection from workspace
+func (fa *FileAccessService) Unmount(path string) error {
+	path = filepath.Clean(path)
+	if _, err := fsx.RootDir(path); err != nil {
+		return fmt.Errorf("%s:%w", path, err)
+	}
+	if !fa.fes.root.SubContain(path) {
+		return fmt.Errorf("%s is not collection", path)
+	}
+	go func() {
+		fa.fes.DeleteNode(path)
+	}()
+	return nil
+}
+
+// select a directory and init collection
 func (fa *FileAccessService) CreateCollection() error {
 	path, err := fa.pathSelector.SelectFolder()
 	if err != nil {

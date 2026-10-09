@@ -13,7 +13,7 @@
 	import type { OpenedFS } from './Editor.svelte';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { Events } from '@wailsio/runtime';
-	import { MenuEvent } from '@bindings/gui';
+	import { MenuEvent } from '@pg/gui';
 	import { TextFileService } from '@services';
 	import { fileExplorer } from '../navigation/FileExplorer.svelte';
 	import CMWrapper from '../form/CMWrapper.svelte';

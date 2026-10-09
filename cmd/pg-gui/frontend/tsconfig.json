@@ -2,7 +2,6 @@
 // 
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
-
 {
   "extends": "@tsconfig/svelte/tsconfig.json",
   "compilerOptions": {
@@ -20,8 +19,11 @@
       "@internal/*": [
         "./bindings/github.com/fool-pigeon/pigeon/internal/*"
       ],
-      "@bindings/*": [
+      "@pg/*": [
         "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/*"
+      ],
+      "@bindings/*": [
+        "./bindings/*"
       ],
       // src alias
       "@type/*": [

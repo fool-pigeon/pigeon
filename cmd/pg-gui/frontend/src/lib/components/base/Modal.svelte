@@ -34,18 +34,18 @@
 
 <script lang="ts">
 	let dialog = $state<HTMLDialogElement>();
+	$effect(() => {
+		if (!dialog) return;
+		if (mState.isOpen) {
+			dialog.showModal();
+		} else {
+			dialog.close();
+		}
+	});
 </script>
 
-<dialog
-	bind:this={dialog}
-	open={mState.isOpen}
-	class="modal"
-	onclose={() => mState.close()}
-	onclick={(e) => {
-		if (e.target === dialog) dialog.close();
-	}}
->
-	<div class="modal-box w-auto max-w-lvw p-0">
+<dialog bind:this={dialog} class="modal" onclose={() => mState.close()}>
+	<div class="modal-box w-auto max-w-lvw max-h-lvh min-h-0 p-0">
 		<div class="flex pl-2 w-full h-10 bg-base-300 items-center justify-between">
 			<span>
 				{mState.title ?? ''}

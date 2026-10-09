@@ -70,15 +70,11 @@
 				-->
 			{@render BodyViewer(body, bodyView, 'allow-scripts allow-forms  allow-popups')}
 		{:else if viewPart === 'Header'}
-			<div class="w-full h-full overflow-auto whitespace-break-spaces break-all">
-				{let header = $derived(current.data.response.header)}
-				{@render Header(header)}
-			</div>
+			{let header = $derived(current.data.response.header)}
+			{@render Header(header)}
 		{:else if viewPart === 'Tests'}
-			<div class="p-1 w-full h-full overflow-auto flex flex-col gap-1">
-				{let tests = $derived(current.tests)}
-				{@render Tests(tests)}
-			</div>
+			{let tests = $derived(current.tests)}
+			{@render Tests(tests)}
 		{:else if viewPart === 'History'}
 			<div class="p-1 pr-0 w-full h-full min-h-0 overflow-auto">
 				{let h = $derived(history.toReversed())}
@@ -164,49 +160,61 @@
 {/snippet}
 
 {#snippet Header(header: KArr)}
-	<table
-		class="w-full table table-xs rounded-none table-fixed table-pin-rows border border-base-content/10"
-	>
-		<thead>
-			<tr class="bg-base-300">
-				<th class="max-w-1/4">Key</th>
-				<th>Value</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#if header}
-				{#each Object.entries(header) as h (h[0])}
-					<tr class="hover:bg-base-content/10">
-						<td>{h[0]}</td>
-						<td>{(h[1] ?? []).join(', ')}</td>
-					</tr>
-				{/each}
-			{/if}
-		</tbody>
-	</table>
+	<div class="w-full max-w-full h-full overflow-auto whitespace-break-spaces break-all">
+		<table
+			class="w-full table table-xs rounded-none table-fixed table-pin-rows border border-base-content/10"
+		>
+			<thead>
+				<tr class="bg-base-300">
+					<th class="max-w-1/4">Key</th>
+					<th>Value</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#if header}
+					{#each Object.entries(header) as h (h[0])}
+						<tr class="hover:bg-base-content/10">
+							<td>{h[0]}</td>
+							<td>{(h[1] ?? []).join(', ')}</td>
+						</tr>
+					{/each}
+				{/if}
+			</tbody>
+		</table>
+	</div>
 {/snippet}
 
 {#snippet Tests(tests: TestRes[] | null)}
-	{#if !tests}
-		<p>no tests</p>
-	{:else}
-		{#each tests as t}
-			{#if t.passed}
-				<div class="text-success flex items-center">
-					<IconCircleCheck class="size-4 min-w-4" />
-					<span class="break-all">Passed: {t.name}</span>
-				</div>
-			{:else}
-				<div class="flex flex-col">
-					<div class="text-error flex items-center break-all">
-						<IconCircleX class="size-4 min-w-4" />
-						<span>Failed: {t.name}</span>
+	<div class="p-1 w-full max-w-full h-full overflow-auto flex flex-col gap-1">
+		{#if !tests}
+			<p>no tests</p>
+		{:else}
+			{#each tests as t}
+				{#if t.passed}
+					<div class="text-success flex items-center">
+						<IconCircleCheck class="size-4 min-w-4" />
+						<span class="break-all">Passed: {t.name}</span>
 					</div>
-					<div class="ml-8 text-base-content/50">{t.err}</div>
-				</div>
-			{/if}
-		{/each}
-	{/if}
+				{:else}
+					<div class="flex flex-col">
+						<div class="text-error flex items-center break-all">
+							<IconCircleX class="size-4 min-w-4" />
+							<span>Failed: {t.name}</span>
+						</div>
+						<div
+							class="ml-8 text-base-content/50 inline-flex flex-col gap-0
+							text-xs font-mono *:whitespace-pre-wrap"
+						>
+							{#if t.err.message}
+								<pre>{`${t.err.message}${t.err.snippet}`}</pre>
+								<pre>{JSON.stringify(t.err, null, 2)}</pre>
+							{/if}
+						</div>
+					</div>
+				{/if}
+			{/each}
+		{/if}
+	</div>
 {/snippet}
 
 {#snippet History(history: TaskResHttp[])}
@@ -268,10 +276,12 @@
 							{:else if tab === 1}
 								{@render HistoryHttpMeta(h.data.response)}
 							{:else if tab === 2}
-								<div class="border-base-content">{h.data.request.raw}</div>
-								<div class="border-t border-primary">{h.data.response.raw}</div>
+								<div class="w-full h-full overflow-auto font-mono text-xs *:whitespace-pre-wrap">
+									<pre class="border-base-content">{h.data.request.raw}</pre>
+									<pre class="border-t border-primary">{h.data.response.raw}</pre>
+								</div>
 							{:else if tab === 3}
-								{@render Tests(h.tests)}
+								{@render Tests(current.tests)}
 							{/if}
 						</div>
 					{/if}
