@@ -91,18 +91,13 @@ func (tr *TaskRunService) RunDir(id string, path string) (Task, error) {
 	if !info.IsDir() {
 		return Task{}, fmt.Errorf("%s:%w", path, fsx.ErrNotDir)
 	}
-	root, err := fsx.RootDir(path)
-	if err != nil {
-		return Task{}, err
-	}
-	relRoot, err := filepath.Rel(root, path)
 	task := Task{
 		TaskMeta{Id: id, Path: path},
 		core.RunPaths{
-			Root:   relRoot,
-			Tasks:  []string{"."},
-			Config: tr.reqCtx.CfgRelPath(),
-			Env:    tr.reqCtx.EnvRelPath(),
+			Root:   path,
+			Tasks:  []string{path},
+			Config: tr.reqCtx.CfgInfo().Path,
+			Env:    tr.reqCtx.EnvInfo().Path,
 		},
 	}
 	go func() {
@@ -111,52 +106,51 @@ func (tr *TaskRunService) RunDir(id string, path string) (Task, error) {
 	return task, nil
 }
 
-// param: file path and file content of run file
+// a wrapper Func for [TaskRunService.Run]
 //
-// use the file path to calc the collection's root path
-//
-// returns id of Task
-func (tr *TaskRunService) Run(task Task) error {
+// all paths are absolute in params,
+// use this temporarily for inject Hard-coded settings
+func (tr *TaskRunService) RunWrapper(task Task) error {
 	root, err := fsx.RootDir(task.Path)
 	if err != nil {
+		return err
+	}
+	if _, err := fsx.RootDir(task.Path); err != nil {
+		return fmt.Errorf("%s:%w", task.Path, fsx.ErrRootNotExist)
+	}
+	// inject config path
+	task.Param.Config = filepath.Join(root, fsx.RootTagDirName, fsx.ConfigDefaultName)
+	go func() {
+		tr.Run(task)
+	}()
+	return nil
+}
+
+// param: file path and file content of run file
+//
+// all paths are absolute
+func (tr *TaskRunService) Run(task Task) error {
+	if _, err := fsx.RootDir(task.Path); err != nil {
 		return fmt.Errorf("%s:%w", task.Path, fsx.ErrRootNotExist)
 	}
 
 	p := task.Param
 	// config load
-	var cfg *config.Config
-	switch {
-	case p.Config == "":
+	cfg, err := config.LoadFromFile(p.Config)
+	if err != nil {
+		tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty config", p.Config))
 		cfg = config.New()
-	default:
-		configFile := filepath.Join(root, p.Config)
-		cfg, err = config.LoadFromFile(configFile)
-		if err != nil {
-			tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty config", configFile))
-			cfg = config.New()
-		}
 	}
 	// env load
-	var e *env.Env
-	switch {
-	case p.Env == "":
+	e, err := env.LoadFromFile(p.Env)
+	if err != nil {
+		tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty env", p.Env))
 		e = env.New()
-	default:
-		envFile := filepath.Join(root, p.Env)
-		e, err = env.LoadFromFile(envFile)
-		if err != nil {
-			tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty env", envFile))
-			e = env.New()
-		}
-	}
-
-	for i := range p.Tasks {
-		p.Tasks[i] = filepath.Join(root, p.Root, p.Tasks[i])
 	}
 
 	runParams := core.RunParams{
 		ReqCtx: core.ReqCtx{Config: cfg, Env: e},
-		Root:   filepath.Join(root, p.Root),
+		Root:   p.Root,
 		Tasks:  p.Tasks,
 	}
 	return tr.run(task.Id, runParams)

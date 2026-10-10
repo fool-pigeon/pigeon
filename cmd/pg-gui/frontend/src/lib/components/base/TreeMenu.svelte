@@ -9,7 +9,7 @@
 	import type { Snippet } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	type ItemHandlers = Pick<
+	export type ItemHandlers = Pick<
 		HTMLAttributes<HTMLElement>,
 		'ontoggle' | 'oncontextmenu' | 'onclick' | 'onauxclick'
 	>;
@@ -153,6 +153,7 @@
 				</details>
 			{:else}
 				<button
+					type="button"
 					class="w-full text-left cursor-pointer border {extraStyleClass}"
 					style={item.style}
 					style:padding-left="{offset}rem"

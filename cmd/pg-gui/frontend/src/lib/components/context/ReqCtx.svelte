@@ -6,21 +6,18 @@
 -->
 
 <script lang="ts" module>
+	import { rectangularSelection } from '@codemirror/view';
 	import { msgAlert } from '@comp/message/AlertNotify.svelte';
 	import { DataEvent } from '@lib/enum/events';
 	import { assertPath } from '@lib/utils/asserts';
-	import { ReqCtxService } from '@services';
+	import { ReqCtxService, type FileMeta } from '@services';
 	import { Events } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
 	type ReqCtx = {
 		root?: string;
-		envFileName?: string;
+		envFile?: FileMeta;
 	};
-	let ctx = $state<ReqCtx>({});
-	export const reqCtx = {
-		root: () => ctx.root,
-		envName: () => ctx.envFileName,
-	};
+	export const reqCtx = $state<ReqCtx>({});
 </script>
 
 <script lang="ts">
@@ -28,22 +25,30 @@
 	onMount(() => {
 		const unregister = Events.On(DataEvent.UpdateReqCtx, (evt) => {
 			const path = evt.data as string;
-			if (ctx.root && assertPath.contains(ctx.root, path)) {
+			if (reqCtx.root && assertPath.contains(reqCtx.root, path)) {
 				return;
 			}
 			const cancel = ++cancelled;
-			ReqCtxService.InitFromPath(path)
+			ReqCtxService.SetRootFromPath(path)
 				.then((v) => {
 					if (cancel !== cancelled) return;
-					if (ctx.root && assertPath.contains(ctx.root, path)) {
+					if (reqCtx.root && assertPath.contains(reqCtx.root, path)) {
 						return;
 					}
-					ctx.root = v;
+					reqCtx.root = v;
 				})
 				.catch(msgAlert.error);
 		});
 		return () => {
 			unregister();
 		};
+	});
+	$effect(() => {
+		const envFile = reqCtx.envFile;
+		if (envFile) {
+			ReqCtxService.SetEnvInfo(envFile)
+				.then(() => msgAlert.success(`current env ${envFile.name}`))
+				.catch(msgAlert.error);
+		}
 	});
 </script>

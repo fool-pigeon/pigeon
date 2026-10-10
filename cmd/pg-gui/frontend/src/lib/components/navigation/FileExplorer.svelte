@@ -21,8 +21,19 @@
 	import IconEject from '@lucide/svelte/icons/eject';
 
 	import { FileAccessService, FileExploreService, PathSelectService } from '@services';
-	import TreeMenu, { NewTreeGroup, NewTreeLeaf, type TreeItem } from '@comp/base/TreeMenu.svelte';
-	import { FesEvent, NodeMode, type FesEvtUpdateSubs, type Node } from '@services/models';
+	import TreeMenu, {
+		NewTreeGroup,
+		NewTreeLeaf,
+		type ItemHandlers,
+		type TreeItem,
+	} from '@comp/base/TreeMenu.svelte';
+	import {
+		FesEvent,
+		NodeMode,
+		type FesEvtUpdateSubs,
+		type FileMeta,
+		type Node,
+	} from '@services/models';
 	import { Events } from '@wailsio/runtime';
 	import { onMount, type Snippet } from 'svelte';
 	import { contextmenu } from '../base/ContextMenu.svelte';
@@ -34,13 +45,15 @@
 	import { MenuEvent } from '@pg/gui';
 	import { EditorEvent } from '@comp/editor/Editor.svelte';
 	import { taskRunner } from '@comp/runner/TaskRunner.svelte';
+	import EnvSwitch from '@comp/context/EnvSwitch.svelte';
+	import { reqCtx } from '@comp/context/ReqCtx.svelte';
 
-	type FS = Node | null;
+	export type FS = Node | null;
 	// addtional data is FSTag
 	export type FSItem = TreeItem<NodeMode>;
-	const NewFSGroup = NewTreeGroup<NodeMode>;
-	const NewFSLeaf = NewTreeLeaf<NodeMode>;
-	const emptyFSItem = { id: '' } as FSItem;
+	export const NewFSGroup = NewTreeGroup<NodeMode>;
+	export const NewFSLeaf = NewTreeLeaf<NodeMode>;
+	export const emptyFSItem = { id: '' } as FSItem;
 	class FileExplorerState {
 		root = $state<FSItem>({ id: '', sub: [] as FSItem[] } as FSItem);
 		selectedItem = $state<FSItem>(emptyFSItem);
@@ -151,9 +164,9 @@
 			return fState.findRoutes(path);
 		}).bind(fState),
 		find: fState.find.bind(fState),
-		getCollections: (() => {
-			return (fState.root.sub ?? []).map((v) => ({ name: v.name, path: v.id }));
-		}).bind(fState),
+		getCollections: (() => (fState.root.sub ?? []).map((v) => ({ name: v.name, path: v.id }))).bind(
+			fState,
+		),
 		getActivedFS: (() => fState.activedItem).bind(fState),
 		setActivedFS: ((item: FSItem | undefined) => (fState.activedItem = item)).bind(fState),
 		getSelectedFS: (() => fState.selectedItem).bind(fState),
@@ -168,18 +181,30 @@
 			}
 		}).bind(fState),
 	};
-	function parseNodes(nodes: FS[] | null | undefined): FSItem[] {
-		return (nodes ?? []).filter((f) => f !== null).map(nodeToFSItem);
+	function parseNodes(
+		nodes: FS[] | null | undefined,
+		snippet: Snippet<[item: FSItem]> = fsItemDisplay,
+		onFolder?: ItemHandlers,
+		onFile?: ItemHandlers,
+	): FSItem[] {
+		return (nodes ?? [])
+			.filter((f) => f !== null)
+			.map((node) => nodeToFSItem(node, snippet, onFolder, onFile));
 	}
-	function nodeToFSItem(node: Node): FSItem {
+	function nodeToFSItem(
+		node: Node,
+		snippet: Snippet<[item: FSItem]> = fsItemDisplay,
+		onFolder?: ItemHandlers,
+		onFile?: ItemHandlers,
+	): FSItem {
 		if (ModeContains(node.mode, NodeMode.DirMode)) {
 			const dirItem = $state(
 				NewFSGroup(node.path, node.name, {
+					snippet,
 					additional: node.mode,
 					sub: parseNodes(node.sub),
 					isOpen: openStates.get(node.path),
-					snippet: fsItemDisplay,
-					on: {
+					on: onFolder ?? {
 						onclick: () => {
 							fState.selectItem(dirItem);
 							FileExploreService.LoadSubsCached(node.path)
@@ -197,9 +222,9 @@
 		} else {
 			const fileItem = $state(
 				NewFSLeaf(node.path, node.name, {
+					snippet,
 					additional: node.mode,
-					snippet: fsItemDisplay,
-					on: {
+					on: onFile ?? {
 						onclick: () => fState.selectItem(fileItem),
 						oncontextmenu: (e) => {
 							fState.selectItem(fileItem);
@@ -239,7 +264,7 @@
 			updateSubs(v);
 			Events.Emit(EditorEvent.Reload);
 		});
-		const unAfterReload = Events.On(FesEvent.FesRename, (v) => {
+		const unAfterReload = Events.On(FesEvent.FesReloadRoot, (v) => {
 			updateSubs(v);
 			Events.Emit(DataEvent.FileExplorerLoaded);
 		});
@@ -341,16 +366,21 @@
 </script>
 
 <div class="w-full h-full min-h-0 flex flex-col">
-	<div class="flex p-1 border-b border-base-content/70">
-		{#each topBarBtns as btn (btn.label)}
-			<button
-				title={btn.label}
-				onclick={btn.handle}
-				class="btn btn-ghost rounded-none size-6 p-0 text-base-content/90 hover:text-primary"
-			>
-				<btn.icon class="size-4.5" />
-			</button>
-		{/each}
+	<div class="w-full flex flex-col border-b border-base-content/70">
+		<div class="w-full border-b border-base-content/30">
+			<EnvSwitch path={reqCtx.root} bind:current={reqCtx.envFile} />
+		</div>
+		<div class="flex p-1 *:outline-none *:hover:bg-base-content/40">
+			{#each topBarBtns as btn (btn.label)}
+				<button
+					title={btn.label}
+					onclick={btn.handle}
+					class="btn btn-ghost rounded-none size-5 p-0 text-base-content"
+				>
+					<btn.icon class="size-4" />
+				</button>
+			{/each}
+		</div>
 	</div>
 	<div class="grow min-h-0 overflow-auto scrollbar-none hover:scrollbar-thin">
 		<TreeMenu

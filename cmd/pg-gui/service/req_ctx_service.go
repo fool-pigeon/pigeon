@@ -19,10 +19,12 @@ import (
 
 	"github.com/fool-pigeon/pigeon/cmd/pg-gui/gui"
 	"github.com/fool-pigeon/pigeon/internal/config"
+	"github.com/fool-pigeon/pigeon/internal/core"
 	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/fool-pigeon/pigeon/internal/request"
 	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"resty.dev/v3"
 )
@@ -37,63 +39,86 @@ var (
 // b := req.Context().Value(HttpBodyKey{}).([]byte)
 type HttpBodyKey struct{}
 
+type FileMeta struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+type CtxInfo struct {
+	reqCtx core.ReqCtx
+	Config FileMeta `json:"config"`
+	Env    FileMeta `json:"env"`
+}
 type ReqCtxService struct {
-	cfgRelPath string
-	envRelPath string
-
-	cfg *config.Config
-	env *env.Env
-	// collection root path
+	//current collection root path
 	root string
-	// collection tag dir for config
-	tag string
+	// root -> CtxInfo
+	ctxs map[string]CtxInfo
 
 	app *application.App
 	mu  sync.RWMutex
 }
 
 func NewReqCtxService(app *application.App) *ReqCtxService {
-	return &ReqCtxService{
-		cfg:  config.New(),
-		env:  env.New(),
-		root: "",
-		tag:  "",
-		app:  app,
-	}
+	return &ReqCtxService{app: app, ctxs: map[string]CtxInfo{}}
 }
-func (r *ReqCtxService) CfgRelPath() string {
+func (r *ReqCtxService) ReqCtx() core.ReqCtx {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.cfgRelPath
+	return r.ctxs[r.root].reqCtx
 }
-func (r *ReqCtxService) EnvRelPath() string {
+func (r *ReqCtxService) CfgInfo() FileMeta {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.envRelPath
+	return r.ctxs[r.root].Config
 }
-func (r *ReqCtxService) Config() *config.Config {
+func (r *ReqCtxService) EnvInfo() FileMeta {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.cfg
-}
-func (r *ReqCtxService) Env() *env.Env {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.env
+	return r.ctxs[r.root].Env
 }
 func (r *ReqCtxService) Root() string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.root
 }
-func (r *ReqCtxService) TagDir() string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.tag
+func (r *ReqCtxService) SetCfgInfo(cfgFile FileMeta) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.setCfgInfo(cfgFile)
+}
+func (r *ReqCtxService) setCfgInfo(cfgFile FileMeta) error {
+	cfg, err := config.LoadFromFile(cfgFile.Path)
+	if err != nil {
+		return err
+	}
+	root := r.root
+	ctx := r.ctxs[root]
+	ctx.Config = cfgFile
+	ctx.reqCtx.Config = cfg
+	r.ctxs[root] = ctx
+	return nil
 }
 
-// init root,tag,config from path and returns root
-func (r *ReqCtxService) InitFromPath(path string) (string, error) {
+func (r *ReqCtxService) SetEnvInfo(envFile FileMeta) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.setEnvInfo(envFile)
+}
+func (r *ReqCtxService) setEnvInfo(envFile FileMeta) error {
+	e, err := env.LoadFromFile(envFile.Path)
+	if err != nil {
+		return err
+	}
+	root := r.root
+	ctx := r.ctxs[root]
+	ctx.Env = envFile
+	ctx.reqCtx.Env = e
+	r.ctxs[root] = ctx
+	return nil
+}
+
+// Switch root from path and returns root
+func (r *ReqCtxService) SetRootFromPath(path string) (string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	root, err := fsx.RootDir(path)
@@ -101,76 +126,35 @@ func (r *ReqCtxService) InitFromPath(path string) (string, error) {
 		return "", err
 	}
 	r.root = root
-	r.tag = filepath.Join(root, fsx.RootTagDirName)
 
-	cfgPath := filepath.Join(r.tag, fsx.ConfigDefaultName)
-	cfg, err := config.LoadFromFile(cfgPath)
-	r.cfgRelPath, _ = filepath.Rel(r.root, cfgPath)
+	ctx := r.ctxs[root]
+	if ctx.reqCtx.Config == nil {
+		ctx.reqCtx.Config = config.New()
+	}
+	if ctx.reqCtx.Env == nil {
+		ctx.reqCtx.Env = env.New()
+	}
+	r.ctxs[root] = ctx
 
-	if err != nil {
-		cfg = config.New()
-	}
-	r.cfg = cfg
-	if err := r.InitReqClient(); err != nil {
-		return "", err
-	}
+	// tip:temporary hard coding config path
+	r.setCfgInfo(FileMeta{"config.toml", filepath.Join(root, fsx.RootTagDirName, "config.toml")})
+
+	r.initConfig(r.ctxs[root].reqCtx.Config)
+
 	return root, nil
 }
 
-// set config from path
-func (r *ReqCtxService) LoadConfig(path string) error {
-	cfg, err := config.LoadFromFile(path)
-	r.cfgRelPath, _ = filepath.Rel(r.root, path)
-
-	if err != nil {
-		return err
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.cfg = cfg
-	return nil
-}
-
-// set env from path
-func (r *ReqCtxService) LoadEnv(path string) error {
-	e, err := env.LoadFromFile(path)
-	r.envRelPath, _ = filepath.Rel(r.root, path)
-
-	if err != nil {
-		return err
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.env = e
-	return nil
-}
-
-type FileMeta struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-}
-
 // TODO: parse [FIleMeta] from collections path
-func (r *ReqCtxService) ParseCollectionCfgs(path string) ([]FileMeta, error) {
-	root, err := fsx.RootDir(path)
-	if err != nil {
-		return nil, err
-	}
-	envDir := filepath.Join(root, fsx.RootTagDirName, fsx.ConfigDefaultName)
-	entries, err := os.ReadDir(envDir)
-	if err != nil {
-		return nil, fmt.Errorf("%s:%w", envDir, err)
-	}
+//
+//	func (r *ReqCtxService) ParseCfgs(path string) ([]FileMeta, error) {
+//		root, err := fsx.RootDir(path)
+//		if err != nil {
+//			return nil, err
+//		}
+//		return res, nil
+//	}
 
-	res := make([]FileMeta, 0)
-	for _, entry := range entries {
-		if entry.Type().IsRegular() {
-			res = append(res, FileMeta{entry.Name(), filepath.Join(envDir, entry.Name())})
-		}
-	}
-	return res, nil
-}
-func (r *ReqCtxService) ParseCollectionEnvs(path string) ([]FileMeta, error) {
+func (r *ReqCtxService) ParseEnvs(path string) ([]FileMeta, error) {
 	root, err := fsx.RootDir(path)
 	if err != nil {
 		return nil, err
@@ -190,9 +174,6 @@ func (r *ReqCtxService) ParseCollectionEnvs(path string) ([]FileMeta, error) {
 	return res, nil
 }
 
-func (r *ReqCtxService) InitReqClient() error {
-	return r.initConfig(r.cfg)
-}
 func (r *ReqCtxService) initConfig(cfg *config.Config) error {
 	if cfg == nil {
 		return fmt.Errorf("ReqCtxService - config:%w", ErrNilValue)
@@ -242,12 +223,23 @@ func (r *ReqCtxService) SendHttp(data *httpx.ReqData) (TaskResHttp, error) {
 	if data == nil {
 		return TaskResHttp{}, fmt.Errorf("request data:%w", ErrNilValue)
 	}
-	httpClent, err := r.cfg.HttpClient()
+
+	// set request context
+	reqCtx := r.ReqCtx()
+	// inject client
+	httpClent, err := reqCtx.Config.HttpClient()
 	if err != nil {
 		return TaskResHttp{}, err
 	}
-	// inject client
 	data.SetClient(httpClent)
+	// Expand env vars
+	b, err := toml.Marshal(data)
+	if err != nil {
+		return TaskResHttp{}, err
+	}
+	if err := toml.Unmarshal([]byte(reqCtx.Env.Expand(string(b))), data); err != nil {
+		return TaskResHttp{}, err
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

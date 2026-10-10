@@ -14,12 +14,11 @@
 	import IconRotateCcwClock from '@lucide/svelte/icons/rotate-ccw-clock';
 
 	import { MenuEvent } from '@pg/gui';
-	import { modal } from '@comp/base/Modal.svelte';
 	import { msgAlert } from '@comp/message/AlertNotify.svelte';
 	import { fileExplorer } from '@comp/navigation/FileExplorer.svelte';
 
-	type TaskInfo = {
-		collection: { name: string; path: string };
+	export type TaskInfo = {
+		collection: FileMeta;
 		meta: TaskMeta;
 	};
 	export type TaskResWrapper = {
@@ -194,7 +193,7 @@
 		TaskRunService.RunDir(id, path)
 			.then((task) => {
 				const col = fileExplorer.getCollections().find((c) => assertPath.contains(c.path, path));
-				taskInfo.set(id, {
+				pushTaskInfo({
 					collection: { name: col?.name ?? '', path: col?.path ?? '' },
 					meta: { id: id, path: task.param.root },
 				});
@@ -202,9 +201,13 @@
 			.catch(msgAlert.error)
 			.finally(() => runningTaskId.delete(id));
 	}
+	function pushTaskInfo(info: TaskInfo) {
+		taskInfo.set(info.meta.id, info);
+	}
 	export const taskRunner = {
 		genID,
 		runFolder,
+		pushTaskInfo,
 	};
 
 	/**
@@ -238,7 +241,7 @@
 		NodeMode,
 		TaskRunService,
 		TrsEvent,
-		type Task,
+		type FileMeta,
 		type TaskMeta,
 		type TaskRes,
 		type TaskResHttp,
@@ -250,6 +253,7 @@
 	import { Duration } from '@bindings/time';
 	import { assertPath } from '@lib/utils/asserts';
 	import { contextmenu } from '@comp/base/ContextMenu.svelte';
+	import TaskRunModal from './TaskRunModal.svelte';
 
 	let selectedId = $state<string>();
 
@@ -266,7 +270,6 @@
 			}
 			// taskResMap.set(id, [...(taskResMap.get(id) ?? []), w]);
 		}
-		const unRunTask = Events.On(MenuEvent.RunTask, () => modal.open(RunTaskModal, 'Run Task'));
 		const unToggleRunBoard = Events.On(MenuEvent.ToggleRunBoard, () => (showBoard = !showBoard));
 		const unResErr = Events.On(TrsEvent.TrsResultErr, (ev) => pushRes(NodeMode.$zero, ev));
 		const unResAny = Events.On(TrsEvent.TrsResultAny, (ev) => pushRes(NodeMode.$zero, ev));
@@ -310,7 +313,6 @@
 		});
 
 		return () => {
-			unRunTask();
 			unToggleRunBoard();
 			unResErr();
 			unResAny();
@@ -322,6 +324,8 @@
 		};
 	});
 </script>
+
+<TaskRunModal />
 
 <div class="drawer drawer-end">
 	<input id="run-board-drawer-1" bind:checked={showBoard} type="checkbox" class="drawer-toggle" />
@@ -430,24 +434,4 @@
 		<div class="divider p-0 m-0 h-1"></div>
 		<li class="text-error [&>button]:hover:bg-error/10">{@render btn('Delete')}</li>
 	</ul>
-{/snippet}
-
-{#snippet RunTaskModal()}
-	<!-- TODO: handle create a task to run -->
-	{const collections = fileExplorer.getCollections()}
-	{#if collections.length <= 0}
-		<div class="p-2 text-warning">
-			<p>No collections opened yet.</p>
-			<p>Please open collection in File Menu</p>
-		</div>
-	{:else}
-		<div class="min-w-[33vw] p-1">
-			{let collection = $state('')}
-			<select bind:value={collection} class="select select-sm">
-				{#each collections as c, i}
-					<option value={c.path} selected={i === 0}>{c.name}</option>
-				{/each}
-			</select>
-		</div>
-	{/if}
 {/snippet}

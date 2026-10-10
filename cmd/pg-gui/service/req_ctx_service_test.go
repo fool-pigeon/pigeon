@@ -29,7 +29,6 @@ func TestSendHttp(t *testing.T) {
 		req.SetURL(server.URL)
 		req.SetHeaders(map[string][]string{"": {""}})
 		reqCtxService := service.NewReqCtxService(nil)
-		reqCtxService.InitReqClient()
 		resHttp, err := reqCtxService.SendHttp(&req)
 		assert.Equal(t, server.URL, resHttp.Data.URL)
 		assert.Nil(t, err)

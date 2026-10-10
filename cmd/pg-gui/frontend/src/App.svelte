@@ -13,7 +13,7 @@
 	import Editor from '@lib/components/editor/Editor.svelte';
 	import AlertNotify from '@lib/components/message/AlertNotify.svelte';
 	import FileExplorer from '@lib/components/navigation/FileExplorer.svelte';
-	import ReqCtx from '@lib/hooks/ReqCtx.svelte';
+	import ReqCtx from '@comp/context/ReqCtx.svelte';
 	import { WML } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
 
