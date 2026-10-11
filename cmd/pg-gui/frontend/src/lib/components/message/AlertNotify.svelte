@@ -43,7 +43,7 @@
 	function add(msg: unknown, type: number, duration: number) {
 		aState.add(alertNotify, duration, { msg, type });
 	}
-	const d = 3000;
+	const d = 1500;
 	export const msgAlert = {
 		info: ((msg: unknown, duration = d) => add(msg, Alerts.Info, duration)).bind(aState),
 		success: ((msg: unknown, duration = d) => add(msg, Alerts.Success, duration)).bind(aState),
@@ -104,7 +104,7 @@
 	{const Icon = alertIcon[alert.type]}
 	<div class="p-2 alert alert-soft {alertStyle[alert.type]}">
 		<div class="flex gap-1 items-center">
-			<Icon class="size-4" />
+			<Icon class="shrink-0 size-4" />
 			<span>{alert.msg}</span>
 		</div>
 	</div>
