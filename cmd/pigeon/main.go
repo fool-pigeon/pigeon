@@ -5,7 +5,7 @@
 
 package main
 
-import "github.com/fool-pigeon/pigeon/cmd/pg/cmd"
+import "github.com/fool-pigeon/pigeon/cmd/pigeon/cmd"
 
 func main() {
 	cmd.Execute()

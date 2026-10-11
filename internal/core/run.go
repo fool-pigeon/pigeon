@@ -157,7 +157,7 @@ func (rp RunPaths) Check() error {
 	}
 	for _, path := range []string{rp.Config, rp.Env} {
 		// the empty string means that not use path
-		if path == "" {
+		if path == "" || path == "." || path == rp.Root {
 			continue
 		}
 		info, err := os.Lstat(path)

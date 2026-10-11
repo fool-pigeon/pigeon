@@ -95,7 +95,7 @@ var runCmd = &cobra.Command{
 		if e, err = env.LoadFromFile(envFilePath); err != nil {
 			// if err,then use the new empty env
 			if envFilePath != "" {
-				pterm.Warning.Printfln("not found %s,use empty env", envFilePath)
+				pterm.Warning.Printfln("not found env file,use empty env")
 			}
 			e = env.New()
 		}
