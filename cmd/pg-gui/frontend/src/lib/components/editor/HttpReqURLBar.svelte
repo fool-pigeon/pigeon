@@ -8,7 +8,7 @@
 	// Icons
 	import IconSave from '@lucide/svelte/icons/save';
 
-	import CMFromHttpURL from '@comp/form/CMFromHttpURL.svelte';
+	import CMFormHttpURL from '@comp/form/CMFormHttpURL.svelte';
 	import { Method, type ReqData } from '@internal/request/httpx';
 	import { MenuEvent } from '@pg/gui';
 	import { Events } from '@wailsio/runtime';
@@ -39,7 +39,7 @@
 				<option value={m}>{m}</option>
 			{/each}
 		</select>
-		<CMFromHttpURL bind:uri={req.url} bind:query={req.query} bind:path={req.path} />
+		<CMFormHttpURL bind:uri={req.url} bind:query={req.query} bind:path={req.path} />
 		<!-- Save file btn -->
 		<button
 			title="Save"

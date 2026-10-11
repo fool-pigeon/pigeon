@@ -61,10 +61,6 @@
 	});
 </script>
 
-<!-- TEST viewer -->
-<!-- <div class="text-success w-full break-all">{JSON.stringify(value, null, 2)}</div>
-<div class="text-info w-full break-all">{JSON.stringify(kvs, null, 2)}</div> -->
-
 <table class="w-full table-fixed border border-base-content/10">
 	<thead class="w-full">
 		<tr class="[&>th]:border [&>th]:border-base-content/10">

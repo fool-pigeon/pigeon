@@ -224,6 +224,7 @@ func (r *ReqCtxService) SendHttp(data *httpx.ReqData) (TaskResHttp, error) {
 		return TaskResHttp{}, fmt.Errorf("request data:%w", ErrNilValue)
 	}
 
+	var reqData httpx.ReqData
 	// set request context
 	reqCtx := r.ReqCtx()
 	// inject client
@@ -231,13 +232,13 @@ func (r *ReqCtxService) SendHttp(data *httpx.ReqData) (TaskResHttp, error) {
 	if err != nil {
 		return TaskResHttp{}, err
 	}
-	data.SetClient(httpClent)
+	reqData.SetClient(httpClent)
 	// Expand env vars
 	b, err := toml.Marshal(data)
 	if err != nil {
 		return TaskResHttp{}, err
 	}
-	if err := toml.Unmarshal([]byte(reqCtx.Env.Expand(string(b))), data); err != nil {
+	if err := toml.Unmarshal([]byte(reqCtx.Env.Expand(string(b))), &reqData); err != nil {
 		return TaskResHttp{}, err
 	}
 
@@ -249,7 +250,7 @@ func (r *ReqCtxService) SendHttp(data *httpx.ReqData) (TaskResHttp, error) {
 	}
 
 	// Run with context
-	res := request.View[*httpx.Response](data.RunWithContext(ctx))
+	res := request.View[*httpx.Response](reqData.RunWithContext(ctx))
 
 	return r.parseResHttp(res), nil
 }

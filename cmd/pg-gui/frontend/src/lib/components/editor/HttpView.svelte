@@ -21,7 +21,7 @@
 	import equal from 'fast-deep-equal';
 	import { DataEvent } from '@lib/enum/events';
 	import DynamicJoin, { NewPanel } from '../base/DynamicJoin.svelte';
-	import CMFromHttpURL from '@comp/form/CMFromHttpURL.svelte';
+	import CMFromHttpURL from '@comp/form/CMFormHttpURL.svelte';
 	import type { PageLoadStatus } from '@type/page';
 	import HttpResViewer from './HttpResViewer.svelte';
 	import HttpReqEditor from './HttpReqEditor.svelte';
@@ -116,7 +116,8 @@
 		}
 		resState.isSending = true;
 		resState.err = undefined;
-		ReqCtxService.SendHttp($state.snapshot(temp))
+		const req = $state.snapshot(temp);
+		ReqCtxService.SendHttp(req)
 			.then((v) => {
 				resState.current = v;
 				resState.history.push(v);
@@ -198,11 +199,6 @@
 	{:else}
 		<!-- TODO finish form input of HttpReq -->
 		<div class="w-full h-full flex flex-col">
-			<!-- for test view -->
-			<!-- <div class="w-full h-1/3 flex overflow-auto">
-			<div class="w-1/2 text-info">{JSON.stringify(temp, null, 2)}</div>
-			<div class="w-1/2 text-success">{JSON.stringify(original, null, 2)}</div>
-			</div> -->
 			<!-- URL bar -->
 			<HttpReqURLBar bind:req={temp} isSending={resState.isSending} />
 			<div class="mt-1 w-full grow min-h-0">

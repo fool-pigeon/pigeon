@@ -171,10 +171,6 @@
 		{#if eState.index < 0 || eState.index >= eState.ofs.length}
 			{@render Tips()}
 		{:else}
-			<!-- FOR TEST -->
-			<!-- <div>Form Mode</div>
-			<div>{JSON.stringify(eState.index, null, 2)}</div>
-			<div>{JSON.stringify(eState.ofs[eState.index], null, 2)}</div> -->
 			<div class="grow min-h-0">
 				{let mode = $derived(eState.ofs[eState.index].fs.additional ?? 0)}
 				{#key eState.index}

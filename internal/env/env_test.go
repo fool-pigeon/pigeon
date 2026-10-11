@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -26,17 +26,6 @@ func createFile(t *testing.T, parentDir string, s string, name ...string) string
 	fsx.WriteFile(fName, []byte(s))
 
 	return fName
-}
-func createDir(t *testing.T, parentDir string, name ...string) string {
-	t.Helper()
-	dir := time.Now().String()
-	if len(name) > 0 {
-		dir = name[0]
-	}
-	dir = filepath.Join(parentDir, dir)
-	fsx.Mkdir(dir)
-
-	return dir
 }
 func TestLoadFromFile(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -92,5 +81,11 @@ func TestExpand(t *testing.T) {
 		e.Set("abc", 114)
 		e.Print()
 		assert.Equal(t, "hhh${}", e.Expand(s))
+	})
+	t.Run("with quotation mark", func(t *testing.T) {
+		s := `'${hello}'='${hello}'`
+		e := env.New()
+		e.Set("hello", "world")
+		assert.Equal(t, "'world'='world'", e.Expand(s))
 	})
 }

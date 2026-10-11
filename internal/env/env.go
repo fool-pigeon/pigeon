@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -54,7 +54,7 @@ func (e *Env) Expand(s string) string {
 	for j := 0; j < len(s); j++ {
 		if s[j] == '$' && j+1 < len(s) && s[j+1] == '{' {
 			if sb.Cap() == 0 {
-				sb.Grow(2 * len(s))
+				sb.Grow(len(s))
 			}
 			sb.WriteString(s[i:j])
 			name, w := getVarName(s[j+1:])
