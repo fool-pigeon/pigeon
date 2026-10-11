@@ -24,6 +24,30 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type PrintConfig struct {
+	onlyPass bool
+	onlyFail bool
+	noTests  bool
+	showRaw  bool
+	rawLine  int
+}
+
+var printConfig PrintConfig
+
+func init() {
+	rootCmd.AddCommand(runCmd)
+	runCmd.Flags().BoolVar(&printConfig.onlyPass, "only-pass", false, "only show passed result of requet")
+	runCmd.Flags().BoolVar(&printConfig.onlyFail, "only-fail", false, "only show failed result of requet")
+	runCmd.Flags().BoolVar(&printConfig.noTests, "no-tests", false, "not show the results of tests")
+	runCmd.Flags().BoolVar(&printConfig.showRaw, "show-raw", false, "show raw response")
+	runCmd.Flags().IntVarP(&printConfig.rawLine, "line", "l", -1, "Set the number of lines displayed for raw")
+
+	runCmd.Flags().StringP("run", "r", "", "set run file name in collectinon,e.g. dev means .pg/run/dev.toml")
+	runCmd.Flags().String("run-file", "", "set full run file path,like .pg/run/dev.toml")
+	runCmd.Flags().StringP("env", "e", "", "set env file name in collection,such as dev mean that .pg/env/dev")
+	runCmd.Flags().String("env-file", "", "set full env file path,like .pg/env/dev")
+}
+
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:     "run [file1.toml folder/ file2.toml]",
@@ -109,12 +133,9 @@ var runCmd = &cobra.Command{
 			Tasks:  runPaths.Tasks,
 		}
 
-		showRaw, err := cmd.Flags().GetBool("show-raw")
-		rawLine, _ := cmd.Flags().GetInt("line")
-
 		taskTotal, taskPassed := 0, 0
 		core.Run(ctx, rp, func(res core.RunResult) {
-			taskResPrint(res, showRaw, rawLine)
+			taskResPrint(res)
 			taskTotal++
 			if res.Err == nil && res.ReqRes.Err == nil && res.ReqRes.Success {
 				taskPassed++
@@ -140,17 +161,16 @@ var runCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	rootCmd.AddCommand(runCmd)
+func taskResPrint(res core.RunResult) {
 
-	runCmd.Flags().StringP("run", "r", "", "set run file name in collectinon,e.g. dev means .pg/run/dev.toml")
-	runCmd.Flags().String("run-file", "", "set full run file path,like .pg/run/dev.toml")
-	runCmd.Flags().StringP("env", "e", "", "set env file name in collection,such as dev mean that .pg/env/dev")
-	runCmd.Flags().String("env-file", "", "set full env file path,like .pg/env/dev")
-	runCmd.Flags().Bool("show-raw", false, "show raw response")
-	runCmd.Flags().IntP("line", "l", -1, "Set the number of lines displayed for raw")
-}
-func taskResPrint(res core.RunResult, showRaw bool, rawLine int) {
+	// filter result
+	isPassed := res.Err == nil && res.ReqRes.Err == nil && res.ReqRes.Success
+	if printConfig.onlyFail && isPassed {
+		return
+	}
+	if printConfig.onlyPass && !isPassed {
+		return
+	}
 
 	printFailed := func(a ...any) { pterm.Println(pterm.LightRed(a...)) }
 	printPassed := func(a ...any) { pterm.Println(pterm.LightGreen(a...)) }
@@ -162,10 +182,6 @@ func taskResPrint(res core.RunResult, showRaw bool, rawLine int) {
 		pterm.Error.Println(res.Path, res.Err)
 		return
 	}
-
-	// for test view
-	// printInfo(pterm.Sprintf("%+v", res))
-
 	rRes := res.ReqRes
 	if rRes.Err != nil {
 		pterm.Error.Println(res.Path, rRes.ReqName, rRes.Err)
@@ -189,18 +205,21 @@ func taskResPrint(res core.RunResult, showRaw bool, rawLine int) {
 		pterm.Error.Println(sb.String())
 	}
 
-	for _, t := range rRes.Tests {
-		if t.Err != nil {
-			printErr("test: ", t.Name, t.Err)
-			continue
-		}
-		if t.Passed {
-			printPassed("    ✓: ", t.Name)
-		} else {
-			printFailed("    ✗: ", t.Name)
+	if !printConfig.noTests {
+		for _, t := range rRes.Tests {
+			if t.Err != nil {
+				printErr("test: ", t.Name, t.Err)
+				continue
+			}
+			if t.Passed {
+				printPassed("    ✓: ", t.Name)
+			} else {
+				printFailed("    ✗: ", t.Name)
+			}
 		}
 	}
-	if showRaw {
+
+	if printConfig.showRaw {
 		var out string
 		switch raw := rRes.Raw.(type) {
 		case *httpx.Response:
@@ -212,7 +231,8 @@ func taskResPrint(res core.RunResult, showRaw bool, rawLine int) {
 			}
 			// TODO more protocol out printer
 		}
-		if rawLine > 0 {
+
+		if rawLine := printConfig.rawLine; rawLine > 0 {
 			printInfo(strings.Join(strings.SplitN(out, "\n", rawLine+1)[:rawLine], "\n"))
 		} else {
 			printInfo(out)
