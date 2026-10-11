@@ -74,6 +74,12 @@
 			if (item.type === 'leaf') {
 				this.activedItem = item;
 			}
+
+			// auto scroll to item
+			document
+				.getElementById(domId(item))
+				?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
 			// update req context
 			Events.Emit(DataEvent.UpdateReqCtx, item.id);
 		}
@@ -142,6 +148,7 @@
 	const fState = new FileExplorerState();
 	// remember the open states of folders
 	const openStates = new Map<string, boolean>();
+	let treeEl: HTMLDivElement;
 	export { fsItemDisplay, nodeModeIcon };
 	/**
 	 * FileExplorer Event
@@ -181,6 +188,9 @@
 			}
 		}).bind(fState),
 	};
+	function domId(item: FSItem): string {
+		return `fe-${item.id}`;
+	}
 	function parseNodes(
 		nodes: FS[] | null | undefined,
 		snippet: Snippet<[item: FSItem]> = fsItemDisplay,
@@ -382,7 +392,7 @@
 			{/each}
 		</div>
 	</div>
-	<div class="grow min-h-0 overflow-auto scrollbar-none hover:scrollbar-thin">
+	<div bind:this={treeEl} class="grow min-h-0 overflow-auto scrollbar-none hover:scrollbar-thin">
 		<TreeMenu
 			bind:items={fState.root.sub}
 			bind:selectedId={fState.selectedItem.id}
@@ -726,7 +736,7 @@
 {/snippet}
 
 {#snippet fsItemDisplay(item: FSItem)}
-	<div title={item.id} class="flex gap-1 items-center">
+	<div id={domId(item)} title={item.id} class="flex gap-1 items-center">
 		{@render nodeModeIcon(item.additional)}
 		<span class="truncate">{item.name}</span>
 	</div>

@@ -35,12 +35,16 @@
 	function genID(): TaskID {
 		return crypto.randomUUID();
 	}
+	function domId(id: TaskID): string {
+		return `task-runner-${id}`;
+	}
 	function showBoard() {
 		isShow = true;
 	}
 	function selectTask(id: string) {
 		if (taskInfo.has(id)) {
 			selectedId = id;
+			document.getElementById(domId(id))?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 		} else {
 			msgAlert.warn(`not exist task`);
 		}
@@ -221,7 +225,7 @@
 			</div>
 		{:else}
 			{#each taskInfo.entries() as [id, info] (id)}
-				<li>
+				<li id={domId(id)}>
 					{let isRunning = $derived(runningTaskId.has(id))}
 					{let wrapper = $derived(taskResMap.get(id))}
 					{let getWrong = $derived(!wrapper || wrapper.some((w) => w.res.err || !w.res.success))}
