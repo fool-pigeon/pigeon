@@ -144,6 +144,76 @@ type RunPaths struct {
 	Env    string   `toml:"env" json:"env"`
 }
 
+// check all path(except tasks) exist and paths' file types are corrent
+//
+// returns nil if all already corrent
+func (rp RunPaths) Check() error {
+	info, err := os.Lstat(rp.Root)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fsx.ErrNotDir
+	}
+	for _, path := range []string{rp.Config, rp.Env} {
+		// the empty string means that not use path
+		if path == "" {
+			continue
+		}
+		info, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return fsx.ErrNotFile
+		}
+	}
+	return nil
+}
+
+// root must be collection's abs root
+// this will change all path to abs path
+func (rp RunPaths) ToAbs(root string) RunPaths {
+	res := RunPaths{Root: rp.Root, Config: rp.Config, Env: rp.Env}
+	if !filepath.IsAbs(rp.Root) {
+		res.Root = filepath.Join(root, rp.Root)
+	}
+	if !filepath.IsAbs(rp.Config) {
+		res.Config = filepath.Join(root, rp.Config)
+	}
+	if !filepath.IsAbs(rp.Env) {
+		res.Env = filepath.Join(root, rp.Env)
+	}
+	tasks := make([]string, 0, len(rp.Tasks))
+	for _, task := range rp.Tasks {
+		absTask := task
+		if !filepath.IsAbs(absTask) {
+			absTask = filepath.Join(res.Root, task)
+		}
+		tasks = append(tasks, absTask)
+	}
+	return res
+}
+
+// root must be the collection's abs path
+// change all abs paths to all rel paths
+func (rp RunPaths) ToRel(root string) RunPaths {
+	rel := func(base string, target string) string {
+		relPath, _ := filepath.Rel(base, target)
+		return relPath
+	}
+	tasks := make([]string, 0, len(rp.Tasks))
+	for _, task := range rp.Tasks {
+		tasks = append(tasks, rel(rp.Root, task))
+	}
+	return RunPaths{
+		Root:   rel(root, rp.Root),
+		Config: rel(root, rp.Config),
+		Env:    rel(root, rp.Env),
+		Tasks:  tasks,
+	}
+}
+
 // paths params for run needed
 type RunParams struct {
 	// readonly

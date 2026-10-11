@@ -9,8 +9,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -52,48 +50,39 @@ var runCmd = &cobra.Command{
 			runFilePath = p
 		}
 		fsx.ReadToml(runFilePath, &runPaths)
-
 		// root
-		var currentRoot string
-		switch {
-		case runPaths.Root != "":
-			currentRoot = filepath.Join(root, runPaths.Root)
-			info, err := os.Lstat(currentRoot)
-			if err != nil {
-				return fmt.Errorf("%s:%w", currentRoot, err)
-			}
-			if !info.IsDir() {
-				return fmt.Errorf("%s:%w", currentRoot, err)
-			}
-		default:
-			currentRoot, err = filepath.Abs(".")
-			if err != nil {
+		if runPaths.Root == "" {
+			if runPaths.Root, err = filepath.Abs("."); err != nil {
 				return err
 			}
 		}
+		runPaths = runPaths.ToAbs(root)
+		if err := runPaths.Check(); err != nil {
+			return err
+		}
 		// tasks
-		tasks := runPaths.Tasks
-		if tasks == nil {
-			tasks = make([]string, 0)
+		if runPaths.Tasks == nil {
+			runPaths.Tasks = make([]string, 0)
 		}
 		if len(args) > 0 {
-			tasks = append(tasks, args...)
-		} else if len(tasks) <= 0 {
-			tasks = append(tasks, ".")
-		}
-		for i := range tasks {
-			tasks[i] = filepath.Join(currentRoot, tasks[i])
+			for _, path := range args {
+				runPaths.Tasks = append(runPaths.Tasks, filepath.Join(runPaths.Root, path))
+			}
+		} else if len(runPaths.Tasks) <= 0 {
+			runPaths.Tasks = append(runPaths.Tasks, filepath.Join(runPaths.Root))
 		}
 
 		// TODO optional multi config select
 		// config
-		cfg, err := config.LoadFromFile(filepath.Join(tagDir, fsx.ConfigDefaultName))
-		if err != nil {
-			// if err,then use the new config
-			pterm.Warning.Println("not found config.toml,use empty config")
-			cfg = config.New()
+		var cfg *config.Config
+		if cfg, err = config.LoadFromFile(runPaths.Config); err != nil {
+			cfg, err = config.LoadFromFile(filepath.Join(tagDir, fsx.ConfigDefaultName))
+			if err != nil {
+				// if err,then use the new config
+				pterm.Warning.Println("not found config.toml,use empty config")
+				cfg = config.New()
+			}
 		}
-
 		// env
 		envFilePath := runPaths.Env
 		if name, _ := cmd.Flags().GetString("env"); name != "" {
@@ -102,8 +91,8 @@ var runCmd = &cobra.Command{
 		if p, _ := cmd.Flags().GetString("env-file"); p != "" {
 			envFilePath = p
 		}
-		e, err := env.LoadFromFile(envFilePath)
-		if err != nil {
+		var e *env.Env
+		if e, err = env.LoadFromFile(envFilePath); err != nil {
 			// if err,then use the new empty env
 			if envFilePath != "" {
 				pterm.Warning.Printfln("not found %s,use empty env", envFilePath)
@@ -116,8 +105,8 @@ var runCmd = &cobra.Command{
 		defer cancel()
 		rp := core.RunParams{
 			ReqCtx: core.ReqCtx{Config: cfg, Env: e},
-			Root:   currentRoot,
-			Tasks:  tasks,
+			Root:   runPaths.Root,
+			Tasks:  runPaths.Tasks,
 		}
 
 		showRaw, err := cmd.Flags().GetBool("show-raw")
