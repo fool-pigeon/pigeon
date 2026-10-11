@@ -29,10 +29,21 @@
 	let runningTaskId = new SvelteSet<TaskID>();
 	let taskInfo = new SvelteMap<TaskID, TaskInfo>();
 	let taskResMap = new SvelteMap<TaskID, TaskResWrapper[]>();
-	let showBoard = $state(false);
+	let isShow = $state(false);
+	let selectedId = $state<string>();
 
 	function genID(): TaskID {
 		return crypto.randomUUID();
+	}
+	function showBoard() {
+		isShow = true;
+	}
+	function selectTask(id: string) {
+		if (taskInfo.has(id)) {
+			selectedId = id;
+		} else {
+			msgAlert.warn(`not exist task`);
+		}
 	}
 	function runFolder(path: string) {
 		const id = genID();
@@ -45,6 +56,8 @@
 					collection: { name: col?.name ?? '', path: col?.path ?? '' },
 					meta: { id: id, path: task.param.root },
 				});
+				showBoard();
+				selectTask(id);
 			})
 			.catch(msgAlert.error)
 			.finally(() => runningTaskId.delete(id));
@@ -54,6 +67,8 @@
 	}
 	export const taskRunner = {
 		genID,
+		showBoard,
+		selectTask,
 		runFolder,
 		pushTaskInfo,
 	};
@@ -103,8 +118,6 @@
 	import { contextmenu } from '@comp/base/ContextMenu.svelte';
 	import TaskRunModal from './TaskRunModal.svelte';
 
-	let selectedId = $state<string>();
-
 	onMount(() => {
 		function pushRes<R extends TaskRes<unknown>>(mode: NodeMode, ev: Events.WailsEvent<string>) {
 			const res = ev.data as R;
@@ -118,7 +131,7 @@
 			}
 			// taskResMap.set(id, [...(taskResMap.get(id) ?? []), w]);
 		}
-		const unToggleRunBoard = Events.On(MenuEvent.ToggleRunBoard, () => (showBoard = !showBoard));
+		const unToggleRunBoard = Events.On(MenuEvent.ToggleRunBoard, () => (isShow = !isShow));
 		const unResErr = Events.On(TrsEvent.TrsResultErr, (ev) => pushRes(NodeMode.$zero, ev));
 		const unResAny = Events.On(TrsEvent.TrsResultAny, (ev) => pushRes(NodeMode.$zero, ev));
 		const unResHttp = Events.On(TrsEvent.TrsResultHttp, (ev) => {
@@ -176,7 +189,7 @@
 <TaskRunModal />
 
 <div class="drawer drawer-end">
-	<input id="run-board-drawer-1" bind:checked={showBoard} type="checkbox" class="drawer-toggle" />
+	<input id="run-board-drawer-1" bind:checked={isShow} type="checkbox" class="drawer-toggle" />
 	<div class="drawer-side">
 		<label for="run-board-drawer-1" aria-label="close sidebar" class="drawer-overlay"></label>
 		{@render DrawerContent()}

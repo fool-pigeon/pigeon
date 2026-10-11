@@ -213,6 +213,8 @@
 							collection,
 							meta: { id: task.id, path: task.path },
 						});
+						taskRunner.showBoard();
+						taskRunner.selectTask(task.id);
 					})
 					.catch(msgAlert.error);
 				modal.close();

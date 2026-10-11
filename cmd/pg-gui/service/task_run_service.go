@@ -174,10 +174,18 @@ func (tr *TaskRunService) run(id string, params core.RunParams) error {
 			evt.Emit(TrsResultErr, TaskResErr{Meta: meta, ResultMeta: request.ResultMeta{Err: res.Err}})
 			return
 		}
+
 		rRes := res.ReqRes
 		rMeta := rRes.ResultMeta
 		if rRes.Err != nil {
-			evt.Emit(TrsResultErr, TaskResErr{Meta: meta, ResultMeta: rMeta})
+			switch {
+			case rMeta.ReqProto == request.P_HTTP:
+				evt.Emit(TrsResultHttp, tr.reqCtx.parseResHttp(request.ResultView[*httpx.Response]{
+					ResultMeta: res.ReqRes.ResultMeta,
+				}, meta))
+			default:
+				evt.Emit(TrsResultErr, TaskResErr{Meta: meta, ResultMeta: rMeta})
+			}
 			return
 		}
 

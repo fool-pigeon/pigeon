@@ -116,12 +116,12 @@ func (r *ReqData) Run(ctxs ...context.Context) request.Result {
 	res, err := r.req.SetContext(ctx).Send()
 	if err != nil {
 		errRes := request.ErrResult(r.Name, err)
-		errRes.SetReqInfo(info)
+		errRes.SetReqInfo(info).SetReqProto(request.P_HTTP)
 		return errRes
 	}
 	// set raw response
 	result := request.NewResult()
-	result.SetRaw(res).SetReqName(r.ReqName()).SetReqInfo(info).SetProto(res.Proto()).SetStatus(res.Status())
+	result.SetRaw(res).SetReqName(r.ReqName()).SetReqProto(request.P_HTTP).SetReqInfo(info).SetProto(res.Proto()).SetStatus(res.Status())
 	result.SetSuccess(res.StatusCode() >= 200 && res.StatusCode() < 300)
 	result.SetDuration(res.Duration())
 
@@ -163,7 +163,7 @@ func (r *ReqData) RunWithContext(ctx context.Context) request.Result {
 	res := r.Run(ctx)
 	if err := ctx.Err(); err != nil {
 		errRes := request.ErrResult(r.ReqName(), err)
-		errRes.SetReqInfo(fmt.Sprintf("%s %s", r.Method, r.URL))
+		errRes.SetReqInfo(fmt.Sprintf("%s %s", r.Method, r.URL)).SetReqProto(request.P_HTTP)
 		return errRes
 	}
 	return res

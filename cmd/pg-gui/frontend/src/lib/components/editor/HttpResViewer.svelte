@@ -205,8 +205,12 @@
 							class="ml-8 text-base-content/50 inline-flex flex-col gap-0
 							text-xs font-mono *:whitespace-pre-wrap"
 						>
-							{#if t.err.message}
-								<pre>{`${t.err.message}${t.err.snippet}`}</pre>
+							{#if t.err}
+								{#if t.err.message && t.err.snippet}
+									<pre>{`${t.err.message}${t.err.snippet}`}</pre>
+								{:else}
+									<pre>{`unkown err:please check the result of test must be bool`}</pre>
+								{/if}
 								<pre>{JSON.stringify(t.err, null, 2)}</pre>
 							{/if}
 						</div>
