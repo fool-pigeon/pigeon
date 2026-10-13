@@ -1,6 +1,19 @@
 {
     "licenser.license": "MIT",
     "licenser.author": "Homoarea <homoarea114@gmail.com>",
+    // yaml format
+    "[yaml]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.autoIndent": "keep",
+        "diffEditor.ignoreTrimWhitespace": false,
+        "editor.defaultColorDecorators": "never",
+        "editor.quickSuggestions": {
+            "strings": true,
+            "other": true,
+            "comments": false
+        }
+    },
     "js/ts.tsdk.path": "cmd/pg-gui/frontend/node_modules/typescript/lib",
     "files.associations": {
         "*.css": "tailwindcss"
@@ -14,5 +27,6 @@
         "darwin-arm64": "cmd/pg-gui/frontend/node_modules/.pnpm/@biomejs+cli-darwin-arm64@2.5.12/node_modules/@biomejs/cli-darwin-arm64/biome",
         "win32-x64": "cmd/pg-gui/frontend/node_modules/.pnpm/@biomejs+cli-win32-x64@2.5.12/node_modules/@biomejs/cli-win32-x64/biome",
         "win32-arm64": "cmd/pg-gui/frontend/node_modules/.pnpm/@biomejs+cli-win32-arm64@2.5.12/node_modules/@biomejs/cli-win32-arm64/biome",
-    }
+    },
+    "commentTranslate.source": "Bing"
 }
