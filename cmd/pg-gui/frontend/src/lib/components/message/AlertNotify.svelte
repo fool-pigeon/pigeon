@@ -70,10 +70,10 @@
 
 <script lang="ts">
 	onMount(() => {
-		const unInfo = Events.On(AlertEvent.AlertInfo, (msg) => msgAlert.info(msg));
-		const unSuccess = Events.On(AlertEvent.AlertSuccess, (msg) => msgAlert.success(msg));
-		const unWarn = Events.On(AlertEvent.AlertWarn, (msg) => msgAlert.warn(msg));
-		const unError = Events.On(AlertEvent.AlertError, (msg) => msgAlert.error(msg));
+		const unInfo = Events.On(AlertEvent.AlertInfo, (msg) => msgAlert.info(msg.data));
+		const unSuccess = Events.On(AlertEvent.AlertSuccess, (msg) => msgAlert.success(msg.data));
+		const unWarn = Events.On(AlertEvent.AlertWarn, (msg) => msgAlert.warn(msg.data));
+		const unError = Events.On(AlertEvent.AlertError, (msg) => msgAlert.error(msg.data));
 		return () => {
 			unInfo();
 			unSuccess();

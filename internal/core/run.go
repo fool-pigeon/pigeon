@@ -239,9 +239,19 @@ func Run(ctx context.Context, runParams RunParams, handle func(res RunResult)) e
 		return fmt.Errorf("env:%w", ErrNilValue)
 	}
 
+	maxConcurrency := runParams.Config.MaxRunningConcurrency
+	sem := make(chan struct{}, maxConcurrency)
+	defer close(sem)
+
 	var wg sync.WaitGroup
 	resCh := make(chan RunResult)
-
+	runReq := func(path string) {
+		wg.Go(func() {
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			execReqWithContext(ctx, execRParam{root: runParams.Root, path: path, ReqCtx: runParams.ReqCtx}, resCh)
+		})
+	}
 	for _, taskPath := range runParams.Tasks {
 		taskPath = filepath.Clean(taskPath)
 
@@ -254,9 +264,7 @@ func Run(ctx context.Context, runParams RunParams, handle func(res RunResult)) e
 		}
 		// exec if path is file
 		if info.Mode().IsRegular() && isTomlExt(taskPath) {
-			wg.Go(func() {
-				execReqWithContext(ctx, execRParam{root: runParams.Root, path: taskPath, ReqCtx: runParams.ReqCtx}, resCh)
-			})
+			runReq(taskPath)
 			continue
 		}
 
@@ -266,9 +274,7 @@ func Run(ctx context.Context, runParams RunParams, handle func(res RunResult)) e
 				return filepath.SkipDir
 			}
 			if d.Type().IsRegular() && isTomlExt(p) {
-				wg.Go(func() {
-					execReqWithContext(ctx, execRParam{root: runParams.Root, path: p, ReqCtx: runParams.ReqCtx}, resCh)
-				})
+				runReq(p)
 			}
 			return nil
 		})

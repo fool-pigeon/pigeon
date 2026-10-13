@@ -493,14 +493,14 @@
 	{let methodType = $state(NodeMode.HttpGet)}
 
 	<div class="flex grow">
-		<select bind:value={mode} class="appearance-none w-full select select-sm outline-none">
+		<select bind:value={mode} class="w-full select select-sm outline-none">
 			{#each Object.entries(modes) as [name, m]}
 				<option value={m}>{name}</option>
 			{/each}
 		</select>
 		{#if ModeContains(mode, NodeMode.Request)}
 			{const ReqTypes = { HTTP: NodeMode.HttpReq }}
-			<select bind:value={reqType} class="appearance-none select select-sm outline-none">
+			<select bind:value={reqType} class="select select-sm outline-none">
 				{#each Object.entries(ReqTypes) as [label, type]}
 					<option value={type}>{label}</option>
 				{/each}
@@ -517,7 +517,7 @@
 					CONNECT: NodeMode.HttpConnect,
 					TRACE: NodeMode.HttpTrace,
 				}}
-				<select bind:value={methodType} class="appearance-none select select-sm outline-none">
+				<select bind:value={methodType} class="select select-sm outline-none">
 					{#each Object.entries(HttpMethods) as [label, type]}
 						<option value={type}>{label}</option>
 					{/each}

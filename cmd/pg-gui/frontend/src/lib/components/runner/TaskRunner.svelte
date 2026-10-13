@@ -51,30 +51,39 @@
 	}
 	function runFolder(path: string) {
 		const id = genID();
-		runningTaskId.add(id);
+
 		msgAlert.info(`run ${path} ${id}`);
+		runningTaskId.add(id);
+		const col = fileExplorer.getCollections().find((c) => assertPath.contains(c.path, path));
+		const collection: FileMeta = { name: col?.name ?? '', path: col?.path ?? '' };
+		setTaskInfo({
+			collection,
+			meta: { id: id, path: path.replace(collection.path, '') },
+		});
+		showBoard();
+		selectTask(id);
+
 		TaskRunService.RunDir(id, path)
-			.then((task) => {
-				const col = fileExplorer.getCollections().find((c) => assertPath.contains(c.path, path));
-				pushTaskInfo({
-					collection: { name: col?.name ?? '', path: col?.path ?? '' },
-					meta: { id: id, path: task.param.root },
-				});
-				showBoard();
-				selectTask(id);
-			})
-			.catch(msgAlert.error)
+			.catch((err) => msgAlert.error(err))
 			.finally(() => runningTaskId.delete(id));
 	}
-	function pushTaskInfo(info: TaskInfo) {
+	function setTaskInfo(info: TaskInfo) {
 		taskInfo.set(info.meta.id, info);
+	}
+	function addRunningId(id: string) {
+		runningTaskId.add(id);
+	}
+	function deleteRunningId(id: string) {
+		runningTaskId.delete(id);
 	}
 	export const taskRunner = {
 		genID,
 		showBoard,
 		selectTask,
 		runFolder,
-		pushTaskInfo,
+		setTaskInfo,
+		addRunningId,
+		deleteRunningId,
 	};
 
 	/**
@@ -121,6 +130,7 @@
 	import { assertPath } from '@lib/utils/asserts';
 	import { contextmenu } from '@comp/base/ContextMenu.svelte';
 	import TaskRunModal from './TaskRunModal.svelte';
+	import { deleteLine } from '@codemirror/commands';
 
 	onMount(() => {
 		function pushRes<R extends TaskRes<unknown>>(mode: NodeMode, ev: Events.WailsEvent<string>) {

@@ -179,6 +179,7 @@
 			unregisterSave();
 			unregisterSend();
 			purifyTemp();
+			// TODO: do not stage when editor's ofs not contains this
 			await HttpReqFileService.Stage(fs.id, temp);
 		};
 	});

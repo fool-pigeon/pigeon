@@ -27,3 +27,6 @@ func (e *EventConstExposeService) ExposedTrsEvt(
 	trAny TaskResAny,
 ) {
 }
+
+func (e *EventConstExposeService) ExposedSettingsServiceEvent(evt SettingsServiceEvent)   {}
+func (e *EventConstExposeService) ExposedExtendedWindowEvent(evt gui.ExtendedWindowEvent) {}

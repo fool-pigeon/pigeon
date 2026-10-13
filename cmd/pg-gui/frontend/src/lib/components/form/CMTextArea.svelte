@@ -17,8 +17,9 @@ the value will be bindabled.
 <script lang="ts">
 	import { basicSetup, EditorView } from 'codemirror';
 	import CMWrapper from './CMWrapper.svelte';
-	import type { Extension } from '@codemirror/state';
+	import { EditorState, type Extension } from '@codemirror/state';
 	import { daisyColorTheme, daisyThemeExtension } from './cmConfig';
+	import { settings } from '@comp/context/AppSettings.svelte';
 
 	/**
 	 * @type value: the bindabled string value of area
@@ -27,29 +28,34 @@ the value will be bindabled.
 	type Prop = {
 		value: string;
 		extensions?: Extension;
+		readonly?: boolean;
 	};
-	let { value = $bindable(), extensions = [] }: Prop = $props();
+	let { value = $bindable(), extensions = [], readonly = false }: Prop = $props();
 </script>
 
-<CMWrapper
-	bind:value
-	viewInitFunc={() => {
-		return new EditorView({
-			extensions: [
-				basicSetup,
-				extensions,
-				// prevent drag selection
-				EditorView.domEventHandlers({
-					dragstart: (event) => {
-						event.preventDefault();
-						return true;
-					},
-				}),
-				EditorView.theme({
-					'&': { width: '100%', height: '100%' },
-				}),
-				daisyThemeExtension,
-			],
-		});
-	}}
-/>
+{#key settings.interface.editor.preventWrapLine}
+	<CMWrapper
+		bind:value
+		viewInitFunc={() => {
+			return new EditorView({
+				extensions: [
+					basicSetup,
+					extensions,
+					// prevent drag selection
+					EditorView.domEventHandlers({
+						dragstart: (event) => {
+							event.preventDefault();
+							return true;
+						},
+					}),
+					EditorState.readOnly.of(readonly),
+					settings.interface.editor.preventWrapLine ? [] : EditorView.lineWrapping,
+					EditorView.theme({
+						'&': { width: '100%', height: '100%' },
+					}),
+					daisyThemeExtension,
+				],
+			});
+		}}
+	/>
+{/key}

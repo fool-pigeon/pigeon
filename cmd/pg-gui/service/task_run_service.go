@@ -82,14 +82,14 @@ func NewTaskRunService(reqCtx *ReqCtxService, alertService *AlertService, app *a
 	return &TaskRunService{reqCtx, alertService, app}
 }
 
-func (tr *TaskRunService) RunDir(id string, path string) (Task, error) {
+func (tr *TaskRunService) RunDir(id string, path string) error {
 	path = filepath.Clean(path)
 	info, err := os.Lstat(path)
 	if err != nil {
-		return Task{}, fmt.Errorf("%s:%w", path, err)
+		return fmt.Errorf("%s:%w", path, err)
 	}
 	if !info.IsDir() {
-		return Task{}, fmt.Errorf("%s:%w", path, fsx.ErrNotDir)
+		return fmt.Errorf("%s:%w", path, fsx.ErrNotDir)
 	}
 	task := Task{
 		TaskMeta{Id: id, Path: path},
@@ -100,10 +100,7 @@ func (tr *TaskRunService) RunDir(id string, path string) (Task, error) {
 			Env:    tr.reqCtx.EnvInfo().Path,
 		},
 	}
-	go func() {
-		tr.Run(task)
-	}()
-	return task, nil
+	return tr.Run(task)
 }
 
 // a wrapper Func for [TaskRunService.Run]
@@ -120,10 +117,8 @@ func (tr *TaskRunService) RunWrapper(task Task) error {
 	}
 	// inject config path
 	task.Param.Config = filepath.Join(root, fsx.RootTagDirName, fsx.ConfigDefaultName)
-	go func() {
-		tr.Run(task)
-	}()
-	return nil
+
+	return tr.Run(task)
 }
 
 // param: file path and file content of run file
@@ -138,13 +133,17 @@ func (tr *TaskRunService) Run(task Task) error {
 	// config load
 	cfg, err := config.LoadFromFile(p.Config)
 	if err != nil {
-		tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty config", p.Config))
+		if p.Config != "" && p.Config != "." {
+			tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty config", p.Config))
+		}
 		cfg = config.New()
 	}
 	// env load
 	e, err := env.LoadFromFile(p.Env)
 	if err != nil {
-		tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty env", p.Env))
+		if p.Env != "" && p.Env != "." {
+			tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty env", p.Env))
+		}
 		e = env.New()
 	}
 

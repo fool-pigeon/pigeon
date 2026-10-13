@@ -45,8 +45,7 @@
 	<span class="text-sm">Env:</span>
 	<select
 		bind:value={current}
-		class="appearance-none pl-1 select select-sm
-		not-focus:border-transparent outline-none shadow-none"
+		class="pl-1 select select-sm justify-center outline-none shadow-none"
 	>
 		{#if !current}
 			<option disabled selected value={undefined}>no env</option>

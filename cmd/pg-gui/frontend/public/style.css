@@ -20,8 +20,10 @@
 	--color-req-gql: oklch(87% 0.26 340); /* magenta – GraphQL */
 	--color-req-ws: oklch(87% 0.26 95); /* yellow  – realtime */
 }
-@plugin "daisyui";
 
+@plugin "daisyui" {
+	themes: light --default,dark --prefersdark, cupcake;
+}
 /* custom light scrollbar */
 .custom-scrollbar {
 	/* 覆盖全局 thin，否则 webkit 伪元素失效 */

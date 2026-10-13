@@ -30,14 +30,14 @@ check the release
 ## TODO: Feature
 * User Interface
   * [x] cli
-  * [ ] gui
+  * [x] gui
     * theme
       * [ ] a pretty default theme
-      * [ ] theme for codemirror editors
-      * [ ] dark mode and change it responsively
+      * [x] theme for codemirror editors
+      * [x] dark mode and change it responsively
     * [ ] global file search filter
     * [ ] global key shortcuts bindings
-    * [ ] request's send and test history
+    * [x] request's send and test history
   * [ ] vscode-extension
 * Protocols
   * [x] HTTP
@@ -50,16 +50,18 @@ check the release
   * [ ] option disable fields such as disable some headers
 * Env Management
   * [ ] global environment(Specify the path. env)
-  * [ ] collection environment
+  * [x] collection environment
   * [ ] optional to use os' environment
+  * [ ] Recursively search for `.env` in the current folder
   * [ ] environment on command's flags
 * Test Feature
   * [x] Script inject
   * [ ] Script syntax highlighting 
   * [ ] Script autocompletion
   * [ ] Data Drive Test
+  * [x] Limit Concurrent
   * [ ] Pre Request
-  * [ ] Limit Concurrent
+  * [ ] Chained requests
   * [ ] Set up synchronous running sequence
 * Collection type conversion
   * [ ] OpenAPI

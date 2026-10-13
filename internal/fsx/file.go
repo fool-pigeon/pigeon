@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -41,7 +41,18 @@ func IsFile(name string) bool {
 }
 
 func WriteFile(name string, data []byte) error {
-	return os.WriteFile(name, data, os.FileMode(0664))
+	return os.WriteFile(name, data, os.FileMode(0644))
+}
+
+func CreateFileIfNotExists(path string) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return nil
+		}
+		return err
+	}
+	return f.Close()
 }
 
 func ReadFile(name string) ([]byte, error) {

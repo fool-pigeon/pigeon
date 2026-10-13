@@ -51,6 +51,7 @@
 		});
 		return async () => {
 			unregister();
+			// TODO: do not stage when editor's ofs not contains this
 			await TextFileService.Stage(fs.id, temp).then((m) => (fs.additional = m));
 		};
 	});

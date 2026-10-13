@@ -102,13 +102,11 @@
 		{#if viewPart === 'Response'}
 			<select
 				title="change preview"
-				class="appearance-none pt-1 pb-1 border border-base-content/50
-                        focus:outline-none text-center [text-align-last:center]
-                        cursor-pointer hover:bg-primary hover:text-primary-content"
+				class="select select-xs justify-center w-16 p-1 outline-none bg-none"
 				bind:value={bodyView}
 			>
 				{#each Object.values(BodyView) as bv (bv)}
-					<option class="appearance-none" value={bv}>{bv}</option>
+					<option value={bv}>{bv}</option>
 				{/each}
 			</select>
 		{/if}
@@ -146,11 +144,11 @@
 		{let simpleBodyView = $state(BodyView.json)}
 		<select
 			title="change preview"
-			class="appearance-none w-24 select select-xs focus:outline-none"
+			class="select select-xs optional:w-auto focus:outline-none"
 			bind:value={simpleBodyView}
 		>
 			{#each Object.values(BodyView) as bv (bv)}
-				<option class="appearance-none" value={bv}>{bv}</option>
+				<option value={bv}>{bv}</option>
 			{/each}
 		</select>
 		<div class="border-t border-base-content/80 w-full h-[50vh]">

@@ -179,8 +179,9 @@
 				if (!collection) return;
 
 				const c = root.sub[0];
+				const id = taskRunner.genID();
 				const task: Task = {
-					id: taskRunner.genID(),
+					id: id,
 					path: c.id,
 					param: {
 						root: '',
@@ -206,17 +207,18 @@
 				task.param.env = envFile?.path ?? '';
 				// tip:the config's path will be inject in RunWrapper
 				// task.param.config = '';
-				console.log(task.param);
+
+				taskRunner.addRunningId(id);
+				taskRunner.setTaskInfo({
+					collection,
+					meta: { id: task.id, path: task.path },
+				});
+				taskRunner.showBoard();
+				taskRunner.selectTask(id);
 				TaskRunService.RunWrapper(task)
-					.then(() => {
-						taskRunner.pushTaskInfo({
-							collection,
-							meta: { id: task.id, path: task.path },
-						});
-						taskRunner.showBoard();
-						taskRunner.selectTask(task.id);
-					})
-					.catch(msgAlert.error);
+					.catch(msgAlert.error)
+					.finally(() => taskRunner.deleteRunningId(id));
+
 				modal.close();
 			}}
 		>
@@ -245,7 +247,7 @@
 			<select
 				bind:value={collectionFile}
 				oninvalid={(e) => e.preventDefault()}
-				class="appearance-none pl-1 select select-sm validator outline-none shadow-none"
+				class="pl-1 select [&::picker(select)]:my-0 select-sm validator outline-none shadow-none"
 				required
 			>
 				<option disabled selected value={undefined}>pick collection</option>

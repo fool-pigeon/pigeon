@@ -81,7 +81,7 @@ func bindShortcutedItem(menu *wa.Menu, label string, shortcut string, on func(ct
 	menu.Add(label).SetAccelerator(shortcut).OnClick(on)
 }
 
-func InitMenu(app *wa.App) {
+func MainMenu(app *wa.App) *wa.Menu {
 	isDarwin := runtime.GOOS == "darwin"
 	var (
 		FileMenu = "File"
@@ -92,7 +92,6 @@ func InitMenu(app *wa.App) {
 	)
 
 	menu := app.NewMenu()
-	app.Menu.Set(menu)
 
 	// darwin: AppMenu:
 	if isDarwin {
@@ -235,4 +234,6 @@ func InitMenu(app *wa.App) {
 
 	// go:build !productioin || devtools
 	menu.FindByLabel(HelpMenu).GetSubmenu().AddRole(wa.OpenDevTools)
+
+	return menu
 }

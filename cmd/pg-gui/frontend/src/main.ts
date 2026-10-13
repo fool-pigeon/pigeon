@@ -4,7 +4,7 @@
 // https://opensource.org/licenses/MIT
 
 import { mount } from 'svelte'
-import App from './Main.svelte'
+import App from './App.svelte'
 
 if (import.meta.env.DEV) {
     const el = document.createElement('div')

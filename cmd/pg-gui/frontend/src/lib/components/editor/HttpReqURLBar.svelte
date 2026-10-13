@@ -15,15 +15,15 @@
 
 	let { req = $bindable(), isSending }: { req: ReqData; isSending: boolean } = $props();
 	const METHOD_STYLE_CLASS = {
-		[Method.MethodGet]: 'text-req-get hover:bg-req-get/50',
-		[Method.MethodPost]: 'text-req-post hover:bg-req-post/50',
-		[Method.MethodPut]: 'text-req-put hover:bg-req-put/50',
-		[Method.MethodDelete]: 'text-req-delete hover:bg-req-delete/50',
-		[Method.MethodHead]: 'text-req-head hover:bg-req-head/50',
-		[Method.MethodPatch]: 'text-req-patch hover:bg-req-patch/50',
-		[Method.MethodOptions]: 'text-req-options hover:bg-req-options/50',
-		[Method.MethodConnect]: 'text-req-connect hover:bg-req-connect/50',
-		[Method.MethodTrace]: 'text-req-trace hover:bg-req-trace/50',
+		[Method.MethodGet]: 'text-req-get hover:bg-req-get/20',
+		[Method.MethodPost]: 'text-req-post hover:bg-req-post/20',
+		[Method.MethodPut]: 'text-req-put hover:bg-req-put/20',
+		[Method.MethodDelete]: 'text-req-delete hover:bg-req-delete/20',
+		[Method.MethodHead]: 'text-req-head hover:bg-req-head/20',
+		[Method.MethodPatch]: 'text-req-patch hover:bg-req-patch/20',
+		[Method.MethodOptions]: 'text-req-options hover:bg-req-options/20',
+		[Method.MethodConnect]: 'text-req-connect hover:bg-req-connect/20',
+		[Method.MethodTrace]: 'text-req-trace hover:bg-req-trace/20',
 	};
 </script>
 
@@ -31,7 +31,8 @@
 	<div class="p-1 w-full flex gap-1 items-center border border-base-content/50">
 		<!-- HTTP Method Selector -->
 		<select
-			class="h-full appearance-none focus:outline-none text-center [text-align-last:center]
+			class="m-0 p-0 pl-2 pr-2 optional:w-auto h-full select justify-center outline-none bg-none border-none shadow-none
+			*:text-base-content *:bg-base-100 *:hover:bg-base-content/20
             {METHOD_STYLE_CLASS[req?.method ?? ''] ?? ''}"
 			bind:value={req.method}
 		>

@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -23,8 +23,20 @@ type clientWrap[T any] struct {
 // every client has its own mutex for concurrency
 type Config struct {
 	HttpData httpx.ClientData `toml:"http"`
+	http     clientWrap[*httpx.Client]
 
-	http clientWrap[*httpx.Client]
+	MaxRunningConcurrency uint32 `toml:"max_running_concurrency"`
+}
+
+func New() *Config {
+	return &Config{
+		MaxRunningConcurrency: 5,
+	}
+}
+func (c *Config) checkAndReset() {
+	if c.MaxRunningConcurrency <= 0 {
+		c.MaxRunningConcurrency = 5
+	}
 }
 
 // return a http client pointer with its own Mutex.
@@ -39,14 +51,11 @@ func (c *Config) HttpClient() (*httpx.Client, error) {
 	return c.http.client, c.http.err
 }
 
-func New() *Config {
-	return &Config{}
-}
-
 func LoadFromFile(name string) (*Config, error) {
 	c := New()
 	if err := fsx.ReadToml(name, c); err != nil {
 		return nil, err
 	}
+	c.checkAndReset()
 	return c, nil
 }

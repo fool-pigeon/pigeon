@@ -8,6 +8,8 @@ require (
 	github.com/knadh/koanf/parsers/dotenv v1.1.1
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/v2 v2.3.5
+	github.com/lmittmann/tint v1.1.3
+	github.com/mattn/go-isatty v0.0.20
 	github.com/pterm/pterm v0.12.83
 	github.com/spf13/cobra v1.10.2
 	github.com/wailsapp/wails/v3 v3.0.0-beta.16
@@ -32,7 +34,6 @@ require (
 	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.23 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
@@ -49,6 +50,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/stretchr/testify v1.11.1
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 replace github.com/pterm/pterm => github.com/Homoarea/pterm v0.0.0-20260808134844-20581a015aee

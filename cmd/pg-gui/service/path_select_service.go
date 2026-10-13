@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/fool-pigeon/pigeon/cmd/pg-gui/service/reveal"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -21,6 +22,10 @@ func NewPathSelectService(app *application.App) *PathSelectService {
 	return &PathSelectService{app}
 }
 func (f *PathSelectService) ShowInFileManager(path string) error {
+	if err := reveal.Open(path); err == nil {
+		return nil
+	}
+	// back to wails defult open
 	err := f.app.Env.OpenFileManager(path, true)
 	if err != nil {
 		// Fallback: try opening just the directory
