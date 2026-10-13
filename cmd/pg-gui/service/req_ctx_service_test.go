@@ -18,6 +18,8 @@ import (
 func TestSendHttp(t *testing.T) {
 	server := testutil.NewEchoServer(t)
 	defer server.Close()
+	reqCtxService := service.NewReqCtxService(nil)
+	reqCtxService.InitCtx("")
 	t.Run("Send", func(t *testing.T) {
 		reqContent := `name = 'r2'
 				protocol = 'http'
@@ -28,7 +30,6 @@ func TestSendHttp(t *testing.T) {
 		toml.Unmarshal([]byte(reqContent), &req)
 		req.SetURL(server.URL)
 		req.SetHeaders(map[string][]string{"": {""}})
-		reqCtxService := service.NewReqCtxService(nil)
 		resHttp, err := reqCtxService.SendHttp(&req)
 		assert.Equal(t, server.URL, resHttp.Data.URL)
 		assert.Nil(t, err)

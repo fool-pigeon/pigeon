@@ -119,29 +119,33 @@ func (r *ReqCtxService) setEnvInfo(envFile FileMeta) error {
 
 // Switch root from path and returns root
 func (r *ReqCtxService) SetRootFromPath(path string) (string, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	root, err := fsx.RootDir(path)
 	if err != nil {
 		return "", err
 	}
-	r.root = root
+	r.InitCtx(root)
 
-	ctx := r.ctxs[root]
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.root = root
+	return root, nil
+}
+
+func (r *ReqCtxService) InitCtx(path string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	ctx := r.ctxs[path]
 	if ctx.reqCtx.Config == nil {
 		ctx.reqCtx.Config = config.New()
 	}
 	if ctx.reqCtx.Env == nil {
 		ctx.reqCtx.Env = env.New()
 	}
-	r.ctxs[root] = ctx
-
+	r.ctxs[path] = ctx
 	// tip:temporary hard coding config path
-	r.setCfgInfo(FileMeta{"config.toml", filepath.Join(root, fsx.RootTagDirName, "config.toml")})
-
-	r.initConfig(r.ctxs[root].reqCtx.Config)
-
-	return root, nil
+	r.setCfgInfo(FileMeta{"config.toml", filepath.Join(path, fsx.RootTagDirName, "config.toml")})
+	r.initConfig(r.ctxs[path].reqCtx.Config)
 }
 
 // TODO: parse [FIleMeta] from collections path
