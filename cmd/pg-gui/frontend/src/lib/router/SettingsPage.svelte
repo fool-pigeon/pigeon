@@ -22,8 +22,6 @@
 
 	onMount(() => {
 		WML.Reload();
-		// for debug view
-		Events.Emit(MenuEvent.Preferences);
 	});
 	const Parts = [
 		{ label: 'Info', icon: IconInfo, content: SnippetInfo },
@@ -31,8 +29,7 @@
 		{ label: 'Interface', icon: IconMonitor, content: SnippetInterface },
 	] as const;
 	type Part = (typeof Parts)[number]['label'];
-	// let activedPart = $state<Part>('Info');
-	let activedPart = $state<Part>('Interface');
+	let activedPart = $state<Part>('Info');
 </script>
 
 <div class="w-lvw h-lvh bg-base-100">
