@@ -11,3 +11,8 @@ build/ios/xcode/overlay.json
 build/ios/xcode/gen/
 build/android/overlay.json
 build/android/gen/
+
+
+# extra ignore
+build/linux/appimage/pigeon-gui
+build/linux/*.desktop

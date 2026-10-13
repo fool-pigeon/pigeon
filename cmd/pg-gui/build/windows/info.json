@@ -1,0 +1,15 @@
+{
+	"fixed": {
+		"file_version": "0.0.1"
+	},
+	"info": {
+		"0000": {
+			"ProductVersion": "0.0.1",
+			"CompanyName": "fool-pigeon",
+			"FileDescription": "API client for testing",
+			"LegalCopyright": "(c) 2026, fool-pigeon",
+			"ProductName": "pigeon-gui",
+			"Comments": "API client for testing"
+		}
+	}
+}
