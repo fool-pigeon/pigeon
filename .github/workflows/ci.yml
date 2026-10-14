@@ -88,3 +88,32 @@ jobs:
         with:
           name: pigeon-${{matrix.goos}}
           path: cmd/pg-gui/bin
+
+  pre-release:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Extract version
+        id: ver
+        working-directory: cmd/pg-gui/build
+        run: |
+          BASE=$(yq '.info.version' config.yml)
+          [ -z "$BASE" ] || [ "$BASE" = "null" ] && { echo "version not found"; exit 1; }
+          echo "tag=v${BASE}-dev.$(date -u +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{steps.ver.outputs.tag}}
+          name: ${{steps.ver.outputs.tag}}
+          prerelease: true
+          generate_release_notes: true
+          files: artifacts/**/*
