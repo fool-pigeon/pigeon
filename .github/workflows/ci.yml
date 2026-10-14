@@ -103,11 +103,6 @@ jobs:
           check-latest: false
           cache: true
           cache-dependency-path: "go.sum"
-      - name: Resolve GOBIN
-        run: |
-          bin=$(go env GOBIN)
-          [ -z "$bin" ] && bin=$(go env GOPATH)/bin
-          echo "GOBIN=$bin" >> "$GITHUB_ENV"
 
       # Linux System Deps Install
       - name: apt update
@@ -124,7 +119,7 @@ jobs:
         uses: actions/cache@v6
         id: cache-wails3
         with:
-          path: ~/go/bin/wails3
+          path: ~/go/bin/wails3*
           key: wails3@v3.0.0-beta.28-${{runner.os}}
       - name: Install Wails3 CLI
         if: steps.cache-wails3.outputs.cache-hit!='true'
