@@ -192,6 +192,7 @@ func (rp RunPaths) ToAbs(root string) RunPaths {
 		}
 		tasks = append(tasks, absTask)
 	}
+	res.Tasks = tasks
 	return res
 }
 
