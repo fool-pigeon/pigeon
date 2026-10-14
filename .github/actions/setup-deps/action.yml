@@ -60,6 +60,8 @@ runs:
       run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{inputs.wails-version}}
     - name: Install Task
       uses: arduino/setup-task@v3
+      with:
+        repo-token: ${{github.token}}
     # Install pnpm & node
     - name: Install pnpm & node
       uses: pnpm/setup@v1
