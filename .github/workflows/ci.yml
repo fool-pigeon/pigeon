@@ -22,6 +22,14 @@ jobs:
           cache: true
           cache-dependency-path: "go.sum"
 
+      - name: apt update
+        run: sudo apt-get update -qq
+      - name: apt pkgs cache
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+          version: 1.0
+
       - name: Cache wails3 cli
         uses: actions/cache@v6
         id: cache-wails3
@@ -32,13 +40,6 @@ jobs:
         if: steps.cache-wails3.outputs.cache-hit!='true'
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
 
-      - name: apt update
-        run: sudo apt-get update -qq
-      - name: apt pkgs cache
-        uses: awalsh128/cache-apt-pkgs-action@v1
-        with:
-          packages: build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
-          version: 1.0
       - name: Install Task
         uses: arduino/setup-task@v3
 
