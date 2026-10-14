@@ -21,6 +21,11 @@ jobs:
           check-latest: false
           cache: true
           cache-dependency-path: "go.sum"
+      - name: Resolve GOBIN
+        run: |
+          bin=$(go env GOBIN)
+          [ -z "$bin" ] && bin=$(go env GOPATH)/bin
+          echo "GOBIN=$bin" >> "$GITHUB_ENV"
 
       - name: apt update
         run: sudo apt-get update -qq
@@ -34,7 +39,7 @@ jobs:
         uses: actions/cache@v6
         id: cache-wails3
         with:
-          path: $GOBIN/wails3
+          path: ~/go/bin/wails3
           key: wails3@v3.0.0-beta.28-${{runner.os}}
       - name: Install Wails3
         if: steps.cache-wails3.outputs.cache-hit!='true'
@@ -43,17 +48,14 @@ jobs:
       - name: Install Task
         uses: arduino/setup-task@v3
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
+      - name: Install pnpm & node
+        uses: pnpm/setup@v1
         with:
           version: 12
+          runtime: node@24
           cache: true
-          package_json_file: cmd/pg-gui/frontend/package.json
-          cache_dependency_path: cmd/pg-gui/frontend/pnpm-lock.yaml
-      - name: Install node and pnpm dependencies
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: 24
+          package-json-file: cmd/pg-gui/frontend/package.json
+          cache-dependency-path: cmd/pg-gui/frontend/pnpm-lock.yaml
 
       - name: task wails3 build
         if: ${{!cancelled()}}
@@ -72,6 +74,7 @@ jobs:
       - name: go test
         if: ${{ !cancelled() }}
         run: go test ./...
-      - name: go build
+      - name: CLI go build
         if: ${{ !cancelled() }}
-        run: go build ./...
+        working-directory: cmd/pigeon
+        run: go build
