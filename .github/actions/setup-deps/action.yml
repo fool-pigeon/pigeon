@@ -20,6 +20,8 @@ runs:
     # Install Go
     - name: Cache go toolchain
       id: go-cache-toolchain
+      # Windows has the problem with symlink
+      if: runner.os!='Windows'
       uses: actions/cache@v6
       with:
         path: ${{runner.tool_cache}}/go/${{inputs.go-version}}
@@ -29,6 +31,7 @@ runs:
       with:
         go-version-file: "go.mod"
         check-latest: false
+        token: ${{ github.token }}
         cache: true
         cache-dependency-path: "go.sum"
     # Install Linux's deps
