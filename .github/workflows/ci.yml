@@ -9,6 +9,7 @@ permissions:
   contents: read
 
 jobs:
+  # check errors,could build
   check:
     runs-on: ubuntu-latest
     steps:
@@ -35,13 +36,13 @@ jobs:
           packages: build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
           version: 1.0
 
-      - name: Cache wails3 cli
+      - name: Cache wails3 CLI
         uses: actions/cache@v6
         id: cache-wails3
         with:
           path: ~/go/bin/wails3
           key: wails3@v3.0.0-beta.28-${{runner.os}}
-      - name: Install Wails3
+      - name: Install Wails3 CLI
         if: steps.cache-wails3.outputs.cache-hit!='true'
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
 
@@ -78,3 +79,75 @@ jobs:
         if: ${{ !cancelled() }}
         working-directory: cmd/pigeon
         run: go build
+
+  package:
+    needs: check
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+          - os: macos-latest
+            goos: darwin
+          - os: windows-latest
+            goos: windows
+
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: "go.mod"
+          check-latest: false
+          cache: true
+          cache-dependency-path: "go.sum"
+      - name: Resolve GOBIN
+        run: |
+          bin=$(go env GOBIN)
+          [ -z "$bin" ] && bin=$(go env GOPATH)/bin
+          echo "GOBIN=$bin" >> "$GITHUB_ENV"
+
+      # Linux System Deps Install
+      - name: apt update
+        if: matrix.os=='ubuntu-latest'
+        run: sudo apt-get update -qq
+      - name: apt pkgs cache
+        if: matrix.os=='ubuntu-latest'
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+          version: 1.0
+
+      - name: Cache wails3 CLI
+        uses: actions/cache@v6
+        id: cache-wails3
+        with:
+          path: ~/go/bin/wails3
+          key: wails3@v3.0.0-beta.28-${{runner.os}}
+      - name: Install Wails3 CLI
+        if: steps.cache-wails3.outputs.cache-hit!='true'
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+
+      - name: Install Task
+        uses: arduino/setup-task@v3
+
+      - name: Install pnpm & node
+        uses: pnpm/setup@v1
+        with:
+          version: 12
+          runtime: node@24
+          cache: true
+          package-json-file: cmd/pg-gui/frontend/package.json
+          cache-dependency-path: cmd/pg-gui/frontend/pnpm-lock.yaml
+
+      - name: Build
+        working-directory: cmd/pg-gui
+        run: task build
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: pigeon-${{matrix.goos}}
+          path: cmd/pg-gui/bin
