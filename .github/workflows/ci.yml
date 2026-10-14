@@ -13,20 +13,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+
+      - name: Install go
+        uses: actions/setup-go@v7
         with:
           go-version-file: "go.mod"
           check-latest: false
           cache: true
           cache-dependency-path: "go.sum"
 
-      - name: Install Wails3 dependencies
+      - name: Cache wails3 cli
+        uses: actions/cache@v6
+        id: cache-wails3
+        with:
+          path: $GOBIN/wails3
+          key: wails3@v3.0.0-beta.28-${{runner.os}}
+      - name: Install Wails3
+        if: steps.cache-wails3.outputs.cache-hit!='true'
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.28
+
+      - name: apt update
+        run: sudo apt-get update -qq
+      - name: apt pkgs cache
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+          version: 1.0
+      - name: Install Task
+        uses: arduino/setup-task@v3
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12
+          cache: true
+          package_json_file: cmd/pg-gui/frontend/package.json
+          cache_dependency_path: cmd/pg-gui/frontend/pnpm-lock.yaml
+      - name: Install node and pnpm dependencies
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: 24
+
+      - name: task wails3 build
         if: ${{!cancelled()}}
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config \
-            libgtk-4-dev libwebkitgtk-6.0-dev
+        working-directory: cmd/pg-gui
+        run: task build
 
       - name: go mod tidy
         if: ${{ !cancelled() }}
