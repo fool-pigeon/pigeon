@@ -15,6 +15,7 @@
 	import HttpResViewer from '@comp/editor/HttpResViewer.svelte';
 	import { nodeModeIcon } from '@comp/navigation/FileExplorer.svelte';
 	import DynamicJoin, { NewPanel } from '@comp/base/DynamicJoin.svelte';
+	import VirtRowsWrapper from '@comp/base/VirtualList/VirtRowsWrapper.svelte';
 
 	type Prop = { wrappers: TaskResWrapper[] | undefined };
 	let { wrappers }: Prop = $props();
@@ -23,11 +24,15 @@
 
 <DynamicJoin panels={[NewPanel(ResList, { value: 30, unit: '%' }), NewPanel(ResDetail)]} />
 {#snippet ResList()}
-	<div class="min-w-4 w-full h-full min-h-0 p-2 flex flex-col gap-0">
-		{#each wrappers as w, i}
-			{@render DisplayTaskRes(w, () => (current = i))}
-		{/each}
-	</div>
+	{#if !wrappers}
+		<div class="text-warning">no tasks runned</div>
+	{:else}
+		<VirtRowsWrapper list={wrappers}>
+			{#snippet itemRender(w: TaskResWrapper, i: number)}
+				{@render DisplayTaskRes(w, () => (current = i))}
+			{/snippet}
+		</VirtRowsWrapper>
+	{/if}
 {/snippet}
 {#snippet ResDetail()}
 	{#if current >= 0 && wrappers}
