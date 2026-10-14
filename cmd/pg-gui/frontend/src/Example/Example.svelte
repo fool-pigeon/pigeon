@@ -14,6 +14,7 @@
 	import ExampleAlert from './ExampleAlert.svelte';
 	import ExampleCMW from './ExampleCMW.svelte';
 	import ExampleCMFKArr from './ExampleCMFKArr.svelte';
+	import ExampleVirtRows from './ExampleVirtRows.svelte';
 
 	let showName = $state<string>('');
 </script>
@@ -35,6 +36,7 @@
 					<ul class="bg-base-200 min-h-full p-4 flex-col overflow-auto">
 						{@render item('Example')}
 						{@render item('Modal')}
+						{@render item('VirtRows')}
 						{@render item('CMW')}
 						{@render item('CMFKArr')}
 						{@render item('AlertMsg')}
@@ -48,6 +50,8 @@
 						<ExampleModal />
 					{:else if showName === 'CMW'}
 						<ExampleCMW />
+					{:else if showName === 'VirtRows'}
+						<ExampleVirtRows />
 					{:else if showName === 'CMFKArr'}
 						<ExampleCMFKArr />
 					{:else if showName === 'AlertMsg'}

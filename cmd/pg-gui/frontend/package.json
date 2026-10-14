@@ -20,6 +20,7 @@
     "@lezer/highlight": "^1.2.4",
     "@lucide/svelte": "^1.45.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/svelte-virtual": "^3.13.43",
     "@wailsio/runtime": "latest",
     "codemirror": "^6.0.2",
     "daisyui": "^5.7.28",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
+    "@faker-js/faker": "^10.6.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^26.4.1",
