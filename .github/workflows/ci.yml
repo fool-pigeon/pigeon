@@ -20,9 +20,26 @@ jobs:
           cache: true
           cache-dependency-path: "go.sum"
 
-      - run: go mod tidy && git diff --exit-code go.mod go.sum
+      - name: Install Wails3 dependencies
+        if: ${{!cancelled()}}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config \
+            libgtk-4-dev libwebkitgtk-6.0-dev
+
+      - name: go mod tidy
+        if: ${{ !cancelled() }}
+        run: go mod tidy && git diff --exit-code go.mod go.sum
       # - run: go vet ./...
-      - uses: golangci/golangci-lint-action@v9
+      - name: golangci-lint
+        if: ${{ !cancelled() }}
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.14
-      - run: go test ./...
+      - name: go test
+        if: ${{ !cancelled() }}
+        run: go test ./...
+      - name: go build
+        if: ${{ !cancelled() }}
+        run: go build ./...
