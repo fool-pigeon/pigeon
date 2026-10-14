@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install yq
+      - name: Install yq on windows
         if: matrix.goos == 'windows'
         shell: bash
         run: choco install yq -y --no-progress
@@ -109,6 +109,11 @@ jobs:
             zip -r ../${{steps.pkg.outputs.name}}.zip . > /dev/null
           fi
           mv ../${{steps.pkg.outputs.name}}.* .
+
+      - name: Install NSIS on windows
+        if: runner.os=='Windows'
+        shell: bash
+        run: choco install nsis -y --no-progress
 
       - name: Package
         working-directory: cmd/pg-gui
