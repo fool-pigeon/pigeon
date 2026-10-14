@@ -18,18 +18,13 @@ runs:
   using: composite
   steps:
     # Install Go
-    - name: Resolve go toolchain root
-      id: go-resolve-root
-      shell: bash
-      run: echo "root=$(go env GOROOT)" >> "$GITHUB_OUTPUT"
     - name: Cache go toolchain
       id: go-cache-toolchain
       uses: actions/cache@v6
       with:
-        path: ${{steps.go-resolve-root.outputs.root}}*
+        path: ${{runner.tool_cache}}/go/${{inputs.go-version}}
         key: go-cache-toolchain-${{runner.os}}-${{inputs.go-version}}
     - name: Install go
-      if: steps.go-cache-toolchain.outputs.cache-hit!='true'
       uses: actions/setup-go@v7
       with:
         go-version-file: "go.mod"
