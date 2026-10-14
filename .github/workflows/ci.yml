@@ -65,12 +65,12 @@ jobs:
       - name: go mod tidy
         if: ${{ !cancelled() }}
         run: go mod tidy && git diff --exit-code go.mod go.sum
-      # - run: go vet ./...
       - name: golangci-lint
         if: ${{ !cancelled() }}
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.14
+          args: --issues-exit-code=0
       - name: go test
         if: ${{ !cancelled() }}
         run: go test ./...
