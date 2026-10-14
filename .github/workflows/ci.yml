@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  ci:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -57,7 +57,7 @@ jobs:
           package-json-file: cmd/pg-gui/frontend/package.json
           cache-dependency-path: cmd/pg-gui/frontend/pnpm-lock.yaml
 
-      - name: task wails3 build
+      - name: piegon-gui build
         if: ${{!cancelled()}}
         working-directory: cmd/pg-gui
         run: task build
@@ -68,9 +68,9 @@ jobs:
       - name: golangci-lint
         if: ${{ !cancelled() }}
         uses: golangci/golangci-lint-action@v9
+        continue-on-error: true
         with:
           version: v2.14
-          args: --issues-exit-code=0
       - name: go test
         if: ${{ !cancelled() }}
         run: go test ./...
