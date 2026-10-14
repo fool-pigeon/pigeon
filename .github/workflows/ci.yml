@@ -62,7 +62,7 @@ jobs:
         include:
           - os: ubuntu-latest
             goos: linux
-          - os: macos-latest
+          - os: macos-26
             goos: darwin
           - os: windows-latest
             goos: windows
