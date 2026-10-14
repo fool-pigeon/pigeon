@@ -71,6 +71,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Extract package name
+        id: pkg
+        working-directory: cmd/pg-gui/build
+        run: |
+          BASE=$(yq '.info.productName' config.yml)
+          [ -z "$BASE" ] || [ "$BASE" = "null" ] && { echo "product name not found"; exit 1; }
+          echo "name=${BASE}-${{matrix.goos}}" >> "$GITHUB_OUTPUT"
+
       - name: Install Deps
         uses: ./.github/actions/setup-deps
         with:
@@ -83,10 +91,27 @@ jobs:
         working-directory: cmd/pg-gui
         run: task build
 
+      - name: Archive binary
+        working-directory: cmd/pg-gui/bin
+        shell: bash
+        run: |
+          tar -czf ../${{steps.pkg.outputs.name}}.tar.gz .
+          if [ "${{ matrix.goos }}" == "windows" ]; then
+            7z a ../${{steps.pkg.outputs.name}}.zip . > /dev/null
+            7z a ../${{steps.pkg.outputs.name}}.7z . > /dev/null
+          else
+            zip -r ../${{steps.pkg.outputs.name}}.zip . > /dev/null
+          fi
+          mv ../${{steps.pkg.outputs.name}}.* .
+
+      - name: Package
+        working-directory: cmd/pg-gui
+        run: task package
+
       - name: Upload
         uses: actions/upload-artifact@v7
         with:
-          name: pigeon-${{matrix.goos}}
+          name: ${{steps.pkg.outputs.name}}
           path: cmd/pg-gui/bin
 
   pre-release:
