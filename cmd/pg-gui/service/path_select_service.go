@@ -35,7 +35,7 @@ func (f *PathSelectService) ShowInFileManager(path string) error {
 			f.app.Logger.Error("Could not open file manager", "path", path, "error", err)
 
 			// Show error to user
-			return fmt.Errorf("Could not open file manager\npath:%s\nerr:%w", path, err)
+			return fmt.Errorf("could not open file manager\npath:%s\nerr:%w", path, err)
 		}
 	}
 	return nil

@@ -528,7 +528,7 @@ func (r *ReqData) convertRetry(req *Request) error {
 			req.SetRetryMaxWaitTime(mwt)
 		}
 	}
-	if isAllow := retry.IsAllowNonIdempotent; isAllow != false {
+	if isAllow := retry.IsAllowNonIdempotent; isAllow {
 		req.SetRetryAllowNonIdempotent(isAllow)
 	}
 	return nil

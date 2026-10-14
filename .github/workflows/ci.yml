@@ -79,6 +79,7 @@ jobs:
       - name: Extract package name
         id: pkg
         working-directory: cmd/pg-gui/build
+        shell: bash
         run: |
           BASE=$(yq '.info.productName' config.yml)
           [ -z "$BASE" ] || [ "$BASE" = "null" ] && { echo "product name not found"; exit 1; }

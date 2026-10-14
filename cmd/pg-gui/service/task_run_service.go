@@ -177,8 +177,8 @@ func (tr *TaskRunService) run(id string, params core.RunParams) error {
 		rRes := res.ReqRes
 		rMeta := rRes.ResultMeta
 		if rRes.Err != nil {
-			switch {
-			case rMeta.ReqProto == request.P_HTTP:
+			switch rMeta.ReqProto {
+			case request.P_HTTP:
 				evt.Emit(TrsResultHttp, tr.reqCtx.parseResHttp(request.ResultView[*httpx.Response]{
 					ResultMeta: res.ReqRes.ResultMeta,
 				}, meta))

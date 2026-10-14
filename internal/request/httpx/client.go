@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -31,8 +31,8 @@ const (
 )
 
 var (
-	ErrEmptyValue   = errors.New("the value is empty.")
-	ErrInvalidValue = errors.New("the value is invalid.")
+	ErrEmptyValue   = errors.New("the value is empty")
+	ErrInvalidValue = errors.New("the value is invalid")
 
 	hdrUserAgentKey       = http.CanonicalHeaderKey("User-Agent")
 	hdrAcceptKey          = http.CanonicalHeaderKey("Accept")
@@ -266,7 +266,7 @@ func (c *ClientData) convertRetry(client *Client) error {
 			client.SetRetryMaxWaitTime(mwt)
 		}
 	}
-	if isAllow := retry.IsAllowNonIdempotent; isAllow != false {
+	if isAllow := retry.IsAllowNonIdempotent; isAllow {
 		client.SetRetryAllowNonIdempotent(isAllow)
 	}
 	return nil
