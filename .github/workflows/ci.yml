@@ -86,6 +86,7 @@ jobs:
         run: |
           BASE=$(yq '.info.productName' config.yml)
           [ -z "$BASE" ] || [ "$BASE" = "null" ] && { echo "product name not found"; exit 1; }
+          echo "base=${BASE}" >> "$GITHUB_OUTPUT"
           echo "name=${BASE}-${{matrix.goos}}" >> "$GITHUB_OUTPUT"
 
       - name: Build
@@ -103,11 +104,21 @@ jobs:
           else
             zip -r ../${{steps.pkg.outputs.name}}.zip . > /dev/null
           fi
+          # remove binaries
+          rm -rf ./*
           mv ../${{steps.pkg.outputs.name}}.* .
 
       - name: Package
         working-directory: cmd/pg-gui
         run: task package
+
+      - name: Zip macOS .app on darwin
+        if: matrix.goos=='darwin'
+        working-directory: cmd/pg-gui/bin
+        shell: bash
+        run: |
+          app_pkg=${{steps.pkg.outputs.base}}.app
+          zip -r ${{steps.pkg.outputs.name}}.app.zip $app_pkg && rm -rf $app_pkg
 
       - name: Upload
         uses: actions/upload-artifact@v7
