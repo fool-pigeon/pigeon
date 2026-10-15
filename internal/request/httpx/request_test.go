@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -167,9 +167,9 @@ func TestPreReq(t *testing.T) {
 
 	t.Run("test faker generator", func(t *testing.T) {
 		req, _ := httpx.NewReqData("t").
-			SetPreReq(`req.SetBody(faker.Internet().Email())`).
+			SetPreReq(`req.SetBody(fake.Internet().Email())`).
 			InstancedRequest()
-		assert.Contains(t, req.Body, "@", "faker email should has '@'")
+		assert.Contains(t, req.Body, "@", "fake email should has '@'")
 	})
 }
 

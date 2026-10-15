@@ -130,8 +130,8 @@ func (r *ReqData) Run(ctxs ...context.Context) request.Result {
 		for name, code := range r.Tests {
 			tRes := request.TestRes{Name: name}
 			env := map[string]any{
-				"res":   res,
-				"faker": faker.New(),
+				"res":  res,
+				"fake": faker.New(),
 			}
 
 			program, err := expr.Compile(code, expr.Env(env), expr.AsBool())
@@ -371,8 +371,8 @@ func (r *ReqData) InstancedRequest() (*Request, error) {
 	if r.PreReq != "" {
 		env := map[string]any{
 			// req is a pointer which we can modify its data
-			"req":   req,
-			"faker": faker.New(),
+			"req":  req,
+			"fake": faker.New(),
 		}
 		code := r.PreReq
 		program, err := expr.Compile(code, expr.Env(env))
