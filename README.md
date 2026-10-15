@@ -14,7 +14,7 @@
 
 ### CLI
 ```bash
-go install github.com/fool-pigeon/pigeon/cmd/pg
+go install github.com/fool-pigeon/pigeon/cmd/pigeon
 ```
 ### GUI
 check in the release
