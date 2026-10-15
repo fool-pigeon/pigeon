@@ -19,7 +19,7 @@ import (
 
 // infoCmd represents the inspect command
 var infoCmd = &cobra.Command{
-	Use:     "info  <file_name>",
+	Use:     "info  [file]",
 	GroupID: GROUP_ID_REQUEST,
 	Short:   "Inspect the request config",
 	Args:    cobra.ExactArgs(1),

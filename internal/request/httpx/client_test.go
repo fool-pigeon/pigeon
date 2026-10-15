@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -17,7 +17,7 @@ import (
 func TestInstanceClient(t *testing.T) {
 	t.Run("new client data", func(t *testing.T) {
 		c, _ := httpx.NewClientData().InstancedClient()
-		assert.Equal(t, []string{"pg@" + project.Version}, c.Header()["User-Agent"])
+		assert.Equal(t, []string{"pigeon@" + project.Version}, c.Header()["User-Agent"])
 	})
 	t.Run("send request with client", func(t *testing.T) {
 		server := testutil.NewEchoServer(t)

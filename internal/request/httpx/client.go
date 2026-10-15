@@ -54,7 +54,7 @@ var (
 	jsonKey = "json"
 	xmlKey  = "xml"
 
-	hdrUserAgentValue = "pg@" + project.Version
+	hdrUserAgentValue = "pigeon@" + project.Version
 
 	Methods = []string{MethodGet, MethodPost, MethodPut, MethodDelete, MethodHead, MethodOptions, MethodConnect, MethodPatch, MethodTrace}
 	// regex pattern

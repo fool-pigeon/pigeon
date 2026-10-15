@@ -18,7 +18,7 @@ import (
 
 // newCmd represents the new command
 var newCmd = &cobra.Command{
-	Use:     "new",
+	Use:     "new [files]",
 	Aliases: []string{"n"},
 	GroupID: GROUP_ID_REQUEST,
 	Short:   "alias n, Create request into new .toml file",

@@ -50,7 +50,8 @@ func init() {
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
-	Use:     "run [file1.toml folder/ file2.toml]",
+	Use:     "run [paths]",
+	Example: "pigeon run file1.toml folder/ file2.toml",
 	Aliases: []string{"r"},
 	GroupID: GROUP_ID_REQUEST,
 	Short:   "alias r, Run collection or request",

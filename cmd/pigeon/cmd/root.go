@@ -15,7 +15,7 @@ var Version = "dev"
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     "pg",
+	Use:     "pigeon",
 	Short:   "A cli of API client for API testings created by Go",
 	Version: Version,
 	CompletionOptions: cobra.CompletionOptions{
