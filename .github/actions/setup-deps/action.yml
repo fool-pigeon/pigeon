@@ -34,7 +34,7 @@ runs:
         token: ${{ github.token }}
         cache: true
         cache-dependency-path: "go.sum"
-    # Install Linux's deps
+    # Install Linux's deps for wails3
     - name: Apt-get update on linux
       if: runner.os=='Linux'
       shell: bash
@@ -69,3 +69,18 @@ runs:
         cache: true
         package-json-file: cmd/pg-gui/frontend/package.json
         cache-dependency-path: cmd/pg-gui/frontend/pnpm-lock.yaml
+
+    - name: Cache yq on windows
+      uses: actions/cache@v6
+      id: go-yq-cache
+      with:
+        path: ~/go/bin/yq*
+        key: go-yq-${{runner.os}}
+    - name: Install yq on windows
+      if: runner.os=='Windows' && steps.go-yq-cache.outputs.cache-hit!='true'
+      shell: bash
+      run: go install github.com/mikefarah/yq/v4@latest
+
+    - name: Install NSIS on windows
+      if: runner.os=='Windows'
+      uses: nsis-dev/setup-nsis@v1.2.1

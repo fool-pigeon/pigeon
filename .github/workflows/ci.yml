@@ -71,14 +71,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install yq on windows
-        if: matrix.goos == 'windows'
-        uses: chrisdickinson/setup-yq@v1.0.0
-
-      - name: Install NSIS on windows
-        if: runner.os=='Windows'
-        uses: nsis-dev/setup-nsis@v1.2.1
-
       - name: Extract package name
         id: pkg
         working-directory: cmd/pg-gui/build
