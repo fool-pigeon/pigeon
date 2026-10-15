@@ -1,7 +1,59 @@
-[![Go Reference](https://pkg.go.dev/badge/example.com.svg)](https://pkg.go.dev/example.com)
+<p align="center">
+  <img width="200px" alt="pigeon-icon"
+    src="https://github.com/user-attachments/assets/a66ca72f-9ef0-4d07-a2a2-3f6e313c78a3" />
+</p>
+<h1 align="center">
+  pigeon
+</h1>
+<p align="center">
+    A simple API client – built with Wails3, Go, and Svelte5.
+</p>
+<br>
 
-Example Project Structure
+## Install
 
+### CLI
+```bash
+go install github.com/fool-pigeon/pigeon/cmd/pg
+```
+### GUI
+check in the release
+
+## Features
+piegon is a completely offline client that uses .toml files to configure project settings and individual requests; all current and future features are completely free of charge.
+
+### Performance
+- [x] Small software footprint, thanks to being built with [wails3](https://v3.wails.io/)
+- [x] Requests run concurrently by default
+
+### Supported request types
+- [x] REST
+- [ ] SSE
+- [ ] gRPC
+- [ ] WebSocket
+- [ ] GraphQL
+
+### Request Task Execution Features
+- [x] Limit on concurrent requests
+- [ ] Chained requests
+- [ ] Configure synchronous request order
+
+### Testing
+- [x] Script assertion testing with [`expr`](https://expr-lang.org/)
+- [ ] Data-driven testing
+
+### Organisation and Collaboration
+- [x] All file system paths use relative paths by default, facilitating migration and collaboration
+- [x] Switchable environment variables for project collections
+
+### Extensions and Customisation
+- [ ] Plugin system
+
+
+
+## Example Project Structure
+
+a project collection will be like
 ```
 .
 ├── .pg
@@ -17,64 +69,3 @@ Example Project Structure
 ├── r1.toml
 └── r2.toml
 ```
-
-## Install
-
-### CLI
-```bash
-go install github.com/fool-pigeon/pigeon/cmd/pg
-```
-### GUI
-check the release
-
-## TODO: Feature
-* User Interface
-  * [x] cli
-  * [x] gui
-    * theme
-      * [ ] a pretty default theme
-      * [x] theme for codemirror editors
-      * [x] dark mode and change it responsively
-    * [ ] global file search filter
-    * [ ] global key shortcuts bindings
-    * [x] request's send and test history
-  * [ ] vscode-extension
-* Protocols
-  * [x] HTTP
-  * [ ] SSE
-  * [ ] gRPC
-  * [ ] WS
-  * [ ] GQL
-  * [ ] ...
-* Request Editor
-  * [ ] option disable fields such as disable some headers
-* Env Management
-  * [ ] global environment(Specify the path. env)
-  * [x] collection environment
-  * [ ] optional to use os' environment
-  * [ ] Recursively search for `.env` in the current folder
-  * [ ] environment on command's flags
-* Test Feature
-  * [x] Script inject
-  * [ ] Script syntax highlighting 
-  * [ ] Script autocompletion
-  * [ ] Data Drive Test
-  * [x] Limit Concurrent
-  * [ ] Pre Request
-  * [ ] Chained requests
-  * [ ] Set up synchronous running sequence
-* Collection type conversion
-  * [ ] OpenAPI
-  * [ ] Postman
-  * [ ] Apifox
-  * [ ] Bruno
-* LLM Feature(do not intergration in main version,because it's probably a redundant function.)
-  * [ ] Optional LLM Integration to generate tests for only extra GUI version
-  * [ ] auto create collection or request
-  * [ ] auto run test
-
-
-## TODO: For Project
-* ci
-  * [ ] run test and assert
-  * [ ] auto build & release
