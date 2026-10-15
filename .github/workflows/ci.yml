@@ -71,6 +71,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Install Deps
+        uses: ./.github/actions/setup-deps
+        with:
+          go-version: ${{env.GO_VERSION}}
+          wails-version: ${{env.WAILS_VERSION}}
+          pnpm-version: ${{env.PNPM_VERSION}}
+          node-version: ${{env.NODE_VERSION}}
+
       - name: Extract package name
         id: pkg
         working-directory: cmd/pg-gui/build
@@ -79,14 +87,6 @@ jobs:
           BASE=$(yq '.info.productName' config.yml)
           [ -z "$BASE" ] || [ "$BASE" = "null" ] && { echo "product name not found"; exit 1; }
           echo "name=${BASE}-${{matrix.goos}}" >> "$GITHUB_OUTPUT"
-
-      - name: Install Deps
-        uses: ./.github/actions/setup-deps
-        with:
-          go-version: ${{env.GO_VERSION}}
-          wails-version: ${{env.WAILS_VERSION}}
-          pnpm-version: ${{env.PNPM_VERSION}}
-          node-version: ${{env.NODE_VERSION}}
 
       - name: Build
         working-directory: cmd/pg-gui
