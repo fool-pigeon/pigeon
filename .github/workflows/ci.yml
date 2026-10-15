@@ -76,6 +76,14 @@ jobs:
         shell: bash
         run: choco install yq -y --no-progress
 
+      - name: Install NSIS on windows
+        if: runner.os=='Windows'
+        run: |
+          choco install nsis -y --no-progress
+          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+          refreshenv
+          makensis /VERSION
+
       - name: Extract package name
         id: pkg
         working-directory: cmd/pg-gui/build
@@ -109,12 +117,6 @@ jobs:
             zip -r ../${{steps.pkg.outputs.name}}.zip . > /dev/null
           fi
           mv ../${{steps.pkg.outputs.name}}.* .
-
-      - name: Install NSIS on windows
-        if: runner.os=='Windows'
-        run: |
-          choco install nsis -y --no-progress
-          makensis /VERSION
 
       - name: Package
         working-directory: cmd/pg-gui
