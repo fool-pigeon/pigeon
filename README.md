@@ -20,34 +20,36 @@ go install github.com/fool-pigeon/pigeon/cmd/pg
 check in the release
 
 ## Features
-piegon is a completely offline client that uses .toml files to configure project settings and individual requests; all current and future features are completely free of charge.
+`piegon` is a fully offline client that uses .toml files to configure project settings and individual requests.
+
+You do not need to purchase the premium version of piegon to access any specific features, as piegon has no pricing tiers; all its current and future features are completely free.
 
 ### Performance
-- [x] Small software footprint, thanks to being built with [wails3](https://v3.wails.io/)
-- [x] Requests run concurrently by default
+- Small software footprint, thanks to being built with [wails3](https://v3.wails.io/)
+- Requests run concurrently by default
 
 ### Supported request types
-- [x] REST
-- [ ] SSE
-- [ ] gRPC
-- [ ] WebSocket
-- [ ] GraphQL
+-  REST
+<!-- -  SSE -->
+<!-- -  gRPC -->
+<!-- -  WebSocket -->
+<!-- -  GraphQL -->
 
 ### Request Task Execution Features
-- [x] Limit on concurrent requests
-- [ ] Chained requests
-- [ ] Configure synchronous request order
+- Limit on concurrent requests
+<!-- - Chained requests -->
+<!-- - Configure synchronous request order -->
 
 ### Testing
-- [x] Script assertion testing with [`expr`](https://expr-lang.org/)
-- [ ] Data-driven testing
+- Script assertion testing with [`expr`](https://expr-lang.org/)
+<!-- - Data-driven testing -->
 
 ### Organisation and Collaboration
-- [x] All file system paths use relative paths by default, facilitating migration and collaboration
-- [x] Switchable environment variables for project collections
+- All file system paths use relative paths by default, facilitating migration and collaboration
+- Switchable environment variables for project collections
 
 ### Extensions and Customisation
-- [ ] Plugin system
+<!-- - Plugin system -->
 
 
 
