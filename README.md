@@ -1,6 +1,6 @@
 <p align="center">
   <img width="200px" alt="pigeon-icon"
-    src="https://github.com/user-attachments/assets/a66ca72f-9ef0-4d07-a2a2-3f6e313c78a3" />
+    src="./assets/pigeon-icon.webp" />
 </p>
 <h1 align="center">
   pigeon
