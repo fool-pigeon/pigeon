@@ -4,6 +4,7 @@
 * [x] gui
 * theme
 * [ ] a pretty default theme
+* [ ] config to switch roundedbox mode
 * [x] theme for codemirror editors
 * [x] dark mode and change it responsively
 * [ ] global file search filter
