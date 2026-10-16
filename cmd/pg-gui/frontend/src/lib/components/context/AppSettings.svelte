@@ -15,6 +15,10 @@
 <script lang="ts">
 	onMount(() => {
 		SettingsService.GetSettings().then((v) => {
+			// set daisyui default theme
+			if (v.theme.lightTheme === '') v.theme.lightTheme = 'light';
+			if (v.theme.darkTheme === '') v.theme.darkTheme = 'dark';
+
 			Object.assign(settings, v);
 		});
 		const unSettingsChanged = Events.On(SettingsServiceEvent.SettingChanged, (ev) => {

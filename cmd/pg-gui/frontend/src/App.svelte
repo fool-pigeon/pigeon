@@ -16,15 +16,34 @@
 		'/': Main,
 		'/settings': SettingsPage,
 	};
+	function resolveThemeMode(mode: ThemeMode): ThemeMode {
+		if (mode !== ThemeMode.ThemeAuto) return mode;
+		const mql = window.matchMedia('(prefers-color-scheme: dark)');
+		return mql.matches ? ThemeMode.ThemeDark : ThemeMode.ThemeLight;
+	}
 	$effect(() => {
 		if (settings.theme) {
 			const theme = settings.theme;
-			switch (theme.mode) {
-				case ThemeMode.ThemeAuto:
-					document.documentElement.removeAttribute('data-theme');
-					break;
-				default:
-					document.documentElement.dataset.theme = theme.mode;
+			const mode = resolveThemeMode(theme.mode);
+			document.documentElement.dataset.theme =
+				mode === ThemeMode.ThemeLight ? theme.lightTheme : theme.darkTheme;
+
+			const r = document.documentElement.style;
+			if (theme.forceEnableRadius) {
+				r.setProperty('--radius-box', `${theme.radiusBoxes}rem`);
+				r.setProperty('--radius-field', `${theme.radiusFields}rem`);
+				r.setProperty('--radius-selector', `${theme.radiusSelectors}rem`);
+			} else {
+				r.removeProperty('--radius-box');
+				r.removeProperty('--radius-field');
+				r.removeProperty('--radius-selector');
+			}
+
+			if (theme.forceEnableEffect) {
+				if (theme.enableDepthEffect) r.setProperty('--depth', '1');
+				else r.setProperty('--depth', '0');
+			} else {
+				r.removeProperty('--depth');
 			}
 		}
 	});

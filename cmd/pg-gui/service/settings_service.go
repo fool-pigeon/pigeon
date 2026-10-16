@@ -32,7 +32,17 @@ const (
 )
 
 type ThemeSettings struct {
-	Mode ThemeMode `json:"mode" toml:"mode"`
+	Mode       ThemeMode `json:"mode" toml:"mode"`
+	LightTheme string    `json:"lightTheme" toml:"light_theme"`
+	DarkTheme  string    `json:"darkTheme" toml:"dark_theme"`
+
+	ForceEnableRadius bool  `json:"forceEnableRadius" toml:"force_enable_radius"`
+	RadiusBoxes       uint8 `json:"radiusBoxes" toml:"radius_boxes"`
+	RadiusFields      uint8 `json:"radiusFields" toml:"radius_fields"`
+	RadiusSelectors   uint8 `json:"radiusSelectors" toml:"radius_selectors"`
+
+	ForceEnableEffect bool `json:"forceEnableEffect" toml:"force_enable_effect"`
+	EnableDepthEffect bool `json:"enableDepthEffect" toml:"enable_depth_effect"`
 }
 type EditorSettings struct {
 	PreventWrapLine bool `json:"preventWrapLine" toml:"prevent_wrap_line"`
