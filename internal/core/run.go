@@ -33,7 +33,7 @@ func isTomlExt(path string) bool {
 	return filepath.Ext(path) == ".toml"
 }
 
-func loadReq(ctx context.Context, path string, env *env.Env, config *config.Config) (request.Request, error) {
+func loadReq(ctx context.Context, path string, env *env.Env, config *config.Config) (request.RequestRunner, error) {
 	// Read Flie
 	b, err := fsx.ReadFile(path)
 	if err != nil {

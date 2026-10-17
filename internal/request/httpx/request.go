@@ -93,7 +93,7 @@ type (
 	}
 )
 
-// Run implements [request.Request].
+// Run implements [request.RequestRunner].
 func (r *ReqData) Run(ctxs ...context.Context) request.Result {
 	var ctx context.Context
 	if len(ctxs) > 0 {
@@ -158,7 +158,7 @@ func (r *ReqData) Run(ctxs ...context.Context) request.Result {
 	return result
 }
 
-// RunWithContext implements [request.Request].
+// RunWithContext implements [request.RequestRunner].
 func (r *ReqData) RunWithContext(ctx context.Context) request.Result {
 	res := r.Run(ctx)
 	if err := ctx.Err(); err != nil {

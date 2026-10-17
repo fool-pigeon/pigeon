@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type Request interface {
+type RequestRunner interface {
 	Run(...context.Context) Result
 	RunWithContext(ctx context.Context) Result
 	ReqName() string
@@ -86,7 +86,7 @@ func (r *ResultMeta) AppendTestRes(tRes TestRes) {
 	r.Tests = append(r.Tests, tRes)
 }
 
-// As the View Result of [Request.Run]
+// As the View Result of [RequestRunner.Run]
 type Result struct {
 	ResultMeta
 	// the raw content of response,e.g. [httpx.Response]
@@ -121,12 +121,12 @@ func View[T any](r Result) ResultView[T] {
 	return ResultView[T]{ResultMeta: r.ResultMeta, Raw: v}
 }
 
-// ReqName implements [Request].
+// ReqName implements [RequestRunner].
 func (r *ReqMeta) ReqName() string {
 	return r.Name
 }
 
-// ReqProtocol implements [Request].
+// ReqProtocol implements [RequestRunner].
 func (r *ReqMeta) ReqProtocol() string {
 	return r.Protocol
 }
