@@ -3,7 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-package request
+package protocol
 
 import (
 	"context"
@@ -13,24 +13,24 @@ type Runner interface {
 	Run(...context.Context) Result
 	RunWithContext(ctx context.Context) Result
 	ReqName() string
-	ReqProtocol() Protocol
+	ReqProtocol() ProtocolKind
 }
 
-type Protocol string
+type ProtocolKind = string
 
 const (
 	// kinds of protocol
-	ProtocolREST Protocol = "rest"
-	ProtocolGRPC Protocol = "grpc"
-	ProtocolWS   Protocol = "ws"
-	ProtocolGQL  Protocol = "gql"
+	ProtocolREST ProtocolKind = "rest"
+	ProtocolGRPC ProtocolKind = "grpc"
+	ProtocolWS   ProtocolKind = "ws"
+	ProtocolGQL  ProtocolKind = "gql"
 )
 
-var Protocols = []Protocol{ProtocolREST, ProtocolGRPC, ProtocolWS, ProtocolGQL}
+var Protocols = []ProtocolKind{ProtocolREST, ProtocolGRPC, ProtocolWS, ProtocolGQL}
 
 type ReqMeta struct {
-	Name     string   `toml:"name" json:"name"`
-	Protocol Protocol `toml:"protocol" comment:"'http'" json:"protocol"`
+	Name     string       `toml:"name" json:"name"`
+	Protocol ProtocolKind `toml:"protocol" comment:"'http'" json:"protocol"`
 }
 
 // ReqName implements [Runner].
@@ -39,7 +39,7 @@ func (r *ReqMeta) ReqName() string {
 }
 
 // ReqProtocol implements [Runner].
-func (r *ReqMeta) ReqProtocol() Protocol {
+func (r *ReqMeta) ReqProtocol() ProtocolKind {
 	return r.Protocol
 }
 

@@ -3,7 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-package request
+package protocol
 
 import (
 	"errors"
@@ -34,17 +34,17 @@ var (
 	ErrEmptyValue   = errors.New("the value is empty")
 	ErrInvalidValue = errors.New("the value is invalid")
 
-	hdrUserAgentKey       = http.CanonicalHeaderKey("User-Agent")
-	hdrAcceptKey          = http.CanonicalHeaderKey("Accept")
-	hdrAcceptEncodingKey  = http.CanonicalHeaderKey("Accept-Encoding")
-	hdrContentTypeKey     = http.CanonicalHeaderKey("Content-Type")
-	hdrContentLengthKey   = http.CanonicalHeaderKey("Content-Length")
-	hdrContentEncodingKey = http.CanonicalHeaderKey("Content-Encoding")
-	hdrContentDisposition = http.CanonicalHeaderKey("Content-Disposition")
-	hdrAuthorizationKey   = http.CanonicalHeaderKey("Authorization")
-	hdrWwwAuthenticateKey = http.CanonicalHeaderKey("WWW-Authenticate")
-	hdrRetryAfterKey      = http.CanonicalHeaderKey("Retry-After")
-	hdrCookieKey          = http.CanonicalHeaderKey("Cookie")
+	HdrUserAgentKey       = http.CanonicalHeaderKey("User-Agent")
+	HdrAcceptKey          = http.CanonicalHeaderKey("Accept")
+	HdrAcceptEncodingKey  = http.CanonicalHeaderKey("Accept-Encoding")
+	HdrContentTypeKey     = http.CanonicalHeaderKey("Content-Type")
+	HdrContentLengthKey   = http.CanonicalHeaderKey("Content-Length")
+	HdrContentEncodingKey = http.CanonicalHeaderKey("Content-Encoding")
+	HdrContentDisposition = http.CanonicalHeaderKey("Content-Disposition")
+	HdrAuthorizationKey   = http.CanonicalHeaderKey("Authorization")
+	HdrWwwAuthenticateKey = http.CanonicalHeaderKey("WWW-Authenticate")
+	HdrRetryAfterKey      = http.CanonicalHeaderKey("Retry-After")
+	HdrCookieKey          = http.CanonicalHeaderKey("Cookie")
 
 	plainTextContentType = "text/plain; charset=utf-8"
 	jsonContentType      = "application/json"
@@ -179,7 +179,7 @@ func (c *Client) InstancedClient() (*ClientInstance, error) {
 	// allow the payload for GET and DELETE
 	client.SetMethodGetAllowPayload(true).SetMethodDeleteAllowPayload(true)
 
-	client.SetHeader(hdrUserAgentKey, hdrUserAgentValue)
+	client.SetHeader(HdrUserAgentKey, hdrUserAgentValue)
 
 	if baseURL := c.BaseURL; baseURL != "" {
 		client.SetBaseURL(baseURL)

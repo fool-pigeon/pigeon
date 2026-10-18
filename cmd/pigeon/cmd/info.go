@@ -11,8 +11,8 @@ import (
 
 	"github.com/fool-pigeon/pigeon/cmd/pigeon/cmd/formatter"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	request "github.com/fool-pigeon/pigeon/internal/protocol"
-	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
+	"github.com/fool-pigeon/pigeon/internal/request"
+	"github.com/fool-pigeon/pigeon/internal/request/httpx"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 )

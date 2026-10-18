@@ -17,6 +17,7 @@ import (
 
 	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/internal/protocol"
 	request "github.com/fool-pigeon/pigeon/internal/protocol"
 	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/pelletier/go-toml/v2"
@@ -360,23 +361,23 @@ func getFileMode(b []byte) NodeMode {
 func parseModeFromHttpReq(req *httpx.ReqData) NodeMode {
 	res := HttpReq
 	switch req.Method {
-	case httpx.MethodGet:
+	case protocol.MethodGet:
 		res |= HttpGet
-	case httpx.MethodPost:
+	case protocol.MethodPost:
 		res |= HttpPost
-	case httpx.MethodPut:
+	case protocol.MethodPut:
 		res |= HttpPut
-	case httpx.MethodDelete:
+	case protocol.MethodDelete:
 		res |= HttpDelete
-	case httpx.MethodPatch:
+	case protocol.MethodPatch:
 		res |= HttpPatch
-	case httpx.MethodHead:
+	case protocol.MethodHead:
 		res |= HttpHead
-	case httpx.MethodOptions:
+	case protocol.MethodOptions:
 		res |= HttpOptions
-	case httpx.MethodTrace:
+	case protocol.MethodTrace:
 		res |= HttpTrace
-	case httpx.MethodConnect:
+	case protocol.MethodConnect:
 		res |= HttpConnect
 	}
 	return res
@@ -760,23 +761,23 @@ func createFile(path string, mode NodeMode) error {
 		req := httpx.NewReqData(reqName)
 		switch {
 		case m.Has(HttpGet):
-			req.SetMethod(httpx.MethodGet)
+			req.SetMethod(protocol.MethodGet)
 		case m.Has(HttpPost):
-			req.SetMethod(httpx.MethodPost)
+			req.SetMethod(protocol.MethodPost)
 		case m.Has(HttpPut):
-			req.SetMethod(httpx.MethodPut)
+			req.SetMethod(protocol.MethodPut)
 		case m.Has(HttpDelete):
-			req.SetMethod(httpx.MethodDelete)
+			req.SetMethod(protocol.MethodDelete)
 		case m.Has(HttpHead):
-			req.SetMethod(httpx.MethodHead)
+			req.SetMethod(protocol.MethodHead)
 		case m.Has(HttpPatch):
-			req.SetMethod(httpx.MethodPatch)
+			req.SetMethod(protocol.MethodPatch)
 		case m.Has(HttpOptions):
-			req.SetMethod(httpx.MethodOptions)
+			req.SetMethod(protocol.MethodOptions)
 		case m.Has(HttpConnect):
-			req.SetMethod(httpx.MethodConnect)
+			req.SetMethod(protocol.MethodConnect)
 		case m.Has(HttpTrace):
-			req.SetMethod(httpx.MethodTrace)
+			req.SetMethod(protocol.MethodTrace)
 		}
 		content, _ = toml.Marshal(req)
 	case m.Has(ConfigFile):
