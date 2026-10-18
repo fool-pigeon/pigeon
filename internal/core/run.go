@@ -17,8 +17,8 @@ import (
 	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/request"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	request "github.com/fool-pigeon/pigeon/internal/protocol"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -33,7 +33,7 @@ func isTomlExt(path string) bool {
 	return filepath.Ext(path) == ".toml"
 }
 
-func loadReq(ctx context.Context, path string, env *env.Env, config *config.Config) (request.RequestRunner, error) {
+func loadReq(ctx context.Context, path string, env *env.Env, config *config.Config) (request.Runner, error) {
 	// Read Flie
 	b, err := fsx.ReadFile(path)
 	if err != nil {
@@ -51,7 +51,7 @@ func loadReq(ctx context.Context, path string, env *env.Env, config *config.Conf
 	switch meta.Protocol {
 	default:
 		return nil, fmt.Errorf("the protocol %q not implement yet.", meta.Protocol)
-	case request.P_HTTP:
+	case request.ProtocolREST:
 		client, err := config.HttpClient()
 		if err != nil {
 			return nil, err

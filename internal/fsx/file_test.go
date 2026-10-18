@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/knadh/koanf/parsers/dotenv"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"

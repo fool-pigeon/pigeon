@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/request"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	request "github.com/fool-pigeon/pigeon/internal/protocol"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/fool-pigeon/pigeon/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,7 +32,6 @@ func TestRun(t *testing.T) {
 		result := newReqData().SetMethod(httpx.MethodPost).SetBodyRaw("abc").Run()
 		raw := result.Raw.(*httpx.Response)
 		assert.Equal(t, true, result.Success)
-		assert.Equal(t, "r", result.ReqName)
 		assert.Equal(t, "200 OK", result.Status)
 		assert.Nil(t, result.Tests)
 		assert.Equal(t, "abc", testutil.ParseEchoResp(raw.Bytes()).Body)
@@ -42,7 +41,6 @@ func TestRun(t *testing.T) {
 	t.Run("send bad request", func(t *testing.T) {
 		result := newReqData().SetURL("http://127.0.0.1:1145141919").Run()
 		assert.Equal(t, false, result.Success)
-		assert.Equal(t, "r", result.ReqName)
 		assert.Error(t, result.Err)
 	})
 	t.Run("send GET request with payload", func(t *testing.T) {

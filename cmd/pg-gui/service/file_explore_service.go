@@ -17,8 +17,8 @@ import (
 
 	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/request"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	request "github.com/fool-pigeon/pigeon/internal/protocol"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -346,7 +346,7 @@ func getFileMode(b []byte) NodeMode {
 		// add Request flag
 		res |= Request
 		switch reqMeta.ReqProtocol() {
-		case request.P_HTTP:
+		case request.ProtocolREST:
 			// add HTTP flag
 			var httpReq httpx.ReqData
 			toml.Unmarshal(b, &httpReq)

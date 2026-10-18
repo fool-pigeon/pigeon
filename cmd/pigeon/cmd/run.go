@@ -19,7 +19,7 @@ import (
 	"github.com/fool-pigeon/pigeon/internal/core"
 	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )

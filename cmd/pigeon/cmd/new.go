@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/fool-pigeon/pigeon/internal/request"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
 	"github.com/spf13/cobra"
 )
 
@@ -39,8 +39,8 @@ func createRequest(cmd *cobra.Command, args []string) error {
 	switch p, _ := cmd.Flags().GetString("protocol"); p {
 	default:
 		return fmt.Errorf("not impl %q protocol yet.", protocol)
-	case request.P_HTTP, "":
-		protocol = request.P_HTTP
+	case request.ProtocolREST, "":
+		protocol = request.ProtocolREST
 	}
 
 	errs := make([]error, 0, len(args))
@@ -60,7 +60,7 @@ func createRequest(cmd *cobra.Command, args []string) error {
 
 		// skip if error
 		switch protocol {
-		case request.P_HTTP:
+		case request.ProtocolREST:
 			if err := fsx.WriteToml(fName, httpx.NewReqData(rName).SetMethod(httpx.MethodGet)); err != nil {
 				errs = append(errs, fmt.Errorf("%w", err))
 				continue

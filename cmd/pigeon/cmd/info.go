@@ -11,8 +11,8 @@ import (
 
 	"github.com/fool-pigeon/pigeon/cmd/pigeon/cmd/formatter"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/request"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	request "github.com/fool-pigeon/pigeon/internal/protocol"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 )
@@ -45,7 +45,7 @@ var infoCmd = &cobra.Command{
 		// TODO cmd/cli: pg info, more request type
 		default:
 			return fmt.Errorf("the protocol %q not implement yet.", meta.Protocol)
-		case request.P_HTTP:
+		case request.ProtocolREST:
 			// TODO: finish http request info
 			var r httpx.ReqData
 			if err := toml.Unmarshal(b, &r); err != nil {

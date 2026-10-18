@@ -16,8 +16,8 @@ import (
 	"github.com/fool-pigeon/pigeon/internal/core"
 	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/request"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	request "github.com/fool-pigeon/pigeon/internal/protocol"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -178,7 +178,7 @@ func (tr *TaskRunService) run(id string, params core.RunParams) error {
 		rMeta := rRes.ResultMeta
 		if rRes.Err != nil {
 			switch rMeta.ReqProto {
-			case request.P_HTTP:
+			case request.ProtocolREST:
 				evt.Emit(TrsResultHttp, tr.reqCtx.parseResHttp(request.ResultView[*httpx.Response]{
 					ResultMeta: res.ReqRes.ResultMeta,
 				}, meta))

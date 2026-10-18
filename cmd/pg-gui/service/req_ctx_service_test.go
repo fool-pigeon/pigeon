@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/fool-pigeon/pigeon/cmd/pg-gui/service"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/fool-pigeon/pigeon/internal/testutil"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/stretchr/testify/assert"

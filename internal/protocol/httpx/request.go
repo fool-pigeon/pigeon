@@ -21,7 +21,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/request"
+	request "github.com/fool-pigeon/pigeon/internal/protocol"
 	"github.com/jaswdr/faker/v2"
 	"resty.dev/v3"
 )
@@ -93,7 +93,7 @@ type (
 	}
 )
 
-// Run implements [request.RequestRunner].
+// Run implements [request.Runner].
 func (r *ReqData) Run(ctxs ...context.Context) request.Result {
 	var ctx context.Context
 	if len(ctxs) > 0 {
@@ -102,12 +102,11 @@ func (r *ReqData) Run(ctxs ...context.Context) request.Result {
 		ctx = context.Background()
 	}
 
-	info := fmt.Sprintf("%s %s", r.Method, r.URL)
 	if r.req == nil {
 		req, err := r.InstancedRequest()
 		if err != nil {
-			errRes := request.ErrResult(r.Name, err)
-			errRes.SetReqInfo(info)
+			errRes := request.Result{}
+			errRes.SetErr(err)
 			return errRes
 		}
 		r.req = req
@@ -115,13 +114,13 @@ func (r *ReqData) Run(ctxs ...context.Context) request.Result {
 	// send request
 	res, err := r.req.SetContext(ctx).Send()
 	if err != nil {
-		errRes := request.ErrResult(r.Name, err)
-		errRes.SetReqInfo(info).SetReqProto(request.P_HTTP)
+		errRes := request.Result{}
+		errRes.SetErr(err)
 		return errRes
 	}
 	// set raw response
 	result := request.NewResult()
-	result.SetRaw(res).SetReqName(r.ReqName()).SetReqProto(request.P_HTTP).SetReqInfo(info).SetProto(res.Proto()).SetStatus(res.Status())
+	result.SetRaw(res).SetStatus(res.Status())
 	result.SetSuccess(res.StatusCode() >= 200 && res.StatusCode() < 300)
 	result.SetDuration(res.Duration())
 
@@ -158,12 +157,12 @@ func (r *ReqData) Run(ctxs ...context.Context) request.Result {
 	return result
 }
 
-// RunWithContext implements [request.RequestRunner].
+// RunWithContext implements [request.Runner].
 func (r *ReqData) RunWithContext(ctx context.Context) request.Result {
 	res := r.Run(ctx)
 	if err := ctx.Err(); err != nil {
-		errRes := request.ErrResult(r.ReqName(), err)
-		errRes.SetReqInfo(fmt.Sprintf("%s %s", r.Method, r.URL)).SetReqProto(request.P_HTTP)
+		errRes := request.Result{}
+		errRes.SetErr(err)
 		return errRes
 	}
 	return res
@@ -172,7 +171,7 @@ func (r *ReqData) RunWithContext(ctx context.Context) request.Result {
 func NewReqData(requestName string) *ReqData {
 	return &ReqData{ReqMeta: request.ReqMeta{
 		Name:     requestName,
-		Protocol: request.P_HTTP,
+		Protocol: request.ProtocolREST,
 	}}
 }
 

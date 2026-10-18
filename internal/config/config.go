@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 )
 
 type clientWrap[T any] struct {

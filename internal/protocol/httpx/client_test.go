@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/fool-pigeon/pigeon/internal/project"
-	"github.com/fool-pigeon/pigeon/internal/request/httpx"
+	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/fool-pigeon/pigeon/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
