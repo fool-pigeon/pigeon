@@ -147,14 +147,14 @@ func (tr *TaskRunService) Run(task Task) error {
 		e = env.New()
 	}
 
-	runParams := core.RunParams{
+	runParams := core.RunInput{
 		ReqCtx: core.ReqCtx{Conf: cfg, Env: e},
 		Start:  p.Start,
 		Tasks:  p.Tasks,
 	}
 	return tr.run(task.Id, runParams)
 }
-func (tr *TaskRunService) run(id string, params core.RunParams) error {
+func (tr *TaskRunService) run(id string, params core.RunInput) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	if tr.app != nil {

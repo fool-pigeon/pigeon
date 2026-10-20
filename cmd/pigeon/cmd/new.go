@@ -35,11 +35,13 @@ func createRequest(cmd *cobra.Command, args []string) error {
 	var protocolInput protocol.ProtocolKind
 
 	// TODO cmd/cli: pg new, more request type
-	switch p, _ := cmd.Flags().GetString("protocol"); p {
+	switch p, _ := cmd.Flags().GetString("protocol"); protocol.ProtocolKind(p) {
 	default:
 		return fmt.Errorf("not impl %q protocol yet.", p)
 	case protocol.ProtocolREST, "":
 		protocolInput = protocol.ProtocolREST
+	case protocol.ProtocolGRPC, protocol.ProtocolWS, protocol.ProtocolGQL:
+		protocolInput = protocol.ProtocolKind(p)
 	}
 
 	errs := make([]error, 0, len(args))
@@ -57,13 +59,18 @@ func createRequest(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
+		req := protocol.Request{}
+		req.Name = rName
+		req.Protocol = protocolInput
 		// skip if error
-		switch protocolInput {
+		switch req.Protocol {
 		case protocol.ProtocolREST:
-			if err := fsx.WriteToml(fName, httpx.NewReqData(rName).SetMethod(protocol.MethodGet)); err != nil {
-				errs = append(errs, fmt.Errorf("%w", err))
-				continue
-			}
+			req.Method = protocol.MethodGet
+		}
+
+		if err := fsx.WriteToml(fName, req); err != nil {
+			errs = append(errs, fmt.Errorf("%s:%w", fName, err))
+			continue
 		}
 
 		fmt.Printf("Created: %v\n", fName)

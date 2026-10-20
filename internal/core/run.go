@@ -140,8 +140,17 @@ func sendReqWithStop(ctx context.Context, resHandle RunResultHandler, input reqS
 	}
 }
 
+type RunResult struct {
+	// Path relative to the root collection
+	Path    string
+	AbsPath string
+	ReqRes  *protocol.Result
+	Err     error
+}
+type RunResultHandler func(res RunResult)
+
 // paths params for run needed
-type RunParams struct {
+type RunInput struct {
 	// root dir's abs path
 	Start string
 	// file for directly and directory for walk
@@ -152,16 +161,8 @@ type RunParams struct {
 	ResultHandler RunResultHandler
 	TraceHandler  protocol.TraceHandler
 }
-type RunResultHandler func(res RunResult)
-type RunResult struct {
-	// Path relative to the root collection
-	Path    string
-	AbsPath string
-	ReqRes  *protocol.Result
-	Err     error
-}
 
-func Run(ctx context.Context, rp RunParams) error {
+func Run(ctx context.Context, rp RunInput) error {
 
 	maxConcurrency := rp.RootConf.MaxRunningConcurrency
 	if maxConcurrency < 0 {

@@ -26,6 +26,7 @@ import (
 type (
 	Client        = resty.Client
 	ActualRequest = resty.Request
+	Response      = resty.Response
 )
 type RESTSender struct {
 	client *Client

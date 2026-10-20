@@ -16,8 +16,9 @@ import (
 	"time"
 
 	"github.com/fool-pigeon/pigeon/internal/core"
-	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/internal/protocol"
+	"github.com/fool-pigeon/pigeon/internal/transport/pgrest"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
@@ -42,8 +43,8 @@ func init() {
 
 	runCmd.Flags().StringP("run", "r", "", "set run file name in collectinon,e.g. dev means .pg/run/dev.toml")
 	runCmd.Flags().String("run-file", "", "set full run file path,like .pg/run/dev.toml")
-	runCmd.Flags().StringP("env", "e", "", "set env file name in collection,such as dev mean that .pg/env/dev")
-	runCmd.Flags().String("env-file", "", "set full env file path,like .pg/env/dev")
+	runCmd.Flags().StringP("conf", "c", fsx.DefaultRootConfFile, "set root conf file name in collection,such as dev mean that .pg/conf/dev")
+	runCmd.Flags().String("conf-file", "", "set full conf file path,like .pg/conf/dev")
 }
 
 // runCmd represents the run command
@@ -63,7 +64,6 @@ var runCmd = &cobra.Command{
 		}
 		tagDir := filepath.Join(root, fsx.RootTag)
 
-		var runPaths core.RunPaths
 		var runFilePath string
 		if name, _ := cmd.Flags().GetString("run"); name != "" {
 			name = strings.TrimSuffix(name, ".toml") + ".toml"
@@ -72,13 +72,18 @@ var runCmd = &cobra.Command{
 		if p, _ := cmd.Flags().GetString("run-file"); p != "" {
 			runFilePath = p
 		}
-		fsx.ReadToml(runFilePath, &runPaths)
-		// root
+
+		var runPaths core.RunPaths
+		if err := fsx.ReadToml(runFilePath, &runPaths); err != nil {
+			return err
+		}
+		// start path
 		if runPaths.Start == "" {
 			if runPaths.Start, err = filepath.Abs("."); err != nil {
 				return err
 			}
 		}
+		// check path valid
 		runPaths = runPaths.ToAbs(root)
 		if err := runPaths.Check(); err != nil {
 			return err
@@ -92,54 +97,50 @@ var runCmd = &cobra.Command{
 				runPaths.Tasks = append(runPaths.Tasks, filepath.Join(runPaths.Start, path))
 			}
 		} else if len(runPaths.Tasks) <= 0 {
-			runPaths.Tasks = append(runPaths.Tasks, filepath.Join(runPaths.Start))
+			runPaths.Tasks = append(runPaths.Tasks, runPaths.Start)
 		}
 
-		// TODO optional multi config select
-		// config
-		var cfg *config.Config
-		if cfg, err = config.LoadFromFile(runPaths.RootConf); err != nil {
-			cfg, err = config.LoadFromFile(filepath.Join(tagDir, fsx.ConfigDefaultName))
-			if err != nil {
-				// if err,then use the new config
-				pterm.Warning.Println("not found config.toml,use empty config")
-				cfg = config.New()
-			}
+		// root conf path
+		var rootConfFilePath string
+		if name, _ := cmd.Flags().GetString("conf"); name != "" {
+			name = strings.TrimSuffix(name, ".toml") + ".toml"
+			rootConfFilePath = filepath.Join(tagDir, fsx.RootConf, name)
 		}
-		// env
-		envFilePath := runPaths.Env
-		if name, _ := cmd.Flags().GetString("env"); name != "" {
-			envFilePath = filepath.Join(tagDir, fsx.EnvDirName, name)
+		if p, _ := cmd.Flags().GetString("conf-file"); p != "" {
+			rootConfFilePath = p
 		}
-		if p, _ := cmd.Flags().GetString("env-file"); p != "" {
-			envFilePath = p
-		}
-		var e *env.Env
-		if e, err = env.LoadFromFile(envFilePath); err != nil {
-			// if err,then use the new empty env
-			if envFilePath != "" {
-				pterm.Warning.Printfln("not found env file,use empty env")
-			}
-			e = env.New()
+
+		var rootConf core.RootConf
+		if err := fsx.ReadToml(rootConfFilePath, &rootConf); err != nil {
+			pterm.Warning.Printfln("not found %s,use empty conf", rootConfFilePath)
+			rootConf = core.RootConf{}
+			return err
 		}
 
 		// Ctrl+C to cancel
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
-		rp := core.RunParams{
-			ReqCtx: core.ReqCtx{Conf: cfg, Env: e},
-			Start:  runPaths.Start,
-			Tasks:  runPaths.Tasks,
-		}
 
 		taskTotal, taskPassed := 0, 0
-		core.Run(ctx, rp, func(res core.RunResult) {
-			taskResPrint(res)
-			taskTotal++
-			if res.Err == nil && res.ReqRes.Err == nil && res.ReqRes.Success {
-				taskPassed++
-			}
-		})
+		rp := core.RunInput{
+			RootConf: rootConf,
+			Start:    runPaths.Start,
+			Tasks:    runPaths.Tasks,
+			TraceHandler: func(t protocol.Trace) {
+				pterm.Info.Println(t)
+			},
+			ResultHandler: func(res core.RunResult) {
+				taskResPrint(res)
+				taskTotal++
+				if res.Err == nil && res.ReqRes.Err == nil && res.ReqRes.Success {
+					taskPassed++
+				}
+			},
+		}
+
+		if err := core.Run(ctx, rp); err != nil {
+			return err
+		}
 
 		// stats the results of run
 		status := pterm.LightGreen("✓ PASS")
@@ -182,8 +183,9 @@ func taskResPrint(res core.RunResult) {
 		return
 	}
 	rRes := res.ReqRes
+	req := rRes.Request
 	if rRes.Err != nil {
-		pterm.Error.Println(res.Path, rRes.ReqName, rRes.Err)
+		pterm.Error.Println(res.Path, req.Name, rRes.Err)
 		return
 	}
 
@@ -191,9 +193,9 @@ func taskResPrint(res core.RunResult) {
 	var sb strings.Builder
 	sb.WriteString(res.Path)
 	sb.WriteRune(' ')
-	sb.WriteString(rRes.Proto)
+	sb.WriteString(string(req.Protocol))
 	sb.WriteRune(' ')
-	sb.WriteString(rRes.ReqName)
+	sb.WriteString(req.Name)
 	sb.WriteRune(' ')
 	sb.WriteString(rRes.Status)
 	sb.WriteRune(' ')
@@ -221,7 +223,7 @@ func taskResPrint(res core.RunResult) {
 	if printConfig.showRaw {
 		var out string
 		switch raw := rRes.Raw.(type) {
-		case *httpx.Response:
+		case *pgrest.Response:
 			var buf bytes.Buffer
 			if err := json.Indent(&buf, raw.Bytes(), "", "  "); err != nil {
 				out = raw.String()

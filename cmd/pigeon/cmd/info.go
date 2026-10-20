@@ -11,6 +11,7 @@ import (
 
 	"github.com/fool-pigeon/pigeon/cmd/pigeon/cmd/formatter"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
+	pl "github.com/fool-pigeon/pigeon/internal/protocol"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 )
@@ -23,12 +24,13 @@ var infoCmd = &cobra.Command{
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		var meta request.ReqMeta
 		b, err := fsx.ReadFile(args[0])
 		if err != nil {
 			return err
 		}
-		if err := toml.Unmarshal(b, &meta); err != nil {
+
+		var req pl.Request
+		if err := toml.Unmarshal(b, &req); err != nil {
 			return err
 		}
 
@@ -37,29 +39,27 @@ var infoCmd = &cobra.Command{
 		flattenValues := formatter.FlattenValues
 		line := formatter.FieldLine
 
-		printValues("Name", false, meta.ReqName())
-		printValues("Protocol", false, meta.ReqProtocol())
-		switch meta.ReqProtocol() {
+		printValues("Name", false, req.Name)
+		printValues("Protocol", false, string(req.Protocol))
+		switch req.Protocol {
 		// TODO cmd/cli: pg info, more request type
 		default:
-			return fmt.Errorf("the protocol %q not implement yet.", meta.Protocol)
-		case request.ProtocolREST:
+			return fmt.Errorf("the protocol %q not implement yet", req.Protocol)
+		case pl.ProtocolREST:
 			// TODO: finish http request info
-			var r httpx.ReqData
-			if err := toml.Unmarshal(b, &r); err != nil {
-				return err
+			printValues("URL", false, req.RawURL())
+			printValues("Method", false, string(req.Method))
+			if req.Header != nil {
+				printValues("Headers", true, formatValues(req.Header)...)
 			}
-			printValues("URL", false, r.RawURL())
-			printValues("Method", false, r.Method)
-			if r.Header != nil {
-				printValues("Headers", true, formatValues(r.Header)...)
-			}
-			switch b := r.Body; {
-			case b.Raw != "":
-				printValues("Body(raw)", true, b.Raw)
-			case len(b.Form) > 0:
-				printValues("Body(form-url-encoded)", true, flattenValues(b.Form)...)
-			case len(b.Multipart) > 0:
+			switch b := req.PayloadREST; b.Kind {
+			case pl.BodyRaw, pl.BodyJSON, pl.BodyGQL, pl.BodyXML:
+				printValues(fmt.Sprintf("Body(%s)", b.Kind), true, b.Raw)
+			case pl.BodyBinary:
+				printValues("Body(binary)", true, b.BinaryPath)
+			case pl.BodyUrlEncoded:
+				printValues("Body(url-encoded)", true, flattenValues(b.UrlEncoded)...)
+			case pl.BodyMultipart:
 				fields := make([]string, 0, len(b.Multipart))
 				for k, v := range b.Multipart {
 					var sb strings.Builder
@@ -76,14 +76,12 @@ var infoCmd = &cobra.Command{
 					if v.ContentType != "" {
 						sb.WriteString(line("ContentType", v.ContentType))
 					}
-					if k < len(r.Body.Multipart)-1 {
+					if k < len(b.Multipart)-1 {
 						sb.WriteString("-------------")
 					}
 					fields = append(fields, sb.String())
 				}
 				printValues("Body(multipart/form-data)", true, fields...)
-			case b.Binary != "":
-				printValues("Body(binary)", true, b.Binary)
 			}
 
 		}
