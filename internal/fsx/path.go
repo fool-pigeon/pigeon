@@ -10,11 +10,12 @@ import (
 var ErrRootNotExist = errors.New("root tag directory is not existed")
 
 const (
-	RootTagDirName = ".pg"
-	EnvDirName     = "env"
-	RunDirName     = "run"
+	RootTag             = ".pg"
+	RootRun             = "run"
+	RootConf            = "conf"
+	DefaultRootConfFile = "conf.toml"
 
-	ConfigDefaultName = "config.toml"
+	Conf = ".conf"
 )
 
 // find the dir contains .pg dir in dirs from path to os' root dir
@@ -25,7 +26,7 @@ func RootDir(path string) (string, error) {
 		return "", err
 	}
 	for {
-		isExist, err := IsDirExist(filepath.Join(absPath, RootTagDirName))
+		isExist, err := IsDirExist(filepath.Join(absPath, RootTag))
 
 		if err == nil && isExist {
 			return absPath, nil
@@ -47,7 +48,7 @@ func RootTagDir(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(rootDir, RootTagDirName), nil
+	return filepath.Join(rootDir, RootTag), nil
 }
 
 // return []string of paths form this path to RootDir
@@ -58,7 +59,7 @@ func PathsToRoot(path string) ([]string, error) {
 	}
 	res := make([]string, 0)
 	for {
-		isExist, err := IsDirExist(filepath.Join(absPath, RootTagDirName))
+		isExist, err := IsDirExist(filepath.Join(absPath, RootTag))
 		res = append(res, absPath)
 		if err == nil && isExist {
 			return res, nil
@@ -82,34 +83,27 @@ func PathsFromRoot(path string) ([]string, error) {
 	return paths, nil
 }
 
-// get Env directory from current path
-func EnvDir(path string) (string, error) {
-	tagDir, err := RootTagDir(path)
-	if err != nil {
-		return "", err
-	}
-	envDir := filepath.Join(tagDir, EnvDirName)
-	info, err := os.Lstat(envDir)
-	if err != nil {
-		return "", err
-	}
-	if !info.IsDir() {
-		return "", ErrNotDir
-	}
-	return envDir, nil
+// get RootConf directory from current path
+func RootConfDir(path string) (string, error) {
+	return rootSubDir(path, Conf)
 }
-func RunDir(path string) (string, error) {
+func RootRunDir(path string) (string, error) {
+	return rootSubDir(path, RootRun)
+}
+
+// get sub directory of root from current path
+func rootSubDir(path string, subDir string) (string, error) {
 	tagDir, err := RootTagDir(path)
 	if err != nil {
 		return "", err
 	}
-	envDir := filepath.Join(tagDir, EnvDirName)
-	info, err := os.Lstat(envDir)
+	subPath := filepath.Join(tagDir, subDir)
+	info, err := os.Lstat(subPath)
 	if err != nil {
 		return "", err
 	}
 	if !info.IsDir() {
 		return "", ErrNotDir
 	}
-	return envDir, nil
+	return subPath, nil
 }

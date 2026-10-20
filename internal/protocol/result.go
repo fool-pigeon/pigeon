@@ -53,11 +53,11 @@ func (r *ResultMeta) AppendTestRes(tRes TestRes) {
 	r.Tests = append(r.Tests, tRes)
 }
 
-// As the View Result of [Runner.Run]
+// As the View Result
 type Result struct {
 	ResultMeta
 	Request Request
-	// the raw content of response,e.g. [httpx.Response]
+	// the raw content of response,e.g. [resty.Response]
 	Raw any `json:"raw"`
 }
 
@@ -79,13 +79,4 @@ type ResultView[T any] struct {
 func View[T any](r Result) ResultView[T] {
 	v, _ := r.Raw.(T)
 	return ResultView[T]{ResultMeta: r.ResultMeta, Raw: v}
-}
-
-type TraceKind string
-
-const (
-	TraceNetwork TraceKind = "network"
-)
-
-type Trace struct {
 }

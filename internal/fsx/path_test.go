@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
@@ -17,7 +17,7 @@ import (
 func TestRootDir(t *testing.T) {
 	t.Run("the tagDir in current dir", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		tagDir := filepath.Join(tmpDir, fsx.RootTagDirName)
+		tagDir := filepath.Join(tmpDir, fsx.RootTag)
 		fsx.Mkdir(tagDir)
 		rootDir, err := fsx.RootDir(tmpDir)
 		require.Equal(t, tmpDir, rootDir)
@@ -26,7 +26,7 @@ func TestRootDir(t *testing.T) {
 
 	t.Run("find the tag dir", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		tagDir := filepath.Join(tmpDir, fsx.RootTagDirName)
+		tagDir := filepath.Join(tmpDir, fsx.RootTag)
 		fsx.Mkdir(tagDir)
 		rootTag, err := fsx.RootTagDir(tmpDir)
 		require.Equal(t, tagDir, rootTag)
@@ -35,7 +35,7 @@ func TestRootDir(t *testing.T) {
 
 	t.Run("the tagDir in the parent dir", func(t *testing.T) {
 		parentDir := t.TempDir()
-		tagDir := filepath.Join(parentDir, fsx.RootTagDirName)
+		tagDir := filepath.Join(parentDir, fsx.RootTag)
 		fsx.Mkdir(tagDir)
 		sonDir, _ := os.MkdirTemp(parentDir, "son")
 		rootDir, err := fsx.RootDir(sonDir)
@@ -61,14 +61,14 @@ func TestPathsToRoot(t *testing.T) {
 	})
 	t.Run("tag dir in current dir", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		fsx.Mkdir(filepath.Join(tmpDir, fsx.RootTagDirName))
+		fsx.Mkdir(filepath.Join(tmpDir, fsx.RootTag))
 		paths, err := fsx.PathsToRoot(tmpDir)
 		require.Equal(t, []string{tmpDir}, paths)
 		require.Nil(t, err)
 	})
 	t.Run("tag dir in parent dir", func(t *testing.T) {
 		parentDir := t.TempDir()
-		fsx.Mkdir(filepath.Join(parentDir, fsx.RootTagDirName))
+		fsx.Mkdir(filepath.Join(parentDir, fsx.RootTag))
 		sonDir, _ := os.MkdirTemp(parentDir, "son")
 		paths, err := fsx.PathsToRoot(sonDir)
 		require.Equal(t, []string{sonDir, parentDir}, paths)

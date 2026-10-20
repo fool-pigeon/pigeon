@@ -8,5 +8,5 @@ package protocol
 import "context"
 
 type Sender interface {
-	Send(ctx context.Context, req *Request, emitTrace func(Trace)) (*Result, error)
+	Send(ctx context.Context, req *Request, emitTrace TraceHandler) (*Result, error)
 }

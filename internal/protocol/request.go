@@ -6,17 +6,13 @@
 package protocol
 
 import (
-	"context"
+	"fmt"
+	"net/url"
+	"slices"
+	"strings"
 )
 
-type Runner interface {
-	Run(...context.Context) Result
-	RunWithContext(ctx context.Context) Result
-	ReqName() string
-	ReqProtocol() ProtocolKind
-}
-
-type ProtocolKind = string
+type ProtocolKind string
 
 const (
 	// kinds of protocol
@@ -33,12 +29,9 @@ type ReqMeta struct {
 	Protocol ProtocolKind `toml:"protocol" comment:"'http'" json:"protocol"`
 }
 
-// ReqName implements [Runner].
 func (r *ReqMeta) ReqName() string {
 	return r.Name
 }
-
-// ReqProtocol implements [Runner].
 func (r *ReqMeta) ReqProtocol() ProtocolKind {
 	return r.Protocol
 }
@@ -53,11 +46,11 @@ const (
 	AuthToken     AuthKind = "token"
 )
 
-var AuthTypes = []AuthKind{AuthInherited, AuthNone, AuthBasic, AuthDigest, AuthToken}
+var AuthKinds = []AuthKind{AuthInherited, AuthNone, AuthBasic, AuthDigest, AuthToken}
 
 type (
 	Auth struct {
-		Type  AuthKind
+		Kind  AuthKind
 		Token AuthDataToken
 		Creds AuthDataCreds
 	}
@@ -71,70 +64,244 @@ type (
 		Password string `toml:"password" json:"password"`
 	}
 )
-type Request struct {
-	ReqMeta
-	URL    string
-	Header map[string][]string
-	Query  map[string][]string
-	Desc   string
-	// Auth   string
-	Auth    Auth   `toml:"auth" comment:"token,basic,digest(only-client)" json:"auth"`
-	Timeout string `toml:"timeout" comment:"time>=0, e.g.:'1m30s' time_unit:ns|us|ms|s|m|h" json:"timeout"`
+
+// the config of request and can be merge
+//
+// readonly,so that it does not cause data races except [ReqConfig.Merge]
+type ReqConfig struct {
+	// do not inherited
+	Desc string
+
+	Auth    Auth
+	Query   map[string][]string
+	Header  map[string][]string
+	Timeout DurationStr
 
 	ConfigREST *ConfigREST
 	ConfigGRPC *ConfigGRPC
 	ConfigWS   *ConfigWS
 }
 
-type ConfigREST struct {
-	Body              Body
-	Retry             Retry  `toml:"retry" json:"retry"`
-	CookieString      string `toml:"cookies" json:"cookieString"`
-	UnescapeQuery     bool   `toml:"unescape_query" json:"unescapeQuery"`
-	UnescapeJson      bool   `toml:"unescape_json" json:"unescapeJson"`
-	ResponseBodyLimit int64  `toml:"response_body_limit" comment:"if limit<=0,it means no limit" json:"responseBodyLimit"`
-}
-type Retry struct {
-	Count                int    `toml:"count" json:"count"`
-	WaitTime             string `toml:"wait_time" json:"waitTime"`
-	MaxWaitTime          string `toml:"max_wait_time" json:"maxWaitTime"`
-	IsAllowNonIdempotent bool   `toml:"is_allow_non_idempotent" json:"isAllowNonIdempotent"`
+func (r *ReqConfig) Copy() *ReqConfig {
+	dst := *r
+
+	dst.Query = cloneSliceMap(r.Query)
+	dst.Header = cloneSliceMap(r.Header)
+
+	dst.ConfigREST = r.ConfigREST.Copy()
+	dst.ConfigGRPC = r.ConfigGRPC.Copy()
+	dst.ConfigWS = r.ConfigWS.Copy()
+
+	return &dst
 }
 
-type BodyKind string
-
-const (
-	BodyNone       BodyKind = ""
-	BodyUrlEncoded BodyKind = "url-encoded"
-	BodyMultipart  BodyKind = "multipart"
-	// raw string type
-	BodyRaw  BodyKind = "raw"
-	BodyGQL  BodyKind = "graphql"
-	BodyJSON BodyKind = "json"
-	BodyXML  BodyKind = "xml"
-	// file path,input file content
-	BodyBinary BodyKind = "binary"
-)
-
-var BodyTypes = []BodyKind{BodyNone, BodyUrlEncoded, BodyMultipart, BodyRaw, BodyGQL, BodyJSON, BodyXML, BodyBinary}
-
-type (
-	Body struct {
-		Type       BodyKind
-		Raw        string
-		Multipart  []MultiField
-		UrlEncoded map[string][]string
-		BinaryPath string
+// inherit required value from parent if the value is default
+func (r *ReqConfig) Merge(p *ReqConfig) {
+	if p == nil {
+		return
 	}
-	MultiField struct {
-		Name        string
-		Value       string
-		FileName    string
-		FilePath    string
-		ContentType string
-	}
-)
-type ConfigGRPC struct {
+	r.mergeAuth(p.Auth)
+	r.mergeHeader(p.Header)
+	r.mergeQuery(p.Query)
+	r.mergeTimeout(p.Timeout)
+	r.mergeConfigREST(p.ConfigREST)
+	r.mergeConfigGRPC(p.ConfigGRPC)
+	r.mergeConfigWS(p.ConfigWS)
 }
-type ConfigWS struct {
+func (r *ReqConfig) mergeAuth(auth Auth) {
+	if r.Auth.Kind != AuthInherited {
+		return
+	}
+	r.Auth = auth
+}
+func cloneSliceMap[M ~map[K][]V, K comparable, V any](src M) M {
+	dst := make(M, len(src))
+	for k, v := range src {
+		dst[k] = slices.Clone(v)
+	}
+	return dst
+}
+func mergeMap[M1 ~map[K]V, M2 ~map[K]V, K comparable, V any](dst M1, src M2) {
+	for k, v := range src {
+		if _, ok := dst[k]; !ok {
+			dst[k] = v
+		}
+	}
+}
+func (r *ReqConfig) mergeQuery(query map[string][]string) {
+	if len(query) <= 0 {
+		return
+	}
+	if len(r.Query) <= 0 {
+		r.Query = query
+		return
+	}
+	mergeMap(r.Query, query)
+}
+func (r *ReqConfig) mergeHeader(header map[string][]string) {
+	if len(header) <= 0 {
+		return
+	}
+	if len(r.Header) <= 0 {
+		r.Header = header
+		return
+	}
+	mergeMap(r.Header, header)
+}
+func (r *ReqConfig) mergeTimeout(durationStr DurationStr) {
+	if r.Timeout != "" {
+		return
+	}
+	r.Timeout = durationStr
+}
+func (r *ReqConfig) mergeConfigREST(c *ConfigREST) {
+	if c == nil {
+		return
+	}
+	if r.ConfigREST == nil {
+		r.ConfigREST = c
+		return
+	}
+	current := r.ConfigREST
+	// merge Tests
+	if len(c.Tests) > 0 {
+		if len(current.Tests) <= 0 {
+			current.Tests = c.Tests
+		} else {
+			mergeMap(current.Tests, c.Tests)
+		}
+	}
+	// merge Path
+	if len(c.Path) > 0 {
+		if len(current.Path) <= 0 {
+			current.Path = c.Path
+		} else {
+			mergeMap(current.Path, c.Path)
+		}
+	}
+	// merge Retry
+	retry := c.Retry
+	if cout := retry.Count; cout >= 0 && current.Retry.Count == 0 {
+		current.Retry.Count = cout
+	}
+	if wt := retry.WaitTime; wt != "" && current.Retry.WaitTime == "" {
+		current.Retry.WaitTime = wt
+	}
+	if mwt := retry.MaxWaitTime; mwt != "" && current.Retry.MaxWaitTime == "" {
+		current.Retry.MaxWaitTime = mwt
+	}
+	if isAllow := retry.IsAllowNonIdempotent; isAllow && !current.Retry.IsAllowNonIdempotent {
+		current.Retry.IsAllowNonIdempotent = isAllow
+	}
+	// merge other
+	if uq := c.UnescapeQuery; uq && !current.UnescapeQuery {
+		current.UnescapeQuery = uq
+	}
+	if uj := c.UnescapeJson; uj && !current.UnescapeJson {
+		current.UnescapeJson = uj
+	}
+	if rbl := c.ResponseBodyLimit; rbl > 0 && current.ResponseBodyLimit <= 0 {
+		current.ResponseBodyLimit = rbl
+	}
+}
+func (r *ReqConfig) mergeConfigGRPC(c *ConfigGRPC) {
+	// TODO:merge configGRPC in ReqConfig
+	panic("TODO panic: merge configGRPC in ReqConfig")
+}
+func (r *ReqConfig) mergeConfigWS(c *ConfigWS) {
+	// TODO:merge configWS in ReqConfig
+	panic("TODO panic: merge configWS in ReqConfig")
+}
+
+type Request struct {
+	ReqMeta
+	ReqConfig
+
+	URL    string
+	Method Method
+
+	PayloadREST Body
+
+	PreReqExpr string
+}
+
+func (r *Request) ParseRESTRawURL(rawURL string) error {
+	if rawURL == "" {
+		return fmt.Errorf("rawURL:%w", ErrEmptyValue)
+	}
+	if r.Protocol != ProtocolREST {
+
+	}
+	// if not has http scheme
+	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+		rawURL = "http://" + rawURL
+	}
+
+	s := strings.SplitN(rawURL, "?", 2)
+	// set URL
+	r.URL = s[0]
+	// Set PathParams
+	if r.ConfigREST == nil {
+		r.ConfigREST = &ConfigREST{}
+	}
+	pathMap := make(map[string]string)
+	for _, matched := range pathParamRe.FindAllStringSubmatch(r.URL, -1) {
+		name := matched[1]
+		pathMap[name] = ""
+		if r.ConfigREST.Path == nil {
+			continue
+		}
+		if v, ok := r.ConfigREST.Path[name]; ok {
+			pathMap[name] = v
+		}
+	}
+	r.ConfigREST.Path = pathMap
+	// set QueryParams
+	if len(s) > 1 {
+		query, err := url.ParseQuery(s[1])
+		if err != nil {
+			return err
+		}
+		r.Query = query
+	} else {
+		r.Query = map[string][]string{}
+	}
+
+	return nil
+}
+
+func (r *Request) RawURL() string {
+	if len(r.Query) > 0 {
+		return r.URL + "?" + toQueryString(r.Query)
+	}
+	return r.URL
+}
+
+// into URL query string without “URL encoded” form
+// ("bar=baz&foo=quux&{=}") sorted by key.
+func toQueryString(v map[string][]string) string {
+	if len(v) == 0 {
+		return ""
+	}
+	var buf strings.Builder
+	keys := make([]string, len(v))
+
+	var i int
+	for k := range v {
+		keys[i] = k
+		i++
+	}
+	slices.Sort(keys)
+	for _, k := range keys {
+		vs := v[k]
+		for _, v := range vs {
+			if buf.Len() > 0 {
+				buf.WriteByte('&')
+			}
+			buf.WriteString(k)
+			buf.WriteByte('=')
+			buf.WriteString(v)
+		}
+	}
+	return buf.String()
 }

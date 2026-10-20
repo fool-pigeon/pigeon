@@ -37,7 +37,7 @@ var (
 			if len(args) > 0 {
 				path = args[0]
 			}
-			envDir, err := fsx.EnvDir(path)
+			envDir, err := fsx.ConfDir(path)
 			if err != nil {
 				return err
 			}

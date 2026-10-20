@@ -59,14 +59,17 @@ a project collection will be like
 ```
 .
 ├── .pg
-│   ├── envs
-│   │   ├── dev
-│   │   └── prod
-│   ├── runs
-│   │   ├── dev
-│   │   └── prod
-│   └── config.toml
+│   ├── run  # store the run batch tasks
+│   │   ├── dev.toml
+│   │   └── prod.toml
+│   └── conf  # store the different configurations
+│       ├── config.toml
+│       ├── dev.toml
+│       └── prod.toml
+│
+├── .conf # a .toml file that include nested config of request and environment variables
 ├── dir
+│   ├── .conf
 │   └── r1.toml
 ├── r1.toml
 └── r2.toml

@@ -94,7 +94,7 @@ func (r *ReqCtxService) setCfgInfo(cfgFile FileMeta) error {
 	root := r.root
 	ctx := r.ctxs[root]
 	ctx.Config = cfgFile
-	ctx.reqCtx.Config = cfg
+	ctx.reqCtx.Conf = cfg
 	r.ctxs[root] = ctx
 	return nil
 }
@@ -136,16 +136,16 @@ func (r *ReqCtxService) InitCtx(path string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	ctx := r.ctxs[path]
-	if ctx.reqCtx.Config == nil {
-		ctx.reqCtx.Config = config.New()
+	if ctx.reqCtx.Conf == nil {
+		ctx.reqCtx.Conf = config.New()
 	}
 	if ctx.reqCtx.Env == nil {
 		ctx.reqCtx.Env = env.New()
 	}
 	r.ctxs[path] = ctx
 	// tip:temporary hard coding config path
-	r.setCfgInfo(FileMeta{"config.toml", filepath.Join(path, fsx.RootTagDirName, "config.toml")})
-	r.initConfig(r.ctxs[path].reqCtx.Config)
+	r.setCfgInfo(FileMeta{"config.toml", filepath.Join(path, fsx.RootTag, "config.toml")})
+	r.initConfig(r.ctxs[path].reqCtx.Conf)
 }
 
 // TODO: parse [FIleMeta] from collections path
@@ -163,7 +163,7 @@ func (r *ReqCtxService) ParseEnvs(path string) ([]FileMeta, error) {
 	if err != nil {
 		return nil, err
 	}
-	envDir := filepath.Join(root, fsx.RootTagDirName, fsx.EnvDirName)
+	envDir := filepath.Join(root, fsx.RootTag, fsx.EnvDirName)
 	entries, err := os.ReadDir(envDir)
 	if err != nil {
 		return nil, fmt.Errorf("%s:%w", envDir, err)
@@ -232,7 +232,7 @@ func (r *ReqCtxService) SendHttp(data *httpx.ReqData) (TaskResHttp, error) {
 	// set request context
 	reqCtx := r.ReqCtx()
 	// inject client
-	httpClent, err := reqCtx.Config.HttpClient()
+	httpClent, err := reqCtx.Conf.HttpClient()
 	if err != nil {
 		return TaskResHttp{}, err
 	}

@@ -14,11 +14,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/fool-pigeon/pigeon/internal/config"
-	"github.com/fool-pigeon/pigeon/internal/env"
+	"github.com/fool-pigeon/pigeon/internal/dispatch"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	request "github.com/fool-pigeon/pigeon/internal/protocol"
-	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
+	"github.com/fool-pigeon/pigeon/internal/protocol"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -33,7 +31,16 @@ func isTomlExt(path string) bool {
 	return filepath.Ext(path) == ".toml"
 }
 
-func loadReq(ctx context.Context, path string, env *env.Env, config *config.Config) (request.Runner, error) {
+type ReqCtx struct {
+	Conf *protocol.ReqConfig
+	Env  *Env
+}
+
+// load request from file & expand env vars & merge ReqConfig
+func loadReq(ctx context.Context, path string, reqCtx *ReqCtx) (*protocol.Request, error) {
+	if reqCtx == nil || reqCtx.Env == nil || reqCtx.Conf == nil {
+		return nil, fmt.Errorf("load request reqCtx:%w", ErrNilValue)
+	}
 	// Read Flie
 	b, err := fsx.ReadFile(path)
 	if err != nil {
@@ -43,57 +50,47 @@ func loadReq(ctx context.Context, path string, env *env.Env, config *config.Conf
 		return nil, err
 	}
 	// Expand Env
-	b = []byte(env.Expand(string(b)))
-	var meta request.ReqMeta
-	if err := toml.Unmarshal(b, &meta); err != nil {
+	b = []byte(reqCtx.Env.Expand(string(b)))
+
+	var req protocol.Request
+	if err := toml.Unmarshal(b, &req); err != nil {
 		return nil, err
 	}
-	switch meta.Protocol {
-	default:
-		return nil, fmt.Errorf("the protocol %q not implement yet.", meta.Protocol)
-	case request.ProtocolREST:
-		client, err := config.HttpClient()
-		if err != nil {
-			return nil, err
-		}
-
-		var r httpx.ReqData
-		if err := toml.Unmarshal(b, &r); err != nil {
-			return nil, err
-		}
-
-		r.SetClient(client)
-
-		return &r, nil
-
-		// TODO readRequest more
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
+
+	req.ReqConfig.Merge(reqCtx.Conf)
+
+	return &req, nil
 }
 
-type ReqCtx struct {
-	Config *config.Config
-	Env    *env.Env
+type reqSendInput struct {
+	dispatcher  *dispatch.Dispatcher
+	traceHandle protocol.TraceHandler
+	reqCtx      *ReqCtx
+	start       string
+	path        string
 }
 
-// exec Request Params
-type execRParam struct {
-	ReqCtx
-	// root dir path
-	root string
-	// the file path
-	path string
-}
+func sendReq(ctx context.Context, input reqSendInput) RunResult {
 
-func execReq(ctx context.Context, ep execRParam) RunResult {
+	if input.dispatcher == nil {
+		return RunResult{Path: input.path, Err: fmt.Errorf("exec request dispatcher:%w", ErrNilValue)}
+	}
+	if input.reqCtx == nil || input.reqCtx.Env == nil || input.reqCtx.Conf == nil {
+		return RunResult{Path: input.path, Err: fmt.Errorf("exec request reqCtx:%w", ErrNilValue)}
+	}
+
 	var res RunResult
-	absPath, err := filepath.Abs(ep.path)
+	absPath, err := filepath.Abs(input.path)
 	if err != nil {
 		res.Err = errors.Join(res.Err, err)
 	}
 	res.AbsPath = absPath
 
 	// ep.root is abs path, should use absPath to rel
-	relPath, err := filepath.Rel(ep.root, absPath)
+	relPath, err := filepath.Rel(input.start, absPath)
 	if err != nil {
 		res.Err = errors.Join(res.Err, err)
 	}
@@ -103,7 +100,7 @@ func execReq(ctx context.Context, ep execRParam) RunResult {
 		return res
 	}
 
-	r, err := loadReq(ctx, absPath, ep.Env, ep.Config)
+	req, err := loadReq(ctx, absPath, input.reqCtx)
 	if err != nil {
 		res.Err = errors.Join(res.Err, err)
 		return res
@@ -113,15 +110,22 @@ func execReq(ctx context.Context, ep execRParam) RunResult {
 		return res
 	}
 
-	res.ReqRes = r.RunWithContext(ctx)
+	response, err := input.dispatcher.Send(ctx, req, input.traceHandle)
+	if err != nil {
+		return RunResult{Path: input.path, Err: err}
+	}
+	res.ReqRes = response
+
 	return res
 }
-func execReqWithContext(ctx context.Context, ep execRParam, resCh chan RunResult) {
-	done := make(chan RunResult)
+
+// the request will stop when ctx.Done()
+func sendReqWithStop(ctx context.Context, resHandle RunResultHandler, input reqSendInput) {
+	done := make(chan struct{})
 	var res RunResult
 	go func() {
 		defer close(done)
-		res = execReq(ctx, ep)
+		res = sendReq(ctx, input)
 	}()
 
 	select {
@@ -129,44 +133,188 @@ func execReqWithContext(ctx context.Context, ep execRParam, resCh chan RunResult
 		if ctx.Err() != nil {
 			return
 		}
-		resCh <- res
+		resHandle(res)
+
 	case <-ctx.Done():
 		return
 	}
 }
 
+// paths params for run needed
+type RunParams struct {
+	// root dir's abs path
+	Start string
+	// file for directly and directory for walk
+	Tasks []string
+
+	RootConf RootConf
+
+	ResultHandler RunResultHandler
+	TraceHandler  protocol.TraceHandler
+}
+type RunResultHandler func(res RunResult)
+type RunResult struct {
+	// Path relative to the root collection
+	Path    string
+	AbsPath string
+	ReqRes  *protocol.Result
+	Err     error
+}
+
+func Run(ctx context.Context, rp RunParams) error {
+
+	maxConcurrency := rp.RootConf.MaxRunningConcurrency
+	if maxConcurrency < 0 {
+		maxConcurrency = 0
+	}
+	sem := make(chan struct{}, maxConcurrency)
+	defer close(sem)
+
+	// set dispather to send request
+	rootConf := rp.RootConf
+	client, err := rootConf.Client.InstancedClient()
+	if err != nil {
+		return err
+	}
+	dispatcher := dispatch.New(client)
+
+	// set the ReqCtx
+	initialReqCtx, err := rootConf.initReqCtx(rp.Start)
+	if err != nil {
+		return err
+	}
+
+	type reqCtxFrame struct {
+		path string
+		ctx  *ReqCtx
+	}
+	reqCtxStack := []*reqCtxFrame{{path: rp.Start, ctx: initialReqCtx}}
+
+	var wg sync.WaitGroup
+	runReq := func(path string, reqCtx *ReqCtx) {
+		wg.Go(func() {
+			if maxConcurrency > 0 {
+				sem <- struct{}{}
+				defer func() { <-sem }()
+			}
+			sendReqWithStop(ctx, rp.ResultHandler, reqSendInput{
+				dispatcher:  dispatcher,
+				traceHandle: rp.TraceHandler,
+				reqCtx:      reqCtx,
+				start:       rp.Start,
+				path:        path,
+			})
+		})
+	}
+	for _, taskPath := range rp.Tasks {
+		taskPath = filepath.Clean(taskPath)
+
+		info, err := os.Lstat(taskPath)
+		if err != nil {
+			go func() {
+				rp.ResultHandler(RunResult{Path: taskPath, Err: err})
+			}()
+			continue
+		}
+		// exec if path is file
+		if info.Mode().IsRegular() && isTomlExt(taskPath) {
+			runReq(taskPath, initialReqCtx)
+			continue
+		}
+
+		// recursive directory
+		filepath.WalkDir(taskPath, func(p string, d fs.DirEntry, err error) error {
+
+			if d.Name() == fsx.RootTag {
+				return filepath.SkipDir
+			}
+
+			parentDir := filepath.Dir(p)
+			// pop the ctx if top ctx's path is not parent directory
+			for len(reqCtxStack) > 1 && filepath.Clean(reqCtxStack[len(reqCtxStack)-1].path) != filepath.Clean(parentDir) {
+				reqCtxStack = reqCtxStack[:len(reqCtxStack)-1]
+			}
+			// the top of reqCtxStack means the parent's parentFrame
+			parentFrame := reqCtxStack[len(reqCtxStack)-1]
+
+			switch {
+			// exec if is a request file
+			case d.Type().IsRegular() && isTomlExt(p):
+				wg.Go(func() {
+					runReq(p, parentFrame.ctx)
+				})
+
+			// add reqCtxFrame to stack
+			case d.IsDir():
+				confPath := filepath.Join(p, fsx.Conf)
+				info, err := os.Lstat(confPath)
+
+				if err != nil && !errors.Is(err, os.ErrNotExist) {
+					return err
+				}
+				if !info.Mode().IsRegular() || errors.Is(err, os.ErrNotExist) {
+					reqCtxStack = append(reqCtxStack, &reqCtxFrame{p, parentFrame.ctx})
+				}
+
+				// override load for update env
+				confBytes, err := fsx.ReadFile(confPath)
+				if err != nil {
+					return err
+				}
+				frame := reqCtxFrame{path: p}
+				env := parentFrame.ctx.Env.Copy()
+				reqConf := parentFrame.ctx.Conf.Copy()
+				if err := loadConf(confBytes, env, reqConf); err != nil {
+					return err
+				}
+				frame.ctx = &ReqCtx{reqConf, env}
+				// into the next walk
+				reqCtxStack = append(reqCtxStack, &frame)
+			}
+			return nil
+		})
+	}
+
+	go func() {
+		wg.Wait()
+	}()
+
+	return ctx.Err()
+}
+
 // run paths needed
 // paths are relative paths from collection's root path
 type RunPaths struct {
-	Root   string   `toml:"root" json:"root"`
-	Tasks  []string `toml:"tasks" json:"tasks"`
-	Config string   `toml:"config" json:"config"`
-	Env    string   `toml:"env" json:"env"`
+	// conf of collection
+	RootConf string
+	// the start directory
+	Start string
+	// the paths sub of start directory
+	Tasks []string `toml:"tasks" json:"tasks"`
 }
 
 // check all path(except tasks) exist and paths' file types are corrent
 //
 // returns nil if all already corrent
 func (rp RunPaths) Check() error {
-	info, err := os.Lstat(rp.Root)
+	info, err := os.Lstat(rp.Start)
 	if err != nil {
 		return err
 	}
 	if !info.IsDir() {
 		return fsx.ErrNotDir
 	}
-	for _, path := range []string{rp.Config, rp.Env} {
-		// the empty string means that not use path
-		if path == "" || path == "." || path == rp.Root {
-			continue
-		}
-		info, err := os.Lstat(path)
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return fsx.ErrNotFile
-		}
+	path := rp.RootConf
+	// the empty string means that not use path
+	if path == "" || path == "." || path == rp.Start {
+		return nil
+	}
+	info, err = os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return fsx.ErrNotFile
 	}
 	return nil
 }
@@ -174,21 +322,18 @@ func (rp RunPaths) Check() error {
 // root must be collection's abs root
 // this will change all path to abs path
 func (rp RunPaths) ToAbs(root string) RunPaths {
-	res := RunPaths{Root: rp.Root, Config: rp.Config, Env: rp.Env}
-	if !filepath.IsAbs(rp.Root) {
-		res.Root = filepath.Join(root, rp.Root)
+	res := RunPaths{Start: rp.Start, RootConf: rp.RootConf}
+	if !filepath.IsAbs(rp.Start) {
+		res.Start = filepath.Join(root, rp.Start)
 	}
-	if !filepath.IsAbs(rp.Config) {
-		res.Config = filepath.Join(root, rp.Config)
-	}
-	if !filepath.IsAbs(rp.Env) {
-		res.Env = filepath.Join(root, rp.Env)
+	if !filepath.IsAbs(rp.RootConf) {
+		res.RootConf = filepath.Join(root, rp.RootConf)
 	}
 	tasks := make([]string, 0, len(rp.Tasks))
 	for _, task := range rp.Tasks {
 		absTask := task
 		if !filepath.IsAbs(absTask) {
-			absTask = filepath.Join(res.Root, task)
+			absTask = filepath.Join(res.Start, task)
 		}
 		tasks = append(tasks, absTask)
 	}
@@ -205,89 +350,11 @@ func (rp RunPaths) ToRel(root string) RunPaths {
 	}
 	tasks := make([]string, 0, len(rp.Tasks))
 	for _, task := range rp.Tasks {
-		tasks = append(tasks, rel(rp.Root, task))
+		tasks = append(tasks, rel(rp.Start, task))
 	}
 	return RunPaths{
-		Root:   rel(root, rp.Root),
-		Config: rel(root, rp.Config),
-		Env:    rel(root, rp.Env),
-		Tasks:  tasks,
+		Start:    rel(root, rp.Start),
+		RootConf: rel(root, rp.RootConf),
+		Tasks:    tasks,
 	}
-}
-
-// paths params for run needed
-type RunParams struct {
-	// readonly
-	ReqCtx
-	// root dir's abs path
-	Root string
-	// file for directly and directory for walk
-	Tasks []string
-}
-type RunResult struct {
-	// Path relative to the root collection
-	Path    string
-	AbsPath string
-	ReqRes  request.Result
-	Err     error
-}
-
-func Run(ctx context.Context, runParams RunParams, handle func(res RunResult)) error {
-	if runParams.Config == nil {
-		return fmt.Errorf("config:%w", ErrNilValue)
-	}
-	if runParams.Env == nil {
-		return fmt.Errorf("env:%w", ErrNilValue)
-	}
-
-	maxConcurrency := runParams.Config.MaxRunningConcurrency
-	sem := make(chan struct{}, maxConcurrency)
-	defer close(sem)
-
-	var wg sync.WaitGroup
-	resCh := make(chan RunResult)
-	runReq := func(path string) {
-		wg.Go(func() {
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			execReqWithContext(ctx, execRParam{root: runParams.Root, path: path, ReqCtx: runParams.ReqCtx}, resCh)
-		})
-	}
-	for _, taskPath := range runParams.Tasks {
-		taskPath = filepath.Clean(taskPath)
-
-		info, err := os.Lstat(taskPath)
-		if err != nil {
-			go func() {
-				resCh <- RunResult{Path: taskPath, Err: err}
-			}()
-			continue
-		}
-		// exec if path is file
-		if info.Mode().IsRegular() && isTomlExt(taskPath) {
-			runReq(taskPath)
-			continue
-		}
-
-		// recursive directory
-		filepath.WalkDir(taskPath, func(p string, d fs.DirEntry, err error) error {
-			if d.Name() == fsx.RootTagDirName {
-				return filepath.SkipDir
-			}
-			if d.Type().IsRegular() && isTomlExt(p) {
-				runReq(p)
-			}
-			return nil
-		})
-	}
-
-	go func() {
-		defer close(resCh)
-		wg.Wait()
-	}()
-
-	for res := range resCh {
-		handle(res)
-	}
-	return ctx.Err()
 }

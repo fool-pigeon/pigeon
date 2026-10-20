@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 )
 
@@ -24,16 +23,16 @@ func InitCollection(dir string) error {
 		return fmt.Errorf("%s:%w", dir, fsx.ErrNotDir)
 	}
 	// create root tag dir
-	tagDir := filepath.Join(dir, fsx.RootTagDirName)
+	tagDir := filepath.Join(dir, fsx.RootTag)
 	if err := fsx.Mkdir(tagDir); err != nil {
 		return err
 	}
-	// create env directory and run directory
-	for _, d := range []string{filepath.Join(tagDir, fsx.EnvDirName), filepath.Join(tagDir, fsx.RunDirName)} {
+	// create conf directory and run directory
+	for _, d := range []string{filepath.Join(tagDir, fsx.RootConf), filepath.Join(tagDir, fsx.RootRun)} {
 		fsx.MkdirAll(d)
 	}
 	// create empty config
-	if err := fsx.WriteToml(filepath.Join(tagDir, fsx.ConfigDefaultName), config.New()); err != nil {
+	if err := fsx.WriteToml(filepath.Join(tagDir, fsx.RootConf, fsx.DefaultRootConfFile), RootConf{}); err != nil {
 		return err
 	}
 

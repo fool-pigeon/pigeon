@@ -94,10 +94,10 @@ func (tr *TaskRunService) RunDir(id string, path string) error {
 	task := Task{
 		TaskMeta{Id: id, Path: path},
 		core.RunPaths{
-			Root:   path,
-			Tasks:  []string{path},
-			Config: tr.reqCtx.CfgInfo().Path,
-			Env:    tr.reqCtx.EnvInfo().Path,
+			Start:    path,
+			Tasks:    []string{path},
+			RootConf: tr.reqCtx.CfgInfo().Path,
+			Env:      tr.reqCtx.EnvInfo().Path,
 		},
 	}
 	return tr.Run(task)
@@ -116,7 +116,7 @@ func (tr *TaskRunService) RunWrapper(task Task) error {
 		return fmt.Errorf("%s:%w", task.Path, fsx.ErrRootNotExist)
 	}
 	// inject config path
-	task.Param.Config = filepath.Join(root, fsx.RootTagDirName, fsx.ConfigDefaultName)
+	task.Param.RootConf = filepath.Join(root, fsx.RootTag, fsx.ConfigDefaultName)
 
 	return tr.Run(task)
 }
@@ -131,10 +131,10 @@ func (tr *TaskRunService) Run(task Task) error {
 
 	p := task.Param
 	// config load
-	cfg, err := config.LoadFromFile(p.Config)
+	cfg, err := config.LoadFromFile(p.RootConf)
 	if err != nil {
-		if p.Config != "" && p.Config != "." {
-			tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty config", p.Config))
+		if p.RootConf != "" && p.RootConf != "." {
+			tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty config", p.RootConf))
 		}
 		cfg = config.New()
 	}
@@ -148,8 +148,8 @@ func (tr *TaskRunService) Run(task Task) error {
 	}
 
 	runParams := core.RunParams{
-		ReqCtx: core.ReqCtx{Config: cfg, Env: e},
-		Root:   p.Root,
+		ReqCtx: core.ReqCtx{Conf: cfg, Env: e},
+		Start:  p.Start,
 		Tasks:  p.Tasks,
 	}
 	return tr.run(task.Id, runParams)

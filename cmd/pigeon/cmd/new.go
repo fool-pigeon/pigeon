@@ -12,7 +12,6 @@ import (
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/fool-pigeon/pigeon/internal/protocol"
-	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/spf13/cobra"
 )
 

@@ -3,4 +3,11 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-package config_test
+package protocol
+
+type ConfigWS struct {
+}
+
+func (c *ConfigWS) Copy() *ConfigWS {
+	return c
+}

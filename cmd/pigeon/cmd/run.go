@@ -15,11 +15,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/fool-pigeon/pigeon/internal/core"
 	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
@@ -63,21 +61,21 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		tagDir := filepath.Join(root, fsx.RootTagDirName)
+		tagDir := filepath.Join(root, fsx.RootTag)
 
 		var runPaths core.RunPaths
 		var runFilePath string
 		if name, _ := cmd.Flags().GetString("run"); name != "" {
 			name = strings.TrimSuffix(name, ".toml") + ".toml"
-			runFilePath = filepath.Join(tagDir, fsx.RunDirName, name)
+			runFilePath = filepath.Join(tagDir, fsx.RootRun, name)
 		}
 		if p, _ := cmd.Flags().GetString("run-file"); p != "" {
 			runFilePath = p
 		}
 		fsx.ReadToml(runFilePath, &runPaths)
 		// root
-		if runPaths.Root == "" {
-			if runPaths.Root, err = filepath.Abs("."); err != nil {
+		if runPaths.Start == "" {
+			if runPaths.Start, err = filepath.Abs("."); err != nil {
 				return err
 			}
 		}
@@ -91,16 +89,16 @@ var runCmd = &cobra.Command{
 		}
 		if len(args) > 0 {
 			for _, path := range args {
-				runPaths.Tasks = append(runPaths.Tasks, filepath.Join(runPaths.Root, path))
+				runPaths.Tasks = append(runPaths.Tasks, filepath.Join(runPaths.Start, path))
 			}
 		} else if len(runPaths.Tasks) <= 0 {
-			runPaths.Tasks = append(runPaths.Tasks, filepath.Join(runPaths.Root))
+			runPaths.Tasks = append(runPaths.Tasks, filepath.Join(runPaths.Start))
 		}
 
 		// TODO optional multi config select
 		// config
 		var cfg *config.Config
-		if cfg, err = config.LoadFromFile(runPaths.Config); err != nil {
+		if cfg, err = config.LoadFromFile(runPaths.RootConf); err != nil {
 			cfg, err = config.LoadFromFile(filepath.Join(tagDir, fsx.ConfigDefaultName))
 			if err != nil {
 				// if err,then use the new config
@@ -129,8 +127,8 @@ var runCmd = &cobra.Command{
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
 		rp := core.RunParams{
-			ReqCtx: core.ReqCtx{Config: cfg, Env: e},
-			Root:   runPaths.Root,
+			ReqCtx: core.ReqCtx{Conf: cfg, Env: e},
+			Start:  runPaths.Start,
 			Tasks:  runPaths.Tasks,
 		}
 

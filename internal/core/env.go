@@ -3,14 +3,12 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-package env
+package core
 
 import (
 	"strings"
 
-	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/knadh/koanf/parsers/dotenv"
-	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/v2"
 )
 
@@ -24,8 +22,15 @@ type Env struct {
 	Data *EnvData
 }
 
+func NewEnv() *Env {
+	return &Env{koanf.New(".")}
+}
+
 func (e *Env) All() map[string]any {
 	return e.Data.All()
+}
+func (e *Env) Copy() *Env {
+	return &Env{e.Data.Copy()}
 }
 func (e *Env) Print() {
 	e.Data.Print()
@@ -36,14 +41,9 @@ func (e *Env) Set(key string, val any) error {
 func (e *Env) String(key string) string {
 	return e.Data.String(key)
 }
-func (e *Env) LoadFile(name string) error {
-	if err := e.Data.Load(file.Provider(name), dotenv.Parser()); err != nil {
-		return err
-	}
-	return nil
-}
-func (e *Env) Store(name string) error {
-	return fsx.StoreKoanf(e.Data, dotenv.Parser(), name)
+
+func (e *Env) LoadNestedMap(data map[string]any) error {
+	return e.Data.Load(confmap.Provider(data, ""), nil)
 }
 
 // Expand replaces ${var} in the string based on Env
@@ -89,15 +89,4 @@ func getVarName(s string) (string, int) {
 		}
 	}
 	return "", 1 // Bad syntax;  "${"
-}
-
-func New() *Env {
-	return &Env{koanf.New(".")}
-}
-func LoadFromFile(name string) (*Env, error) {
-	e := New()
-	if err := e.LoadFile(name); err != nil {
-		return nil, err
-	}
-	return e, nil
 }

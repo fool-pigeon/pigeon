@@ -18,8 +18,6 @@ import (
 	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/fool-pigeon/pigeon/internal/protocol"
-	request "github.com/fool-pigeon/pigeon/internal/protocol"
-	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -86,7 +84,7 @@ func NewNode(mode NodeMode, path string, name string, pre ...*Node) *Node {
 }
 func NewDirNode(path string, name string, pre ...*Node) *Node {
 	m := DirMode
-	if name == fsx.RootTagDirName {
+	if name == fsx.RootTag {
 		m |= ConfigDir
 	} else {
 		m |= NormalDir
@@ -482,7 +480,7 @@ func (f *FileExploreService) ParseRootPaths(dir string) []string {
 		}
 
 		// has the .pg/ means this is a root dir
-		if tagInfo, err := os.Lstat(filepath.Join(path, fsx.RootTagDirName)); err == nil && tagInfo.IsDir() {
+		if tagInfo, err := os.Lstat(filepath.Join(path, fsx.RootTag)); err == nil && tagInfo.IsDir() {
 			mu.Lock()
 			rootPaths = append(rootPaths, path)
 			mu.Unlock()
@@ -516,7 +514,7 @@ func (f *FileExploreService) AddRoot(paths []string) error {
 		if f.root.SubContain(path) {
 			continue
 		}
-		if info, err := os.Lstat(filepath.Join(path, fsx.RootTagDirName)); !info.IsDir() || err != nil {
+		if info, err := os.Lstat(filepath.Join(path, fsx.RootTag)); !info.IsDir() || err != nil {
 			continue
 		}
 		info, err := os.Lstat(path)

@@ -11,10 +11,7 @@ import (
 	"testing"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
-	"github.com/knadh/koanf/parsers/dotenv"
-	"github.com/knadh/koanf/providers/file"
-	"github.com/knadh/koanf/v2"
+	"github.com/fool-pigeon/pigeon/internal/protocol"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -142,22 +139,6 @@ func TestRWFile(t *testing.T) {
 		assert.ErrorIs(t, err, fsx.ErrNotExist)
 	})
 }
-func TestStoreKoanf(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	name := filepath.Join(tmpDir, "test_file")
-	k := koanf.New(".")
-	k.Set("hello", "world")
-	if err := fsx.StoreKoanf(k, dotenv.Parser(), name); err != nil {
-		t.Fatal(err)
-	}
-
-	k1 := koanf.New(".")
-	if err := k1.Load(file.Provider(name), dotenv.Parser()); err != nil {
-		t.Fatal(err)
-	}
-	require.Equal(t, k, k1)
-}
 
 func TestRDWRToml(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -208,7 +189,7 @@ func TestToml(t *testing.T) {
 	require.Error(err)
 	t.Log(err)
 
-	mfs := []httpx.MultiField{
+	mfs := []protocol.MultiField{
 		{Name: "name1", Value: "v1"},
 	}
 	mf := mfs[0]
