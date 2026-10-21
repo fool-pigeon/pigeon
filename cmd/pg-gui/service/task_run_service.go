@@ -18,8 +18,8 @@ import (
 
 	"github.com/fool-pigeon/pigeon/core"
 	"github.com/fool-pigeon/pigeon/fsx"
+	"github.com/fool-pigeon/pigeon/pgrest"
 	"github.com/fool-pigeon/pigeon/protocol"
-	"github.com/fool-pigeon/pigeon/transport/pgrest"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"resty.dev/v3"
 )

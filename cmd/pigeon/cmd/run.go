@@ -17,8 +17,8 @@ import (
 
 	"github.com/fool-pigeon/pigeon/core"
 	"github.com/fool-pigeon/pigeon/fsx"
+	"github.com/fool-pigeon/pigeon/pgrest"
 	"github.com/fool-pigeon/pigeon/protocol"
-	"github.com/fool-pigeon/pigeon/transport/pgrest"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
