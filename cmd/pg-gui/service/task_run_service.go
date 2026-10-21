@@ -20,6 +20,8 @@ import (
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/fool-pigeon/pigeon/pgrest"
 	"github.com/fool-pigeon/pigeon/protocol"
+	"github.com/fool-pigeon/pigeon/sulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"resty.dev/v3"
 )
@@ -50,8 +52,7 @@ const (
 )
 
 type Task struct {
-	// set UUID,id of Task
-	Id string `json:"id"`
+	Id ulid.ULID `json:"id"`
 	// For Task:this is file path for calc collection's root path
 	Path string `json:"path"`
 	// file content of run file
@@ -63,8 +64,9 @@ type HttpMeta struct {
 	Raw    string              `json:"raw"`
 }
 type TaskRes struct {
+	Id ulid.ULID
 	core.RunResult
-	Id          string
+
 	Spent       string
 	ContentSize string
 	ReqMeta     HttpMeta
@@ -82,7 +84,7 @@ func NewTaskRunService(alertService *AlertService, app *application.App) *TaskRu
 	return &TaskRunService{alertService, app}
 }
 
-func (tr *TaskRunService) RunDir(id string, path string, rootConf string) error {
+func (tr *TaskRunService) RunDir(path string, rootConf string) error {
 	path = filepath.Clean(path)
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -90,6 +92,10 @@ func (tr *TaskRunService) RunDir(id string, path string, rootConf string) error 
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("%s:%w", path, fsx.ErrNotDir)
+	}
+	id, err := sulid.New()
+	if err != nil {
+		return err
 	}
 	task := Task{
 		Id: id, Path: path,
@@ -131,7 +137,7 @@ func (tr *TaskRunService) run(task Task) error {
 
 	if tr.app != nil {
 		ungister := tr.app.Event.On(TrsCancel, func(event *application.CustomEvent) {
-			if cancelledId, ok := event.Data.(string); ok && cancelledId == task.Id {
+			if cancelledId, ok := event.Data.(string); ok && cancelledId == task.Id.String() {
 				cancel()
 			}
 		})
@@ -187,7 +193,7 @@ func (tr *TaskRunService) run(task Task) error {
 	}
 	return ctx.Err()
 }
-func (tr *TaskRunService) parseRunResult(id string, res core.RunResult) TaskRes {
+func (tr *TaskRunService) parseRunResult(id ulid.ULID, res core.RunResult) TaskRes {
 	var taskRes TaskRes
 	taskRes.RunResult = res
 	taskRes.Id = id
