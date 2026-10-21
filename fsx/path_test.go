@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/stretchr/testify/require"
 )
 

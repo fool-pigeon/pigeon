@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/protocol"
+	"github.com/fool-pigeon/pigeon/fsx"
+	"github.com/fool-pigeon/pigeon/protocol"
 	"github.com/pelletier/go-toml/v2"
 )
 

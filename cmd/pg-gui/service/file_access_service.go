@@ -11,8 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/fool-pigeon/pigeon/internal/core"
-	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/core"
+	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 

@@ -15,10 +15,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fool-pigeon/pigeon/internal/core"
-	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/protocol"
-	"github.com/fool-pigeon/pigeon/internal/transport/pgrest"
+	"github.com/fool-pigeon/pigeon/core"
+	"github.com/fool-pigeon/pigeon/fsx"
+	"github.com/fool-pigeon/pigeon/protocol"
+	"github.com/fool-pigeon/pigeon/transport/pgrest"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )

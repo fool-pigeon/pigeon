@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/fool-pigeon/pigeon/cmd/pigeon/cmd/formatter"
-	"github.com/fool-pigeon/pigeon/internal/fsx"
-	pl "github.com/fool-pigeon/pigeon/internal/protocol"
+	"github.com/fool-pigeon/pigeon/fsx"
+	pl "github.com/fool-pigeon/pigeon/protocol"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 )

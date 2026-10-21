@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 

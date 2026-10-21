@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/fool-pigeon/pigeon/cmd/pg-gui/gui"
-	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 

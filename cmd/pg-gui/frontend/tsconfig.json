@@ -14,10 +14,10 @@
         "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/service/*"
       ],
       "@internal": [
-        "./bindings/github.com/fool-pigeon/pigeon/internal"
+        "./bindings/github.com/fool-pigeon/pigeon"
       ],
       "@internal/*": [
-        "./bindings/github.com/fool-pigeon/pigeon/internal/*"
+        "./bindings/github.com/fool-pigeon/pigeon/*"
       ],
       "@pg/*": [
         "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/*"

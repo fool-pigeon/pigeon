@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
 	"gopkg.in/natefinch/lumberjack.v2"

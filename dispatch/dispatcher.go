@@ -8,8 +8,8 @@ package dispatch
 import (
 	"context"
 
-	"github.com/fool-pigeon/pigeon/internal/protocol"
-	"github.com/fool-pigeon/pigeon/internal/transport/pgrest"
+	"github.com/fool-pigeon/pigeon/protocol"
+	"github.com/fool-pigeon/pigeon/transport/pgrest"
 )
 
 type Dispatcher struct {

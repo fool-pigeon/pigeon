@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/fool-pigeon/pigeon/internal/project"
+	"github.com/fool-pigeon/pigeon/project"
 	"resty.dev/v3"
 )
 

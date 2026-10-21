@@ -6,7 +6,7 @@
 package cmd
 
 import (
-	"github.com/fool-pigeon/pigeon/internal/core"
+	"github.com/fool-pigeon/pigeon/core"
 	"github.com/spf13/cobra"
 )
 

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fool-pigeon/pigeon/internal/core"
-	"github.com/fool-pigeon/pigeon/internal/fsx"
+	"github.com/fool-pigeon/pigeon/core"
+	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/stretchr/testify/assert"
 )
 
