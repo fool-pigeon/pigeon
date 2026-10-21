@@ -18,6 +18,7 @@ import (
 	"github.com/fool-pigeon/pigeon/core"
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/fool-pigeon/pigeon/protocol"
+	"github.com/fool-pigeon/pigeon/sulid"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -751,12 +752,14 @@ func createFile(path string, mode NodeMode) error {
 	defer f.Close()
 
 	var content []byte
-	base := filepath.Base(path)
 
 	switch m := mode; {
 	case m.Has(Request):
-		reqName := strings.TrimSuffix(base, filepath.Ext(base))
-		req := protocol.Request{ReqMeta: protocol.ReqMeta{Name: reqName}}
+		id, err := sulid.NewMonotonic()
+		if err != nil {
+			return err
+		}
+		req := protocol.Request{ReqMeta: protocol.ReqMeta{Id: id}}
 		switch {
 		case m.Has(HttpGet):
 			req.Method = protocol.MethodGet

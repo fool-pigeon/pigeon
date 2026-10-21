@@ -12,6 +12,7 @@ import (
 
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/fool-pigeon/pigeon/protocol"
+	"github.com/fool-pigeon/pigeon/sulid"
 	"github.com/spf13/cobra"
 )
 
@@ -46,8 +47,8 @@ func createRequest(cmd *cobra.Command, args []string) error {
 
 	errs := make([]error, 0, len(args))
 	for _, name := range args {
-		rName, _ := strings.CutSuffix(name, ".toml")
-		fName := rName + ".toml"
+		fName, _ := strings.CutSuffix(name, ".toml")
+		fName += ".toml"
 		// skip if exist or special error
 		isExist, err := fsx.IsFileExist(fName)
 		if isExist {
@@ -59,8 +60,13 @@ func createRequest(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
+		id, err := sulid.NewMonotonic()
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
 		req := protocol.Request{}
-		req.Name = rName
+		req.Id = id
 		req.Protocol = protocolInput
 		// skip if error
 		switch req.Protocol {

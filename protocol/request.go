@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+
+	"github.com/oklog/ulid/v2"
 )
 
 type ProtocolKind string
@@ -25,15 +27,8 @@ const (
 var Protocols = []ProtocolKind{ProtocolREST, ProtocolGRPC, ProtocolWS, ProtocolGQL}
 
 type ReqMeta struct {
-	Name     string       `toml:"name" json:"name"`
-	Protocol ProtocolKind `toml:"protocol" comment:"'http'" json:"protocol"`
-}
-
-func (r *ReqMeta) ReqName() string {
-	return r.Name
-}
-func (r *ReqMeta) ReqProtocol() ProtocolKind {
-	return r.Protocol
+	Id       ulid.ULID    `toml:"id" json:"id"`
+	Protocol ProtocolKind `toml:"protocol" json:"protocol"`
 }
 
 type AuthKind string

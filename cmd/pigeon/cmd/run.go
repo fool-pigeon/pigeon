@@ -185,7 +185,7 @@ func taskResPrint(res core.RunResult) {
 	rRes := res.Res
 	req := rRes.Request
 	if rRes.Err != nil {
-		pterm.Error.Println(res.Path, req.Name, rRes.Err)
+		pterm.Error.Println(res.Path, req.Id, rRes.Err)
 		return
 	}
 
@@ -194,8 +194,6 @@ func taskResPrint(res core.RunResult) {
 	sb.WriteString(res.Path)
 	sb.WriteRune(' ')
 	sb.WriteString(string(req.Protocol))
-	sb.WriteRune(' ')
-	sb.WriteString(req.Name)
 	sb.WriteRune(' ')
 	sb.WriteString(rRes.Status)
 	sb.WriteRune(' ')

@@ -39,7 +39,7 @@ var infoCmd = &cobra.Command{
 		flattenValues := formatter.FlattenValues
 		line := formatter.FieldLine
 
-		printValues("Name", false, req.Name)
+		printValues("Name", false, req.Id.String())
 		printValues("Protocol", false, string(req.Protocol))
 		switch req.Protocol {
 		// TODO cmd/cli: pg info, more request type
