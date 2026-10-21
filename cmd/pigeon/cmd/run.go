@@ -132,7 +132,7 @@ var runCmd = &cobra.Command{
 			ResultHandler: func(res core.RunResult) {
 				taskResPrint(res)
 				taskTotal++
-				if res.Err == nil && res.ReqRes.Err == nil && res.ReqRes.Success {
+				if res.Err == nil && res.Res.Err == nil && res.Res.Success {
 					taskPassed++
 				}
 			},
@@ -164,7 +164,7 @@ var runCmd = &cobra.Command{
 func taskResPrint(res core.RunResult) {
 
 	// filter result
-	isPassed := res.Err == nil && res.ReqRes.Err == nil && res.ReqRes.Success
+	isPassed := res.Err == nil && res.Res.Err == nil && res.Res.Success
 	if printConfig.onlyFail && isPassed {
 		return
 	}
@@ -182,7 +182,7 @@ func taskResPrint(res core.RunResult) {
 		pterm.Error.Println(res.Path, res.Err)
 		return
 	}
-	rRes := res.ReqRes
+	rRes := res.Res
 	req := rRes.Request
 	if rRes.Err != nil {
 		pterm.Error.Println(res.Path, req.Name, rRes.Err)

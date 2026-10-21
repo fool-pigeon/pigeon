@@ -22,9 +22,6 @@ func (e *EventConstExposeService) ExposedAlertEvt(evt AlertEvent) {}
 
 func (e *EventConstExposeService) ExposedTrsEvt(
 	evt TrsEvent,
-	trErr TaskResErr,
-	trHttp TaskResHttp,
-	trAny TaskResAny,
 ) {
 }
 

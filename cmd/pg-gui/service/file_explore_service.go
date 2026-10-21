@@ -15,7 +15,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fool-pigeon/pigeon/internal/config"
+	"github.com/fool-pigeon/pigeon/internal/core"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
 	"github.com/fool-pigeon/pigeon/internal/protocol"
 	"github.com/pelletier/go-toml/v2"
@@ -25,23 +25,29 @@ import (
 type NodeMode uint32
 
 const (
-	DirMode     NodeMode = 1 << iota // Directory: is a directory
-	ConfigDir                        // ConfigDir: the .pg/ directory
-	NormalDir                        // NormalDir: redundancy
-	FileMode                         // File: is a file
-	ConfigFile                       // ConfigFile: toml file, config.toml
-	EnvFile                          // EnvFile: dotenv file
-	Request                          // Req: is a request file
-	HttpReq                          // HTTP:[httpx.ReqData]
-	HttpGet                          // GET: http GET Method
-	HttpPost                         // POST: http POST Method
-	HttpPut                          // PUT: http PUT Method
-	HttpDelete                       // DELETE: http DELETE Method
-	HttpHead                         // HEAD: http HEAD Mehtod
-	HttpPatch                        // PATCH: http PATCH Method
-	HttpOptions                      // OPTIONS: http OPTIONS Method
-	HttpConnect                      // CONNECT: http CONNECT Method
-	HttpTrace                        // TRACE: http TRACE Method
+	DirMode      NodeMode = 1 << iota // Directory: is a directory
+	RootTag                           // the .pg/ directory
+	RootConfFile                      // e.g .pg/conf/conf.toml
+	RootRunFile                       // e.g .pg/run/dev.toml
+	NormalDir                         // NormalDir: redundancy
+	FileMode                          // File: is a file
+	ConfFile                          // ConfFile: toml file named .conf
+
+	Request // Req: is a request file
+	ReqREST // [protocol.ProtocolREST]
+	ReqGQL  // [protocol.ProtocolGQL]
+	ReqGRPC // [protocol.ProtocolGRPC]
+	ReqWS   // [protocol.ProtocolWS]
+
+	HttpGet     // GET: http GET Method
+	HttpPost    // POST: http POST Method
+	HttpPut     // PUT: http PUT Method
+	HttpDelete  // DELETE: http DELETE Method
+	HttpHead    // HEAD: http HEAD Mehtod
+	HttpPatch   // PATCH: http PATCH Method
+	HttpOptions // OPTIONS: http OPTIONS Method
+	HttpConnect // CONNECT: http CONNECT Method
+	HttpTrace   // TRACE: http TRACE Method
 )
 
 func (m NodeMode) Has(role NodeMode) bool {
@@ -85,7 +91,7 @@ func NewNode(mode NodeMode, path string, name string, pre ...*Node) *Node {
 func NewDirNode(path string, name string, pre ...*Node) *Node {
 	m := DirMode
 	if name == fsx.RootTag {
-		m |= ConfigDir
+		m |= RootTag
 	} else {
 		m |= NormalDir
 	}
@@ -340,44 +346,38 @@ func (n *Node) updateCache() {
 func getFileMode(b []byte) NodeMode {
 	res := FileMode
 	// parse if it is a request file
-	var reqMeta request.ReqMeta
-	if err := toml.Unmarshal(b, &reqMeta); err == nil {
+	var req protocol.Request
+
+	if err := toml.Unmarshal(b, &req); err == nil {
 		// add Request flag
 		res |= Request
-		switch reqMeta.ReqProtocol() {
-		case request.ProtocolREST:
+		switch req.Protocol {
+		case protocol.ProtocolREST, protocol.ProtocolGQL:
 			// add HTTP flag
-			var httpReq httpx.ReqData
-			toml.Unmarshal(b, &httpReq)
-			res |= parseModeFromHttpReq(&httpReq)
+			switch req.Method {
+			case protocol.MethodGet:
+				res |= HttpGet
+			case protocol.MethodPost:
+				res |= HttpPost
+			case protocol.MethodPut:
+				res |= HttpPut
+			case protocol.MethodDelete:
+				res |= HttpDelete
+			case protocol.MethodPatch:
+				res |= HttpPatch
+			case protocol.MethodHead:
+				res |= HttpHead
+			case protocol.MethodOptions:
+				res |= HttpOptions
+			case protocol.MethodTrace:
+				res |= HttpTrace
+			case protocol.MethodConnect:
+				res |= HttpConnect
+			}
 		}
 		return res
 	}
 
-	return res
-}
-func parseModeFromHttpReq(req *httpx.ReqData) NodeMode {
-	res := HttpReq
-	switch req.Method {
-	case protocol.MethodGet:
-		res |= HttpGet
-	case protocol.MethodPost:
-		res |= HttpPost
-	case protocol.MethodPut:
-		res |= HttpPut
-	case protocol.MethodDelete:
-		res |= HttpDelete
-	case protocol.MethodPatch:
-		res |= HttpPatch
-	case protocol.MethodHead:
-		res |= HttpHead
-	case protocol.MethodOptions:
-		res |= HttpOptions
-	case protocol.MethodTrace:
-		res |= HttpTrace
-	case protocol.MethodConnect:
-		res |= HttpConnect
-	}
 	return res
 }
 
@@ -754,32 +754,32 @@ func createFile(path string, mode NodeMode) error {
 	base := filepath.Base(path)
 
 	switch m := mode; {
-	case m.Has(HttpReq):
+	case m.Has(Request):
 		reqName := strings.TrimSuffix(base, filepath.Ext(base))
-		req := httpx.NewReqData(reqName)
+		req := protocol.Request{ReqMeta: protocol.ReqMeta{Name: reqName}}
 		switch {
 		case m.Has(HttpGet):
-			req.SetMethod(protocol.MethodGet)
+			req.Method = protocol.MethodGet
 		case m.Has(HttpPost):
-			req.SetMethod(protocol.MethodPost)
+			req.Method = protocol.MethodPost
 		case m.Has(HttpPut):
-			req.SetMethod(protocol.MethodPut)
+			req.Method = protocol.MethodPut
 		case m.Has(HttpDelete):
-			req.SetMethod(protocol.MethodDelete)
+			req.Method = protocol.MethodDelete
 		case m.Has(HttpHead):
-			req.SetMethod(protocol.MethodHead)
+			req.Method = protocol.MethodHead
 		case m.Has(HttpPatch):
-			req.SetMethod(protocol.MethodPatch)
+			req.Method = protocol.MethodPatch
 		case m.Has(HttpOptions):
-			req.SetMethod(protocol.MethodOptions)
+			req.Method = protocol.MethodOptions
 		case m.Has(HttpConnect):
-			req.SetMethod(protocol.MethodConnect)
+			req.Method = protocol.MethodConnect
 		case m.Has(HttpTrace):
-			req.SetMethod(protocol.MethodTrace)
+			req.Method = protocol.MethodTrace
 		}
 		content, _ = toml.Marshal(req)
-	case m.Has(ConfigFile):
-		content, _ = toml.Marshal(config.New())
+	case m.Has(ConfFile):
+		content, _ = toml.Marshal(core.Conf{})
 	}
 	f.Write(content)
 

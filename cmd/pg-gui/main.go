@@ -149,12 +149,12 @@ func RegisterServices(app *application.App) {
 	fileAccessService := service.NewFileAccessService(fileService, fileExploreService, pathSelectService, app)
 	app.RegisterService(application.NewService(fileAccessService))
 	app.RegisterService(application.NewService(service.NewTextFileService(fileAccessService)))
-	app.RegisterService(application.NewService(service.NewHttpReqFileService(fileAccessService)))
+	app.RegisterService(application.NewService(service.NewReqFileService(fileAccessService)))
 
 	reqCtxService := service.NewReqCtxService(app)
 	app.RegisterService(application.NewService(reqCtxService))
 
-	taskRunService := service.NewTaskRunService(reqCtxService, alertService, app)
+	taskRunService := service.NewTaskRunService(alertService, app)
 	app.RegisterService(application.NewService(taskRunService))
 }
 func init() {

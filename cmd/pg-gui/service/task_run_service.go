@@ -6,19 +6,22 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http/httputil"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/fool-pigeon/pigeon/internal/config"
 	"github.com/fool-pigeon/pigeon/internal/core"
-	"github.com/fool-pigeon/pigeon/internal/env"
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	request "github.com/fool-pigeon/pigeon/internal/protocol"
-	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
+	"github.com/fool-pigeon/pigeon/internal/protocol"
+	"github.com/fool-pigeon/pigeon/internal/transport/pgrest"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"resty.dev/v3"
 )
 
 // [TaskRunService] Event
@@ -46,43 +49,40 @@ const (
 	TrsResultAny TrsEvent = "task-run-service:result-any"
 )
 
-type TaskMeta struct {
+type Task struct {
 	// set UUID,id of Task
 	Id string `json:"id"`
 	// For Task:this is file path for calc collection's root path
-	//
-	// For TaskRes: this is the runned file path of relative path from root
 	Path string `json:"path"`
-}
-type Task struct {
-	TaskMeta
 	// file content of run file
-	Param core.RunPaths `json:"param"`
+	RunPaths core.RunPaths
 }
-type TaskRes[T any] struct {
-	request.ResultMeta
-	Meta TaskMeta `json:"meta"`
-	Data T        `json:"data"`
+type HttpMeta struct {
+	Header map[string][]string `json:"header"`
+	Body   string              `json:"body"`
+	Raw    string              `json:"raw"`
 }
-
-type TaskResErr = TaskRes[struct{}]
-type TaskResHttp = TaskRes[HttpRes]
-type TaskResAny = TaskRes[any]
+type TaskRes struct {
+	core.RunResult
+	Id          string
+	Spent       string
+	ContentSize string
+	ReqMeta     HttpMeta
+	ResMeta     HttpMeta
+}
 
 // service for running run tasks or collection
 type TaskRunService struct {
-	reqCtx *ReqCtxService
-
 	alertService *AlertService
 
 	app *application.App
 }
 
-func NewTaskRunService(reqCtx *ReqCtxService, alertService *AlertService, app *application.App) *TaskRunService {
-	return &TaskRunService{reqCtx, alertService, app}
+func NewTaskRunService(alertService *AlertService, app *application.App) *TaskRunService {
+	return &TaskRunService{alertService, app}
 }
 
-func (tr *TaskRunService) RunDir(id string, path string) error {
+func (tr *TaskRunService) RunDir(id string, path string, rootConf string) error {
 	path = filepath.Clean(path)
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -92,32 +92,13 @@ func (tr *TaskRunService) RunDir(id string, path string) error {
 		return fmt.Errorf("%s:%w", path, fsx.ErrNotDir)
 	}
 	task := Task{
-		TaskMeta{Id: id, Path: path},
-		core.RunPaths{
+		Id: id, Path: path,
+		RunPaths: core.RunPaths{
 			Start:    path,
 			Tasks:    []string{path},
-			RootConf: tr.reqCtx.CfgInfo().Path,
-			Env:      tr.reqCtx.EnvInfo().Path,
+			RootConf: rootConf,
 		},
 	}
-	return tr.Run(task)
-}
-
-// a wrapper Func for [TaskRunService.Run]
-//
-// all paths are absolute in params,
-// use this temporarily for inject Hard-coded settings
-func (tr *TaskRunService) RunWrapper(task Task) error {
-	root, err := fsx.RootDir(task.Path)
-	if err != nil {
-		return err
-	}
-	if _, err := fsx.RootDir(task.Path); err != nil {
-		return fmt.Errorf("%s:%w", task.Path, fsx.ErrRootNotExist)
-	}
-	// inject config path
-	task.Param.RootConf = filepath.Join(root, fsx.RootTag, fsx.ConfigDefaultName)
-
 	return tr.Run(task)
 }
 
@@ -125,86 +106,137 @@ func (tr *TaskRunService) RunWrapper(task Task) error {
 //
 // all paths are absolute
 func (tr *TaskRunService) Run(task Task) error {
-	if _, err := fsx.RootDir(task.Path); err != nil {
+	root, err := fsx.RootDir(task.Path)
+	if err != nil {
 		return fmt.Errorf("%s:%w", task.Path, fsx.ErrRootNotExist)
 	}
 
-	p := task.Param
-	// config load
-	cfg, err := config.LoadFromFile(p.RootConf)
-	if err != nil {
-		if p.RootConf != "" && p.RootConf != "." {
-			tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty config", p.RootConf))
-		}
-		cfg = config.New()
+	if err := task.RunPaths.Check(); err != nil {
+		return err
 	}
-	// env load
-	e, err := env.LoadFromFile(p.Env)
-	if err != nil {
-		if p.Env != "" && p.Env != "." {
-			tr.alertService.Warn(fmt.Sprintf("load %s,failed,use empty env", p.Env))
-		}
-		e = env.New()
-	}
+	task.RunPaths = task.RunPaths.ToAbs(root)
 
-	runParams := core.RunInput{
-		ReqCtx: core.ReqCtx{Conf: cfg, Env: e},
-		Start:  p.Start,
-		Tasks:  p.Tasks,
-	}
-	return tr.run(task.Id, runParams)
+	return tr.run(task)
 }
-func (tr *TaskRunService) run(id string, params core.RunInput) error {
+
+// The key for get body in Context of [httpx.Request]
+// For example,get the body value from context of [http.Request] named req:
+//
+// b := req.Context().Value(HttpBodyKey{}).([]byte)
+type HttpBodyKey struct{}
+
+func (tr *TaskRunService) run(task Task) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	if tr.app != nil {
 		ungister := tr.app.Event.On(TrsCancel, func(event *application.CustomEvent) {
-			if cancelledId, ok := event.Data.(string); ok && cancelledId == id {
+			if cancelledId, ok := event.Data.(string); ok && cancelledId == task.Id {
 				cancel()
 			}
 		})
 		defer ungister()
 	}
 
-	evt := tr.app.Event
-	core.Run(ctx, params, func(res core.RunResult) {
-		meta := TaskMeta{Id: id, Path: res.Path}
-		if res.Err != nil {
-			evt.Emit(TrsResultErr, TaskResErr{Meta: meta, ResultMeta: request.ResultMeta{Err: res.Err}})
-			return
-		}
+	var rootConf core.RootConf
+	if err := fsx.ReadToml(task.RunPaths.RootConf, &rootConf); err != nil {
+		tr.alertService.Warn(fmt.Sprintf("%s read error,using empty root conf", task.RunPaths.RootConf))
+	}
 
-		rRes := res.ReqRes
-		rMeta := rRes.ResultMeta
-		if rRes.Err != nil {
-			switch rMeta.ReqProto {
-			case request.ProtocolREST:
-				evt.Emit(TrsResultHttp, tr.reqCtx.parseResHttp(request.ResultView[*httpx.Response]{
-					ResultMeta: res.ReqRes.ResultMeta,
-				}, meta))
-			default:
-				evt.Emit(TrsResultErr, TaskResErr{Meta: meta, ResultMeta: rMeta})
-			}
-			return
-		}
-
-		switch raw := rRes.Raw.(type) {
-		case *httpx.Response:
-			evt.Emit(TrsResultHttp, tr.reqCtx.parseResHttp(request.ResultView[*httpx.Response]{
-				ResultMeta: res.ReqRes.ResultMeta,
-				Raw:        raw,
-			}, meta))
-
-		default:
-			evt.Emit(TrsResultAny, TaskResAny{ResultMeta: rMeta, Meta: meta, Data: raw})
-		}
-	})
+	// evt := tr.app.Event
+	input := core.RunInput{
+		Start:    task.RunPaths.Start,
+		Tasks:    task.RunPaths.Tasks,
+		RootConf: rootConf,
+		ResultHandler: func(res core.RunResult) {
+			// TODO
+		},
+		TraceHandler: func(t protocol.Trace) {
+			// TODO
+		},
+		ClientInit: func(client *protocol.ActualClient) {
+			client.SetRequestMiddlewares(
+				resty.MiddlewareRequestCreate,
+				func(c *resty.Client, req *resty.Request) error {
+					var bodyBytes []byte
+					if r := req.RawRequest; r != nil && r.Body != nil {
+						b, err := io.ReadAll(r.Body)
+						if err != nil {
+							return err
+						}
+						r.Body.Close()
+						bodyBytes = b
+						// Resume Body, subsequent requests sent normally
+						r.Body = io.NopCloser(bytes.NewReader(b))
+					}
+					req.SetContext(context.WithValue(req.Context(), HttpBodyKey{}, bodyBytes))
+					return nil
+				},
+			)
+		},
+	}
+	if err := core.Run(ctx, input); err != nil {
+		return err
+	}
 
 	if ctx.Err() != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
-			tr.app.Event.Emit(TrsCancelld, id)
+			tr.app.Event.Emit(TrsCancelld, task.Id)
 			return fmt.Errorf("cancelled task:%w", ctx.Err())
 		}
 	}
 	return ctx.Err()
+}
+func (tr *TaskRunService) parseRunResult(id string, res core.RunResult) TaskRes {
+	var taskRes TaskRes
+	taskRes.RunResult = res
+	taskRes.Id = id
+	taskRes.Spent = res.Res.Duration.Round(time.Millisecond / 10).String()
+
+	switch v := res.Res.Raw.(type) {
+	case *pgrest.Response:
+		// Parse the result for request
+		if req := v.Request; req != nil {
+			// get request body
+			body, _ := req.Context().Value(HttpBodyKey{}).([]byte)
+			taskRes.ReqMeta.Body = string(body)
+			// set request header
+			taskRes.ReqMeta.Header = req.Header
+			if r := req.RawRequest; r != nil {
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				// set raw request text
+				if b, err := httputil.DumpRequestOut(r, true); err == nil {
+					taskRes.ReqMeta.Raw = string(b)
+				}
+			}
+		}
+		// Parse the result for response
+		if resp := v.RawResponse; resp != nil {
+			b := v.Bytes()
+			taskRes.ContentSize = humanSize(b)
+			resp.Body = io.NopCloser(bytes.NewReader(b))
+			if b, err := httputil.DumpResponse(resp, true); err == nil {
+				// set raw response text
+				taskRes.ResMeta.Raw = string(b)
+			}
+		}
+		taskRes.ResMeta.Body = v.String()
+		taskRes.ResMeta.Header = v.Header()
+	}
+
+	return taskRes
+}
+func humanSize(b []byte) string {
+	const base = 1024
+	if len(b) < base {
+		return fmt.Sprintf("%dB", len(b))
+	}
+	n := float64(len(b))
+	for _, unit := range []string{"KB", "MB", "GB", "TB", "PB"} {
+		n /= base
+		if n < base {
+			return fmt.Sprintf("%.1f%s", n, unit)
+		}
+	}
+	return fmt.Sprintf("%.1fPB", n)
 }

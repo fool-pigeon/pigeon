@@ -229,8 +229,8 @@ func (r *Request) ParseRESTRawURL(rawURL string) error {
 	if rawURL == "" {
 		return fmt.Errorf("rawURL:%w", ErrEmptyValue)
 	}
-	if r.Protocol != ProtocolREST {
-
+	if r.Protocol != ProtocolREST && r.Protocol != ProtocolGQL {
+		return fmt.Errorf("parse raw URL not support %s", r.Protocol)
 	}
 	// if not has http scheme
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {

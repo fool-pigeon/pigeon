@@ -114,7 +114,7 @@ func sendReq(ctx context.Context, input reqSendInput) RunResult {
 	if err != nil {
 		return RunResult{Path: input.path, Err: err}
 	}
-	res.ReqRes = response
+	res.Res = response
 
 	return res
 }
@@ -144,7 +144,7 @@ type RunResult struct {
 	// Path relative to the root collection
 	Path    string
 	AbsPath string
-	ReqRes  *protocol.Result
+	Res     *protocol.Result
 	Err     error
 }
 type RunResultHandler func(res RunResult)
@@ -160,6 +160,8 @@ type RunInput struct {
 
 	ResultHandler RunResultHandler
 	TraceHandler  protocol.TraceHandler
+
+	ClientInit func(client *protocol.ActualClient)
 }
 
 func Run(ctx context.Context, rp RunInput) error {
@@ -177,6 +179,10 @@ func Run(ctx context.Context, rp RunInput) error {
 	if err != nil {
 		return err
 	}
+	if rp.ClientInit != nil {
+		rp.ClientInit(client)
+	}
+
 	dispatcher := dispatch.New(client)
 
 	// set the ReqCtx

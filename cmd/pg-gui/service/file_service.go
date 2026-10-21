@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/fool-pigeon/pigeon/internal/fsx"
-	"github.com/fool-pigeon/pigeon/internal/protocol/httpx"
+	"github.com/fool-pigeon/pigeon/internal/protocol"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -288,38 +288,38 @@ func (t *TextFileService) Stage(path string, data string) (NodeMode, error) {
 }
 
 // FileServiceWrapper[http.ReqData]
-type HttpReqFileService struct {
+type ReqFileService struct {
 	fa *FileAccessService
 }
 
-func NewHttpReqFileService(fa *FileAccessService) *HttpReqFileService {
-	return &HttpReqFileService{fa}
+func NewReqFileService(fa *FileAccessService) *ReqFileService {
+	return &ReqFileService{fa}
 }
-func (r *HttpReqFileService) Read(path string) (*httpx.ReqData, error) {
+func (r *ReqFileService) Read(path string) (*protocol.Request, error) {
 	b, err := r.fa.Read(path)
 	if err != nil {
 		return nil, err
 	}
-	var req httpx.ReqData
+	var req protocol.Request
 	if err := toml.Unmarshal(b, &req); err != nil {
 		return nil, err
 	}
 	return &req, nil
 }
 
-func (r *HttpReqFileService) ReadOriginal(path string) (*httpx.ReqData, error) {
+func (r *ReqFileService) ReadOriginal(path string) (*protocol.Request, error) {
 	b, err := r.fa.ReadOriginal(path)
 	if err != nil {
 		return nil, err
 	}
-	var req httpx.ReqData
+	var req protocol.Request
 	if err := toml.Unmarshal(b, &req); err != nil {
 		return nil, err
 	}
 	return &req, nil
 }
 
-func (r *HttpReqFileService) Write(path string, data *httpx.ReqData) (NodeMode, error) {
+func (r *ReqFileService) Write(path string, data *protocol.Request) (NodeMode, error) {
 	b, err := toml.Marshal(data)
 	if err != nil {
 		return 0, err
@@ -327,7 +327,7 @@ func (r *HttpReqFileService) Write(path string, data *httpx.ReqData) (NodeMode, 
 	return r.fa.Write(path, b)
 }
 
-func (r *HttpReqFileService) Stage(path string, data *httpx.ReqData) (NodeMode, error) {
+func (r *ReqFileService) Stage(path string, data *protocol.Request) (NodeMode, error) {
 	b, err := toml.Marshal(data)
 	if err != nil {
 		return 0, err
