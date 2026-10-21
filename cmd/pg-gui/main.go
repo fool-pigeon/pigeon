@@ -135,6 +135,9 @@ func RegisterServices(app *application.App) {
 
 	app.RegisterService(application.NewService(service.NewSettingsService(app)))
 
+	db := service.NewDatabase()
+	app.RegisterService(application.NewService(db))
+
 	alertService := service.NewAlertService(app)
 
 	pathSelectService := service.NewPathSelectService(app)
