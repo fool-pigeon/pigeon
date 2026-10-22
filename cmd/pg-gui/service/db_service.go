@@ -21,14 +21,16 @@ import (
 
 const (
 	// task:id:{task_ulid} -> [Task]
-	dbKeyPrefixTaskId = "task:id:"
+	dbKeyPrefixTaskId = "task:id"
 	// task:res:{task_ulid}:{res_ulid} -> [TaskRes.Path]
-	dbKeyPrefixTaskRes = "task:res:"
+	dbKeyPrefixTaskRes = "task:res"
 
 	// req:res:{req_ulid}:{res_ulid} -> nil
-	dbKeyPrefixReqRes = "req:res:"
+	dbKeyPrefixReqRes = "req:res"
 	// res:id:{res_ulid} -> [TaskRes]
-	dbKeyPrefixRes = "res:id:"
+	dbKeyPrefixRes = "res:id"
+	// res:trace:{res_ulid}:{trace_ulid} -> [protocol.Trace]
+	dbKeyPrefixResTrace = "res:trace"
 )
 
 type DataSource struct {
@@ -86,10 +88,7 @@ type BaseRepoULID[T any] struct {
 }
 
 func (repo *BaseRepoULID[T]) makeKey(id ulid.ULID) []byte {
-	key := make([]byte, 0, len(repo.prefix)+16)
-	key = append(key, []byte(repo.prefix)...)
-	key = append(key, id[:]...)
-	return key
+	return makeDBKey([][]byte{[]byte(repo.prefix), id[:]})
 }
 func (repo *BaseRepoULID[T]) GetByID(id ulid.ULID) (*T, error) {
 	var data T
