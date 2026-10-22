@@ -414,11 +414,11 @@ var (
 type FileExploreService struct {
 	mu    sync.RWMutex
 	root  *Node
-	alert *AlertService
+	alert *AlertNotify
 	app   *application.App
 }
 
-func NewFileExploreService(alertService *AlertService, app *application.App) *FileExploreService {
+func NewFileExploreService(alertService *AlertNotify, app *application.App) *FileExploreService {
 	return &FileExploreService{root: &Node{Mode: DirMode}, alert: alertService, app: app}
 }
 

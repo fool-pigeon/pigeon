@@ -41,14 +41,8 @@ const (
 	// it will send the cancelled task's id
 	TrsCancelld TrsEvent = "task-run-service:cancelled"
 	// go Send data:
-	// [TaskResErr]
-	TrsResultErr TrsEvent = "task-run-service:result-error"
-	// go Send data:
 	// [TaskResHttp]
 	TrsResultHttp TrsEvent = "task-run-service:result-http"
-	// go Send data:
-	// [TaskResAny]
-	TrsResultAny TrsEvent = "task-run-service:result-any"
 )
 
 type Task struct {
@@ -75,12 +69,12 @@ type TaskRes struct {
 
 // service for running run tasks or collection
 type TaskRunService struct {
-	alertService *AlertService
+	alertService *AlertNotify
 
 	app *application.App
 }
 
-func NewTaskRunService(alertService *AlertService, app *application.App) *TaskRunService {
+func NewTaskRunService(alertService *AlertNotify, app *application.App) *TaskRunService {
 	return &TaskRunService{alertService, app}
 }
 
