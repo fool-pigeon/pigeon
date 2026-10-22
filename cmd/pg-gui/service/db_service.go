@@ -64,7 +64,7 @@ func (d *DataSource) ServiceShutdown() error {
 
 	return errs
 }
-func makeDBKey(parts [][]byte) []byte {
+func makeDBKey(parts ...[]byte) []byte {
 	if len(parts) <= 0 {
 		return nil
 	}
@@ -88,7 +88,7 @@ type BaseRepoULID[T any] struct {
 }
 
 func (repo *BaseRepoULID[T]) makeKey(id ulid.ULID) []byte {
-	return makeDBKey([][]byte{[]byte(repo.prefix), id[:]})
+	return makeDBKey([]byte(repo.prefix), id[:])
 }
 func (repo *BaseRepoULID[T]) GetByID(id ulid.ULID) (*T, error) {
 	var data T
@@ -124,9 +124,12 @@ type CacheDB struct {
 	source *DataSource
 
 	taskRepo *BaseRepoULID[Task]
-	resRepo  *BaseRepoULID[TaskRes]
+	resRepo  *BaseRepoULID[taskRes]
 }
 
+func NewCacheDB(source *DataSource) *CacheDB {
+	return &CacheDB{source: source}
+}
 func (db *CacheDB) getDB() *badger.DB {
 	return db.source.cache
 }
@@ -136,9 +139,9 @@ func (db *CacheDB) GetTaskRepo() *BaseRepoULID[Task] {
 	}
 	return db.taskRepo
 }
-func (db *CacheDB) GetTaskResRepo() *BaseRepoULID[TaskRes] {
+func (db *CacheDB) GetTaskResRepo() *BaseRepoULID[taskRes] {
 	if db.resRepo == nil {
-		db.resRepo = &BaseRepoULID[TaskRes]{prefix: dbKeyPrefixRes, db: db.getDB()}
+		db.resRepo = &BaseRepoULID[taskRes]{prefix: dbKeyPrefixRes, db: db.getDB()}
 	}
 	return db.resRepo
 }

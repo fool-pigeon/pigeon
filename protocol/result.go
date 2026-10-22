@@ -32,7 +32,7 @@ type Result struct {
 	ResultMeta
 	Request Request
 	// the raw content of response,e.g. [resty.Response]
-	Raw any `json:"raw"`
+	Raw any
 }
 
 func (result *Result) SetRaw(Raw any) *Result {
@@ -48,7 +48,7 @@ type ResultView[T any] struct {
 	ResultMeta
 	Request Request
 	// the raw content of response,e.g. [httpx.Response]
-	Raw T `json:"raw"`
+	Raw T
 }
 
 func View[T any](r Result) ResultView[T] {

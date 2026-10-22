@@ -7,7 +7,9 @@ package service
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +18,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dgraph-io/badger/v4"
 	"github.com/fool-pigeon/pigeon/core"
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/fool-pigeon/pigeon/pgrest"
@@ -34,15 +37,18 @@ const (
 	// id:string
 	//
 	// it will cancel the task whose task's id equals that
-	TaskCancel TaskSEvent = "task-service:cancel"
+	TaskSECancel TaskSEvent = "task-service:cancel"
 	// go send data:
 	// id:string
 	//
 	// it will send the cancelled task's id
-	TaskCancelled TaskSEvent = "task-service:cancelled"
+	TaskSECancelled TaskSEvent = "task-service:cancelled"
 	// go Send data:
-	// [TaskResultView]
-	TaskResultView TaskSEvent = "task-service:result-view"
+	// [TaskSEResView]
+	TaskSEResView TaskSEvent = "task-service:res-view"
+	// go Send data:
+	// [TaskResViewMeta]
+	TaskSEResViewMeta TaskSEvent = "task-service:res-view-meta"
 )
 
 type Task struct {
@@ -53,83 +59,101 @@ type Task struct {
 	RunPaths core.RunPaths
 }
 
-type TaskRes struct {
+type TaskHTTPExt struct {
+	Header map[string][]string
+	Body   []byte
+	Dump   []byte
+}
+type TaskHTTPExtView struct {
+	Header map[string][]string `json:"header"`
+	Body   string              `json:"body"`
+	Dump   string              `json:"raw"`
+}
+
+func (h *TaskHTTPExt) toView() (*TaskHTTPExtView, error) {
+	var err error
+	var body, dump []byte
+	if len(h.Body) > 0 {
+		body, err = gzipDecompress(h.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(h.Dump) > 0 {
+		dump, err = gzipDecompress(h.Dump)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &TaskHTTPExtView{
+		Header: h.Header,
+		Body:   string(body),
+		Dump:   string(dump),
+	}, nil
+}
+
+type taskRes struct {
 	core.RunResult
 	ID ulid.ULID
-}
 
-func (res *TaskRes) toTaskViewMeta() TaskResViewMeta {
-	return TaskResViewMeta{
-		ResultCover: protocol.ResultCover{Success: res.Res.Success, Tests: res.Res.Tests},
-		ID:          res.ID,
-		Path:        res.Path,
-	}
+	HTTPRequest  TaskHTTPExt
+	HTTPResponse TaskHTTPExt
 }
-func (res *TaskRes) toTaskView() TaskResView {
-	view := TaskResView{
-		TaskRes: *res,
-		Spent:   res.Res.Duration.Round(time.Millisecond / 10).String(),
-	}
-	switch v := res.Res.Raw.(type) {
-	case *pgrest.Response:
-		// Parse the result for request
-		if req := v.Request; req != nil {
-			// get request body
-			body, _ := req.Context().Value(HttpBodyKey{}).([]byte)
-			view.ReqMeta.Body = string(body)
-			// set request header
-			view.ReqMeta.Header = req.Header
-			if r := req.RawRequest; r != nil {
-				r.Body = io.NopCloser(bytes.NewReader(body))
-				// set raw request text
-				if b, err := httputil.DumpRequestOut(r, true); err == nil {
-					view.ReqMeta.Raw = string(b)
-				}
-			}
-		}
-		// Parse the result for response
-		if resp := v.RawResponse; resp != nil {
-			b := v.Bytes()
-			view.ContentSize = humanSize(len(b))
-			resp.Body = io.NopCloser(bytes.NewReader(b))
-			if b, err := httputil.DumpResponse(resp, true); err == nil {
-				// set raw response text
-				view.ResMeta.Raw = string(b)
-			}
-		}
-		view.ResMeta.Body = v.String()
-		view.ResMeta.Header = v.Header()
-	}
-
-	return view
-}
-
 type TaskResViewMeta struct {
 	protocol.ResultCover
 	ID   ulid.ULID
 	Path string
 }
-type HttpMeta struct {
-	Header map[string][]string `json:"header"`
-	Body   string              `json:"body"`
-	Raw    string              `json:"raw"`
-}
 type TaskResView struct {
-	TaskRes
-	Spent       string
+	taskRes
+	Spent string
+	// response body size
 	ContentSize string
 
-	ReqMeta HttpMeta
-	ResMeta HttpMeta
+	HTTPRequest  *TaskHTTPExtView
+	HTTPResponse *TaskHTTPExtView
+}
+
+func (res *taskRes) toViewMeta() (*TaskResViewMeta, error) {
+	if res.Res == nil {
+		return nil, ErrNilValue
+	}
+	return &TaskResViewMeta{
+		ResultCover: res.Res.ResultCover,
+		ID:          res.ID,
+		Path:        res.Path,
+	}, nil
+}
+func (res *taskRes) toView() (*TaskResView, error) {
+	if res.Res == nil {
+		return nil, ErrNilValue
+	}
+
+	var view TaskResView
+	var err error
+	view.HTTPRequest, err = res.HTTPRequest.toView()
+	if err != nil {
+		return nil, err
+	}
+	view.HTTPResponse, err = res.HTTPResponse.toView()
+	if err != nil {
+		return nil, err
+	}
+	view.taskRes = *res
+	view.Spent = res.Res.Duration.Round(time.Millisecond / 10).String()
+	view.ContentSize = humanSize(len([]byte(view.HTTPResponse.Body)))
+
+	return &view, nil
 }
 
 // service for running run tasks or collection
 type TaskService struct {
 	evt *application.EventManager
+	db  *CacheDB
 }
 
-func NewTaskRunService(app *application.App) *TaskService {
-	return &TaskService{app.Event}
+func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
+	return &TaskService{app.Event, db}
 }
 
 func (tr *TaskService) RunDir(path string, rootConf string) error {
@@ -184,7 +208,7 @@ func (tr *TaskService) run(task Task) error {
 	defer cancel()
 
 	if tr.evt != nil {
-		ungister := tr.evt.On(TaskCancel, func(event *application.CustomEvent) {
+		ungister := tr.evt.On(TaskSECancel, func(event *application.CustomEvent) {
 			if cancelledId, ok := event.Data.(string); ok && cancelledId == task.Id.String() {
 				cancel()
 			}
@@ -197,13 +221,32 @@ func (tr *TaskService) run(task Task) error {
 		alert.warn(fmt.Sprintf("%s read error,using empty root conf", task.RunPaths.RootConf))
 	}
 
-	// evt := tr.app.Event
+	resID, err := uid.NewULIDMonotonic()
+	if err != nil {
+		return err
+	}
 	input := core.RunInput{
 		Start:    task.RunPaths.Start,
 		Tasks:    task.RunPaths.Tasks,
 		RootConf: rootConf,
 		ResultHandler: func(res core.RunResult) {
 			// TODO
+			if res.Err != nil {
+				alert.error(fmt.Sprint(res.Path, res.Err))
+				return
+			}
+			if res.Res == nil {
+				alert.error(fmt.Sprint(res.Path, ErrNilValue))
+				return
+			}
+
+			tRes := taskRes{RunResult: res, ID: resID}
+			tr.parseRunResRaw(&res, &tRes)
+			if err := tr.storeTaskRes(tRes, task.Id); err != nil {
+				// TODO
+				return
+			}
+
 		},
 		TraceHandler: func(t *protocol.Trace) {
 			// TODO
@@ -235,11 +278,102 @@ func (tr *TaskService) run(task Task) error {
 
 	if ctx.Err() != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
-			tr.evt.Emit(TaskCancelled, task.Id)
+			tr.evt.Emit(TaskSECancelled, task.Id)
 			return fmt.Errorf("cancelled task:%w", ctx.Err())
 		}
 	}
 	return ctx.Err()
+}
+func (tr *TaskService) parseRunResRaw(res *core.RunResult, tRes *taskRes) {
+	switch v := res.Res.Raw.(type) {
+	case *pgrest.Response:
+		// Parse the result for request
+		if req := v.Request; req != nil {
+			// get request body
+			body, _ := req.Context().Value(HttpBodyKey{}).([]byte)
+			tRes.HTTPRequest.Body, _ = gzipCompress(body)
+			// set request header
+			tRes.HTTPRequest.Header = req.Header
+			if r := req.RawRequest; r != nil {
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				if b, err := httputil.DumpRequestOut(r, true); err == nil {
+					tRes.HTTPRequest.Dump, _ = gzipCompress(b)
+				}
+			}
+		}
+		// Parse the result for response
+		if resp := v.RawResponse; resp != nil {
+			b := v.Bytes()
+			resp.Body = io.NopCloser(bytes.NewReader(b))
+			if b, err := httputil.DumpResponse(resp, true); err == nil {
+				// view.ResMeta.Raw = string(b)
+				tRes.HTTPResponse.Dump, _ = gzipCompress(b)
+			}
+		}
+		tRes.HTTPResponse.Header = v.Header()
+		tRes.HTTPResponse.Body, _ = gzipCompress(v.Bytes())
+	}
+}
+func (tr *TaskService) storeTaskRes(res taskRes, taskID ulid.ULID) error {
+	return tr.db.getDB().Update(func(txn *badger.Txn) error {
+		viewMeta, err := res.toViewMeta()
+		if err != nil {
+			return err
+		}
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixTaskRes), taskID[:], res.ID[:]), viewMeta); err != nil {
+			return err
+		}
+		if err := txn.Set(makeDBKey([]byte(dbKeyPrefixReqRes), res.Res.Request.ID[:], res.ID[:]), nil); err != nil {
+			return err
+		}
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixRes), res.ID[:]), res); err != nil {
+			return err
+		}
+
+		// TODO emit event view meta to front
+
+		return nil
+	})
+}
+func dbTxnSet[T any](txn *badger.Txn, key []byte, data T) error {
+	b, err := gobEncode(data)
+	if err != nil {
+		return err
+	}
+	return txn.Set(key, b)
+}
+func gobEncode[T any](data T) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(data); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+func gobDecode[T any](b []byte) (T, error) {
+	var data T
+	if err := gob.NewDecoder(bytes.NewReader(b)).Decode(data); err != nil {
+		return *new(T), err
+	}
+	return data, nil
+}
+func gzipCompress(b []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	if _, err := w.Write(b); err != nil {
+		return nil, err
+	}
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+func gzipDecompress(b []byte) ([]byte, error) {
+	r, err := gzip.NewReader(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	return io.ReadAll(r)
 }
 func humanSize(bytesLen int) string {
 	const base = 1024

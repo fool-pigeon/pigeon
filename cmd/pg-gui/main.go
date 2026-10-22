@@ -140,6 +140,7 @@ func RegisterServices(app *application.App) {
 
 	dataSource := &service.DataSource{}
 	app.RegisterService(application.NewService(dataSource))
+	cacheDB := service.NewCacheDB(dataSource)
 
 	pathSelectService := service.NewPathSelectService(app)
 	app.RegisterService(application.NewService(pathSelectService))
@@ -158,7 +159,7 @@ func RegisterServices(app *application.App) {
 	reqCtxService := service.NewReqCtxService(app)
 	app.RegisterService(application.NewService(reqCtxService))
 
-	taskRunService := service.NewTaskRunService(app)
+	taskRunService := service.NewTaskRunService(app, cacheDB)
 	app.RegisterService(application.NewService(taskRunService))
 }
 func init() {
