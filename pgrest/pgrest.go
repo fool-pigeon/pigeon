@@ -123,7 +123,7 @@ func applyConfigREST(req *ActualRequest, cfg *pcl.ConfigREST) error {
 	}
 
 	req.SetQueryParamsUnescape(cfg.UnescapeQuery)
-	req.SetJSONEscapeHTML(!cfg.UnescapeJson)
+	req.SetJSONEscapeHTML(!cfg.UnescapeJSON)
 	req.SetResponseBodyLimit(cfg.ResponseBodyLimit)
 
 	return nil
@@ -167,8 +167,8 @@ func applyBody(req *ActualRequest, b *pcl.Body) error {
 	case pcl.BodyRaw, pcl.BodyGQL, pcl.BodyJSON, pcl.BodyXML:
 		req.SetBody(b.Raw)
 
-	case pcl.BodyUrlEncoded:
-		req.SetFormDataFromValues(b.UrlEncoded)
+	case pcl.BodyURLEncoded:
+		req.SetFormDataFromValues(b.URLEncoded)
 
 	case pcl.BodyBinary:
 		fileBytes, err := fsx.ReadFile(b.BinaryPath)

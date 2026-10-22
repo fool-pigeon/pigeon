@@ -11,7 +11,7 @@ type BodyKind string
 
 const (
 	BodyNone       BodyKind = ""
-	BodyUrlEncoded BodyKind = "url-encoded"
+	BodyURLEncoded BodyKind = "url-encoded"
 	BodyMultipart  BodyKind = "multipart"
 	// raw string type
 	BodyRaw  BodyKind = "raw"
@@ -22,14 +22,14 @@ const (
 	BodyBinary BodyKind = "binary"
 )
 
-var BodyTypes = []BodyKind{BodyNone, BodyUrlEncoded, BodyMultipart, BodyRaw, BodyGQL, BodyJSON, BodyXML, BodyBinary}
+var BodyTypes = []BodyKind{BodyNone, BodyURLEncoded, BodyMultipart, BodyRaw, BodyGQL, BodyJSON, BodyXML, BodyBinary}
 
 type (
 	Body struct {
 		Kind       BodyKind
 		Raw        string
 		Multipart  []MultiField
-		UrlEncoded map[string][]string
+		URLEncoded map[string][]string
 		BinaryPath string
 	}
 	MultiField struct {
@@ -54,7 +54,7 @@ type ConfigREST struct {
 	Path              map[string]string
 	Retry             Retry `toml:"retry" json:"retry"`
 	UnescapeQuery     bool  `toml:"unescape_query" json:"unescapeQuery"`
-	UnescapeJson      bool  `toml:"unescape_json" json:"unescapeJson"`
+	UnescapeJSON      bool  `toml:"unescape_json" json:"unescapeJson"`
 	ResponseBodyLimit int64 `toml:"response_body_limit" comment:"if limit<=0,it means no limit" json:"responseBodyLimit"`
 }
 

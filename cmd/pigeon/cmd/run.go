@@ -185,7 +185,7 @@ func taskResPrint(res core.RunResult) {
 	rRes := res.Res
 	req := rRes.Request
 	if rRes.Err != nil {
-		pterm.Error.Println(res.Path, req.Id, rRes.Err)
+		pterm.Error.Println(res.Path, req.ID, rRes.Err)
 		return
 	}
 

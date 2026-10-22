@@ -39,7 +39,7 @@ var infoCmd = &cobra.Command{
 		flattenValues := formatter.FlattenValues
 		line := formatter.FieldLine
 
-		printValues("Name", false, req.Id.String())
+		printValues("Name", false, req.ID.String())
 		printValues("Protocol", false, string(req.Protocol))
 		switch req.Protocol {
 		// TODO cmd/cli: pg info, more request type
@@ -57,8 +57,8 @@ var infoCmd = &cobra.Command{
 				printValues(fmt.Sprintf("Body(%s)", b.Kind), true, b.Raw)
 			case pl.BodyBinary:
 				printValues("Body(binary)", true, b.BinaryPath)
-			case pl.BodyUrlEncoded:
-				printValues("Body(url-encoded)", true, flattenValues(b.UrlEncoded)...)
+			case pl.BodyURLEncoded:
+				printValues("Body(url-encoded)", true, flattenValues(b.URLEncoded)...)
 			case pl.BodyMultipart:
 				fields := make([]string, 0, len(b.Multipart))
 				for k, v := range b.Multipart {

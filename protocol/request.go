@@ -27,7 +27,7 @@ const (
 var Protocols = []ProtocolKind{ProtocolREST, ProtocolGRPC, ProtocolWS, ProtocolGQL}
 
 type ReqMeta struct {
-	Id       ulid.ULID    `toml:"id" json:"id"`
+	ID       ulid.ULID    `toml:"id" json:"id"`
 	Protocol ProtocolKind `toml:"protocol" json:"protocol"`
 }
 
@@ -192,8 +192,8 @@ func (r *ReqConfig) mergeConfigREST(c *ConfigREST) {
 	if uq := c.UnescapeQuery; uq && !current.UnescapeQuery {
 		current.UnescapeQuery = uq
 	}
-	if uj := c.UnescapeJson; uj && !current.UnescapeJson {
-		current.UnescapeJson = uj
+	if uj := c.UnescapeJSON; uj && !current.UnescapeJSON {
+		current.UnescapeJSON = uj
 	}
 	if rbl := c.ResponseBodyLimit; rbl > 0 && current.ResponseBodyLimit <= 0 {
 		current.ResponseBodyLimit = rbl

@@ -66,7 +66,7 @@ func createRequest(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		req := protocol.Request{}
-		req.Id = id
+		req.ID = id
 		req.Protocol = protocolInput
 		// skip if error
 		switch req.Protocol {

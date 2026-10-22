@@ -759,7 +759,7 @@ func createFile(path string, mode NodeMode) error {
 		if err != nil {
 			return err
 		}
-		req := protocol.Request{ReqMeta: protocol.ReqMeta{Id: id}}
+		req := protocol.Request{ReqMeta: protocol.ReqMeta{ID: id}}
 		switch {
 		case m.Has(HttpGet):
 			req.Method = protocol.MethodGet
