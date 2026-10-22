@@ -17,10 +17,31 @@ const (
 	TraceNetwork TraceKind = "network"
 )
 
-type Trace struct {
-	ReqID     ulid.ULID
-	Meta      map[string]string
-	Payload   []byte
-	Timestamp time.Time
-}
 type TraceHandler func(Trace)
+type Trace struct {
+	ID   uint64
+	Kind TraceKind
+
+	ReqID     ulid.ULID
+	Timestamp time.Time
+
+	Msg     string
+	Meta    map[string]string
+	Payload []byte
+}
+
+func NewTrace(id uint64, reqID ulid.ULID, kind TraceKind) *Trace {
+	return &Trace{ID: id, ReqID: reqID, Kind: kind, Timestamp: time.Now()}
+}
+func (t *Trace) SetMsg(msg string) *Trace {
+	t.Msg = msg
+	return t
+}
+func (t *Trace) SetMeta(meta map[string]string) *Trace {
+	t.Meta = meta
+	return t
+}
+func (t *Trace) SetPayload(payload []byte) *Trace {
+	t.Payload = payload
+	return t
+}
