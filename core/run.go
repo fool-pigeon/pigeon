@@ -17,6 +17,7 @@ import (
 	"github.com/fool-pigeon/pigeon/dispatch"
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/fool-pigeon/pigeon/protocol"
+	"github.com/fool-pigeon/pigeon/uid"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -110,7 +111,7 @@ func sendReq(ctx context.Context, input reqSendInput) RunResult {
 		return res
 	}
 
-	response, err := input.dispatcher.Send(ctx, req, input.traceHandle)
+	response, err := input.dispatcher.Send(ctx, req, uid.NewU64Gen(), input.traceHandle)
 	if err != nil {
 		return RunResult{Path: input.path, Err: err}
 	}

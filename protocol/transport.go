@@ -5,8 +5,12 @@
 
 package protocol
 
-import "context"
+import (
+	"context"
+
+	"github.com/fool-pigeon/pigeon/uid"
+)
 
 type Sender interface {
-	Send(ctx context.Context, req *Request, emitTrace TraceHandler) (*Result, error)
+	Send(ctx context.Context, req *Request, idGen *uid.AtomicGen, emitTrace TraceHandler) (*Result, error)
 }

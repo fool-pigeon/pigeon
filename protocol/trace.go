@@ -26,7 +26,7 @@ type Trace struct {
 	Timestamp time.Time
 
 	Msg     string
-	Meta    map[string]string
+	Meta    map[string]any
 	Payload []byte
 }
 
@@ -37,7 +37,7 @@ func (t *Trace) SetMsg(msg string) *Trace {
 	t.Msg = msg
 	return t
 }
-func (t *Trace) SetMeta(meta map[string]string) *Trace {
+func (t *Trace) SetMeta(meta map[string]any) *Trace {
 	t.Meta = meta
 	return t
 }
