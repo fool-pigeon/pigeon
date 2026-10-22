@@ -26,23 +26,23 @@ import (
 	"resty.dev/v3"
 )
 
-// [TaskRunService] Event
-type TrsEvent = string
+// [TaskService] Event
+type TaskSEvent = string
 
 const (
 	// go receive data:
 	// id:string
 	//
 	// it will cancel the task whose task's id equals that
-	TrsCancel TrsEvent = "task-run-service:cancel"
+	TaskCancel TaskSEvent = "task-service:cancel"
 	// go send data:
 	// id:string
 	//
 	// it will send the cancelled task's id
-	TrsCancelld TrsEvent = "task-run-service:cancelled"
+	TaskCancelled TaskSEvent = "task-service:cancelled"
 	// go Send data:
-	// [TaskResHttp]
-	TrsResultHttp TrsEvent = "task-run-service:result-http"
+	// [TaskResultView]
+	TaskResultView TaskSEvent = "task-service:result-view"
 )
 
 type Task struct {
@@ -124,15 +124,15 @@ type TaskResView struct {
 }
 
 // service for running run tasks or collection
-type TaskRunService struct {
+type TaskService struct {
 	evt *application.EventManager
 }
 
-func NewTaskRunService(app *application.App) *TaskRunService {
-	return &TaskRunService{app.Event}
+func NewTaskRunService(app *application.App) *TaskService {
+	return &TaskService{app.Event}
 }
 
-func (tr *TaskRunService) RunDir(path string, rootConf string) error {
+func (tr *TaskService) RunDir(path string, rootConf string) error {
 	path = filepath.Clean(path)
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -159,7 +159,7 @@ func (tr *TaskRunService) RunDir(path string, rootConf string) error {
 // param: file path and file content of run file
 //
 // all paths are absolute
-func (tr *TaskRunService) Run(task Task) error {
+func (tr *TaskService) Run(task Task) error {
 	root, err := fsx.RootDir(task.Path)
 	if err != nil {
 		return fmt.Errorf("%s:%w", task.Path, fsx.ErrRootNotExist)
@@ -179,12 +179,12 @@ func (tr *TaskRunService) Run(task Task) error {
 // b := req.Context().Value(HttpBodyKey{}).([]byte)
 type HttpBodyKey struct{}
 
-func (tr *TaskRunService) run(task Task) error {
+func (tr *TaskService) run(task Task) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	if tr.evt != nil {
-		ungister := tr.evt.On(TrsCancel, func(event *application.CustomEvent) {
+		ungister := tr.evt.On(TaskCancel, func(event *application.CustomEvent) {
 			if cancelledId, ok := event.Data.(string); ok && cancelledId == task.Id.String() {
 				cancel()
 			}
@@ -235,7 +235,7 @@ func (tr *TaskRunService) run(task Task) error {
 
 	if ctx.Err() != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
-			tr.evt.Emit(TrsCancelld, task.Id)
+			tr.evt.Emit(TaskCancelled, task.Id)
 			return fmt.Errorf("cancelled task:%w", ctx.Err())
 		}
 	}

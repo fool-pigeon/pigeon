@@ -21,7 +21,7 @@ func (e *EventConstExposeService) ExposedFseEvt(evt FesEvent, fesUpdateSubs FesE
 func (e *EventConstExposeService) ExposedAlertEvt(evt AlertEvent) {}
 
 func (e *EventConstExposeService) ExposedTrsEvt(
-	evt TrsEvent,
+	evt TaskSEvent,
 ) {
 }
 
