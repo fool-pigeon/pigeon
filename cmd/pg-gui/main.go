@@ -135,8 +135,8 @@ func RegisterServices(app *application.App) {
 
 	app.RegisterService(application.NewService(service.NewSettingsService(app)))
 
-	db := service.NewDatabase()
-	app.RegisterService(application.NewService(db))
+	dataSource := &service.DataSource{}
+	app.RegisterService(application.NewService(dataSource))
 
 	alertService := service.NewAlertService(app)
 

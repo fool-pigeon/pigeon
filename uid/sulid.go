@@ -5,7 +5,7 @@
 
 // Package sulid provides ULID generation backed by crypto/rand with a global
 // random pool, mirroring the pool strategy used by github.com/google/uuid.
-package sulid
+package uid
 
 import (
 	"crypto/rand"
@@ -55,8 +55,8 @@ func Timestamp() uint64 {
 	return ulid.Timestamp(time.Now())
 }
 
-// New returns a ULID using the current time and pooled entropy.
-func New() (ulid.ULID, error) {
+// NewULID returns a ULID using the current time and pooled entropy.
+func NewULID() (ulid.ULID, error) {
 	return ulid.New(Timestamp(), entropy)
 }
 
@@ -65,9 +65,9 @@ var (
 	monoEnt = ulid.Monotonic(entropy, 0)
 )
 
-// NewMonotonic returns a ULID strictly increasing within the same millisecond.
+// NewULIDMonotonic returns a ULID strictly increasing within the same millisecond.
 // ulid.Monotonic is not concurrency-safe, so callers are serialized by [monoMu].
-func NewMonotonic() (ulid.ULID, error) {
+func NewULIDMonotonic() (ulid.ULID, error) {
 	monoMu.Lock()
 	defer monoMu.Unlock()
 	return ulid.New(Timestamp(), monoEnt)

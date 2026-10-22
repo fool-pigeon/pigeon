@@ -12,7 +12,7 @@ import (
 
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/fool-pigeon/pigeon/protocol"
-	"github.com/fool-pigeon/pigeon/sulid"
+	"github.com/fool-pigeon/pigeon/uid"
 	"github.com/spf13/cobra"
 )
 
@@ -60,7 +60,7 @@ func createRequest(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		id, err := sulid.NewMonotonic()
+		id, err := uid.NewULIDMonotonic()
 		if err != nil {
 			errs = append(errs, err)
 			continue

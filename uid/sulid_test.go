@@ -3,7 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-package sulid
+package uid
 
 import (
 	"sync"
@@ -27,7 +27,7 @@ func TestTimestamp(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	t.Run("ReturnsValidULID", func(t *testing.T) {
-		id, err := New()
+		id, err := NewULID()
 		if err != nil {
 			t.Fatalf("New() unexpected error: %v", err)
 		}
@@ -43,7 +43,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("TimestampEmbeddedIsRecent", func(t *testing.T) {
-		id, err := New()
+		id, err := NewULID()
 		if err != nil {
 			t.Fatalf("New() unexpected error: %v", err)
 		}
@@ -61,7 +61,7 @@ func TestNew(t *testing.T) {
 		// 生成 26 个以触发一次重填。
 		seen := make(map[ulid.ULID]struct{}, 26)
 		for i := 0; i < 26; i++ {
-			id, err := New()
+			id, err := NewULID()
 			if err != nil {
 				t.Fatalf("iteration %d: New() unexpected error: %v", i, err)
 			}
@@ -79,7 +79,7 @@ func TestNewMonotonic(t *testing.T) {
 		const n = 50
 		ids := make([]ulid.ULID, n)
 		for i := range ids {
-			id, err := NewMonotonic()
+			id, err := NewULIDMonotonic()
 			if err != nil {
 				t.Fatalf("iteration %d: NewMonotonic() unexpected error: %v", i, err)
 			}
@@ -107,7 +107,7 @@ func TestConcurrency(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				for i := 0; i < perGoroutine; i++ {
-					id, err := New()
+					id, err := NewULID()
 					if err != nil {
 						t.Errorf("New() unexpected error: %v", err)
 						return
@@ -143,7 +143,7 @@ func TestConcurrency(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				for i := 0; i < perGoroutine; i++ {
-					id, err := NewMonotonic()
+					id, err := NewULIDMonotonic()
 					if err != nil {
 						t.Errorf("NewMonotonic() unexpected error: %v", err)
 						return

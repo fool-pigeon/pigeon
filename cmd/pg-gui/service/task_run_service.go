@@ -20,7 +20,7 @@ import (
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/fool-pigeon/pigeon/pgrest"
 	"github.com/fool-pigeon/pigeon/protocol"
-	"github.com/fool-pigeon/pigeon/sulid"
+	"github.com/fool-pigeon/pigeon/uid"
 	"github.com/oklog/ulid/v2"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"resty.dev/v3"
@@ -93,7 +93,7 @@ func (tr *TaskRunService) RunDir(path string, rootConf string) error {
 	if !info.IsDir() {
 		return fmt.Errorf("%s:%w", path, fsx.ErrNotDir)
 	}
-	id, err := sulid.New()
+	id, err := uid.NewULID()
 	if err != nil {
 		return err
 	}

@@ -18,7 +18,7 @@ import (
 	"github.com/fool-pigeon/pigeon/core"
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/fool-pigeon/pigeon/protocol"
-	"github.com/fool-pigeon/pigeon/sulid"
+	"github.com/fool-pigeon/pigeon/uid"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -755,7 +755,7 @@ func createFile(path string, mode NodeMode) error {
 
 	switch m := mode; {
 	case m.Has(Request):
-		id, err := sulid.NewMonotonic()
+		id, err := uid.NewULIDMonotonic()
 		if err != nil {
 			return err
 		}
