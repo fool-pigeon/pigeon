@@ -20,13 +20,13 @@ import (
 )
 
 const (
-	// task:id:{task_ulid} -> [Task] struct
+	// task:id:{task_ulid} -> [Task]
 	dbKeyPrefixTaskId = "task:id:"
-	// task:res:{task_ulid}:{req_ulid}:{req_res_ulid}
+	// task:res:{task_ulid}:{res_ulid} -> [TaskRes.Path]
 	dbKeyPrefixTaskRes = "task:res:"
 
 	// req:res:{req_ulid}:{res_ulid} -> nil
-	dbKeyPrefixReqRes = "req:res"
+	dbKeyPrefixReqRes = "req:res:"
 	// res:id:{res_ulid} -> [TaskRes]
 	dbKeyPrefixRes = "res:id:"
 )
@@ -62,6 +62,23 @@ func (d *DataSource) ServiceShutdown() error {
 
 	return errs
 }
+func makeDBKey(parts [][]byte) []byte {
+	if len(parts) <= 0 {
+		return nil
+	}
+	keyLen := len(parts) - 1
+	for _, p := range parts {
+		keyLen += len(p)
+	}
+	key := make([]byte, 0, keyLen)
+	for i, p := range parts {
+		if i != 0 {
+			key = append(key, ':')
+		}
+		key = append(key, p...)
+	}
+	return key
+}
 
 type BaseRepoULID[T any] struct {
 	prefix string
@@ -88,7 +105,6 @@ func (repo *BaseRepoULID[T]) GetByID(id ulid.ULID) (*T, error) {
 	})
 	return &data, err
 }
-
 func (repo *BaseRepoULID[T]) Set(id ulid.ULID, entry *T) error {
 	return repo.db.Update(func(txn *badger.Txn) error {
 		var buf bytes.Buffer
@@ -98,7 +114,6 @@ func (repo *BaseRepoULID[T]) Set(id ulid.ULID, entry *T) error {
 		return txn.Set(repo.makeKey(id), buf.Bytes())
 	})
 }
-
 func (repo *BaseRepoULID[T]) Delete(id ulid.ULID) error {
 	// Delete
 	return repo.db.Update(func(txn *badger.Txn) error {
@@ -108,4 +123,23 @@ func (repo *BaseRepoULID[T]) Delete(id ulid.ULID) error {
 
 type CacheDB struct {
 	source *DataSource
+
+	taskRepo *BaseRepoULID[Task]
+	resRepo  *BaseRepoULID[TaskRes]
+}
+
+func (db *CacheDB) getDB() *badger.DB {
+	return db.source.cache
+}
+func (db *CacheDB) GetTaskRepo() *BaseRepoULID[Task] {
+	if db.taskRepo == nil {
+		db.taskRepo = &BaseRepoULID[Task]{prefix: dbKeyPrefixTaskId, db: db.getDB()}
+	}
+	return db.taskRepo
+}
+func (db *CacheDB) GetTaskResRepo() *BaseRepoULID[TaskRes] {
+	if db.resRepo == nil {
+		db.resRepo = &BaseRepoULID[TaskRes]{prefix: dbKeyPrefixRes, db: db.getDB()}
+	}
+	return db.resRepo
 }
