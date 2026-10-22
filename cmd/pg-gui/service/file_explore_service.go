@@ -412,14 +412,13 @@ var (
 )
 
 type FileExploreService struct {
-	mu    sync.RWMutex
-	root  *Node
-	alert *AlertNotify
-	app   *application.App
+	mu   sync.RWMutex
+	root *Node
+	evt  *application.EventManager
 }
 
-func NewFileExploreService(alertService *AlertNotify, app *application.App) *FileExploreService {
-	return &FileExploreService{root: &Node{Mode: DirMode}, alert: alertService, app: app}
+func NewFileExploreService(app *application.App) *FileExploreService {
+	return &FileExploreService{root: &Node{Mode: DirMode}, evt: app.Event}
 }
 
 // Find the node whose path equals the param.
@@ -527,7 +526,7 @@ func (f *FileExploreService) AddRoot(paths []string) error {
 
 	f.root.SetLoaded(true)
 	f.root.updateCache()
-	f.app.Event.Emit(FesUpdateSubs, FesEvtUpdateSubs{
+	f.evt.Emit(FesUpdateSubs, FesEvtUpdateSubs{
 		Path: f.root.GetPath(),
 		Subs: f.root.SubsCache(),
 	})
@@ -553,7 +552,7 @@ func (f *FileExploreService) LoadSubsCached(dir string) error {
 		return err
 	}
 	node.updateCache()
-	f.app.Event.Emit(FesUpdateSubs, FesEvtUpdateSubs{
+	f.evt.Emit(FesUpdateSubs, FesEvtUpdateSubs{
 		Path: node.GetPath(),
 		Subs: node.SubsCache(),
 	})
@@ -599,7 +598,7 @@ func (f *FileExploreService) reloadSubsCached(node *Node, evt ...FesEvent) error
 	if len(evt) > 0 {
 		event = evt[0]
 	}
-	f.app.Event.Emit(event, FesEvtUpdateSubs{
+	f.evt.Emit(event, FesEvtUpdateSubs{
 		Path: node.GetPath(),
 		Subs: node.SubsCache(),
 	})
@@ -637,7 +636,7 @@ func (f *FileExploreService) ReloadRootView() error {
 		})
 	}
 	wg.Wait()
-	f.app.Event.Emit(FesReloadRoot, FesEvtUpdateSubs{
+	f.evt.Emit(FesReloadRoot, FesEvtUpdateSubs{
 		Path: f.root.GetPath(),
 		Subs: f.root.SubsCache(),
 	})
@@ -661,7 +660,7 @@ func (f *FileExploreService) DeleteNode(path string) error {
 	}
 
 	pre.DelSub(path)
-	f.app.Event.Emit(FesDeletedNode, path)
+	f.evt.Emit(FesDeletedNode, path)
 
 	return nil
 }
@@ -683,7 +682,7 @@ func (f *FileExploreService) DeleteAllNode(path string) error {
 	}
 
 	pre.DelSub(path)
-	f.app.Event.Emit(FesDeletedNode, path)
+	f.evt.Emit(FesDeletedNode, path)
 
 	return nil
 }
@@ -704,7 +703,7 @@ func (f *FileExploreService) AddDirNode(parent string, dirName string) error {
 	}
 	node.reload()
 	node.updateCache()
-	f.app.Event.Emit(FesUpdateSubs, FesEvtUpdateSubs{
+	f.evt.Emit(FesUpdateSubs, FesEvtUpdateSubs{
 		Path: node.GetPath(),
 		Subs: node.SubsCache(),
 	})
@@ -729,7 +728,7 @@ func (f *FileExploreService) AddFileNode(parent string, fileName string, mode No
 	}
 	node.reload()
 	node.updateCache()
-	f.app.Event.Emit(FesUpdateSubs, FesEvtUpdateSubs{
+	f.evt.Emit(FesUpdateSubs, FesEvtUpdateSubs{
 		Path: node.GetPath(),
 		Subs: node.SubsCache(),
 	})

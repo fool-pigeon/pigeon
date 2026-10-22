@@ -16,23 +16,25 @@ const (
 	AlertError   AlertEvent = "alert:error"
 )
 
-type AlertNotify struct{ app *application.App }
+var alert alertNotify
 
-func NewAlertService(app *application.App) *AlertNotify {
-	return &AlertNotify{app}
+type alertNotify struct{ evt *application.EventManager }
+
+func InitAlertNotify(app *application.App) {
+	alert.evt = app.Event
 }
-func (as *AlertNotify) Msg(alert AlertEvent, msg string) {
-	as.app.Event.Emit(alert, msg)
+func (as *alertNotify) msg(alert AlertEvent, msg string) {
+	as.evt.Emit(alert, msg)
 }
-func (as *AlertNotify) Info(msg string) {
-	as.Msg(AlertInfo, msg)
+func (as *alertNotify) info(msg string) {
+	as.msg(AlertInfo, msg)
 }
-func (as *AlertNotify) Success(msg string) {
-	as.Msg(AlertSuccess, msg)
+func (as *alertNotify) success(msg string) {
+	as.msg(AlertSuccess, msg)
 }
-func (as *AlertNotify) Warn(msg string) {
-	as.Msg(AlertWarn, msg)
+func (as *alertNotify) warn(msg string) {
+	as.msg(AlertWarn, msg)
 }
-func (as *AlertNotify) Error(msg string) {
-	as.Msg(AlertError, msg)
+func (as *alertNotify) error(msg string) {
+	as.msg(AlertError, msg)
 }

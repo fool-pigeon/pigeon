@@ -131,6 +131,9 @@ func (aw *AppWrapper) showSettingsWindow() {
 		aw.settingsWindow.Focus()
 	}
 }
+func InitServiceTools(app *application.App) {
+	service.InitAlertNotify(app)
+}
 func RegisterServices(app *application.App) {
 
 	app.RegisterService(application.NewService(service.NewSettingsService(app)))
@@ -138,15 +141,13 @@ func RegisterServices(app *application.App) {
 	dataSource := &service.DataSource{}
 	app.RegisterService(application.NewService(dataSource))
 
-	alertService := service.NewAlertService(app)
-
 	pathSelectService := service.NewPathSelectService(app)
 	app.RegisterService(application.NewService(pathSelectService))
 
 	fileService := service.NewFileService()
 	app.RegisterService(application.NewService(fileService))
 
-	fileExploreService := service.NewFileExploreService(alertService, app)
+	fileExploreService := service.NewFileExploreService(app)
 	app.RegisterService(application.NewService(fileExploreService))
 
 	fileAccessService := service.NewFileAccessService(fileService, fileExploreService, pathSelectService, app)
@@ -157,7 +158,7 @@ func RegisterServices(app *application.App) {
 	reqCtxService := service.NewReqCtxService(app)
 	app.RegisterService(application.NewService(reqCtxService))
 
-	taskRunService := service.NewTaskRunService(alertService, app)
+	taskRunService := service.NewTaskRunService(app)
 	app.RegisterService(application.NewService(taskRunService))
 }
 func init() {
@@ -179,6 +180,9 @@ func main() {
 
 	aw := NewAppWrapper()
 	aw.init()
+
+	InitServiceTools(aw.app)
+
 	// Register Services
 	RegisterServices(aw.app)
 	// Run the application. This blocks until the application has been exited.

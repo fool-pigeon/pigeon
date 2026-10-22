@@ -69,13 +69,11 @@ type TaskRes struct {
 
 // service for running run tasks or collection
 type TaskRunService struct {
-	alertService *AlertNotify
-
 	app *application.App
 }
 
-func NewTaskRunService(alertService *AlertNotify, app *application.App) *TaskRunService {
-	return &TaskRunService{alertService, app}
+func NewTaskRunService(app *application.App) *TaskRunService {
+	return &TaskRunService{app}
 }
 
 func (tr *TaskRunService) RunDir(path string, rootConf string) error {
@@ -140,7 +138,7 @@ func (tr *TaskRunService) run(task Task) error {
 
 	var rootConf core.RootConf
 	if err := fsx.ReadToml(task.RunPaths.RootConf, &rootConf); err != nil {
-		tr.alertService.Warn(fmt.Sprintf("%s read error,using empty root conf", task.RunPaths.RootConf))
+		alert.warn(fmt.Sprintf("%s read error,using empty root conf", task.RunPaths.RootConf))
 	}
 
 	// evt := tr.app.Event
