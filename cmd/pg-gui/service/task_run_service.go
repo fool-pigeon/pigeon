@@ -90,7 +90,7 @@ func (res *TaskRes) toTaskView() TaskResView {
 		// Parse the result for response
 		if resp := v.RawResponse; resp != nil {
 			b := v.Bytes()
-			view.ContentSize = humanSize(b)
+			view.ContentSize = humanSize(len(b))
 			resp.Body = io.NopCloser(bytes.NewReader(b))
 			if b, err := httputil.DumpResponse(resp, true); err == nil {
 				// set raw response text
@@ -241,12 +241,12 @@ func (tr *TaskRunService) run(task Task) error {
 	}
 	return ctx.Err()
 }
-func humanSize(b []byte) string {
+func humanSize(bytesLen int) string {
 	const base = 1024
-	if len(b) < base {
-		return fmt.Sprintf("%dB", len(b))
+	if bytesLen < base {
+		return fmt.Sprintf("%dB", bytesLen)
 	}
-	n := float64(len(b))
+	n := float64(bytesLen)
 	for _, unit := range []string{"KB", "MB", "GB", "TB", "PB"} {
 		n /= base
 		if n < base {
