@@ -22,7 +22,7 @@ import (
 const (
 	// task:id:{task_ulid} -> [Task]
 	dbKeyPrefixTaskId = "task:id"
-	// task:res:{task_ulid}:{res_ulid} -> [TaskRes.Path]
+	// task:res:{task_ulid}:{res_ulid} -> [TaskResViewMeta]
 	dbKeyPrefixTaskRes = "task:res"
 
 	// req:res:{req_ulid}:{res_ulid} -> nil

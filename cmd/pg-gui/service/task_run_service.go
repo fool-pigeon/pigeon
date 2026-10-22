@@ -52,28 +52,84 @@ type Task struct {
 	// file content of run file
 	RunPaths core.RunPaths
 }
+
+type TaskRes struct {
+	core.RunResult
+	ID ulid.ULID
+}
+
+func (res *TaskRes) toTaskViewMeta() TaskResViewMeta {
+	return TaskResViewMeta{
+		ResultCover: protocol.ResultCover{Success: res.Res.Success, Tests: res.Res.Tests},
+		ID:          res.ID,
+		Path:        res.Path,
+	}
+}
+func (res *TaskRes) toTaskView() TaskResView {
+	view := TaskResView{
+		TaskRes: *res,
+		Spent:   res.Res.Duration.Round(time.Millisecond / 10).String(),
+	}
+	switch v := res.Res.Raw.(type) {
+	case *pgrest.Response:
+		// Parse the result for request
+		if req := v.Request; req != nil {
+			// get request body
+			body, _ := req.Context().Value(HttpBodyKey{}).([]byte)
+			view.ReqMeta.Body = string(body)
+			// set request header
+			view.ReqMeta.Header = req.Header
+			if r := req.RawRequest; r != nil {
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				// set raw request text
+				if b, err := httputil.DumpRequestOut(r, true); err == nil {
+					view.ReqMeta.Raw = string(b)
+				}
+			}
+		}
+		// Parse the result for response
+		if resp := v.RawResponse; resp != nil {
+			b := v.Bytes()
+			view.ContentSize = humanSize(b)
+			resp.Body = io.NopCloser(bytes.NewReader(b))
+			if b, err := httputil.DumpResponse(resp, true); err == nil {
+				// set raw response text
+				view.ResMeta.Raw = string(b)
+			}
+		}
+		view.ResMeta.Body = v.String()
+		view.ResMeta.Header = v.Header()
+	}
+
+	return view
+}
+
+type TaskResViewMeta struct {
+	protocol.ResultCover
+	ID   ulid.ULID
+	Path string
+}
 type HttpMeta struct {
 	Header map[string][]string `json:"header"`
 	Body   string              `json:"body"`
 	Raw    string              `json:"raw"`
 }
-type TaskRes struct {
-	Id ulid.ULID
-	core.RunResult
-
+type TaskResView struct {
+	TaskRes
 	Spent       string
 	ContentSize string
-	ReqMeta     HttpMeta
-	ResMeta     HttpMeta
+
+	ReqMeta HttpMeta
+	ResMeta HttpMeta
 }
 
 // service for running run tasks or collection
 type TaskRunService struct {
-	app *application.App
+	evt *application.EventManager
 }
 
 func NewTaskRunService(app *application.App) *TaskRunService {
-	return &TaskRunService{app}
+	return &TaskRunService{app.Event}
 }
 
 func (tr *TaskRunService) RunDir(path string, rootConf string) error {
@@ -127,8 +183,8 @@ func (tr *TaskRunService) run(task Task) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if tr.app != nil {
-		ungister := tr.app.Event.On(TrsCancel, func(event *application.CustomEvent) {
+	if tr.evt != nil {
+		ungister := tr.evt.On(TrsCancel, func(event *application.CustomEvent) {
 			if cancelledId, ok := event.Data.(string); ok && cancelledId == task.Id.String() {
 				cancel()
 			}
@@ -179,50 +235,11 @@ func (tr *TaskRunService) run(task Task) error {
 
 	if ctx.Err() != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
-			tr.app.Event.Emit(TrsCancelld, task.Id)
+			tr.evt.Emit(TrsCancelld, task.Id)
 			return fmt.Errorf("cancelled task:%w", ctx.Err())
 		}
 	}
 	return ctx.Err()
-}
-func (tr *TaskRunService) parseRunResult(id ulid.ULID, res core.RunResult) TaskRes {
-	var taskRes TaskRes
-	taskRes.RunResult = res
-	taskRes.Id = id
-	taskRes.Spent = res.Res.Duration.Round(time.Millisecond / 10).String()
-
-	switch v := res.Res.Raw.(type) {
-	case *pgrest.Response:
-		// Parse the result for request
-		if req := v.Request; req != nil {
-			// get request body
-			body, _ := req.Context().Value(HttpBodyKey{}).([]byte)
-			taskRes.ReqMeta.Body = string(body)
-			// set request header
-			taskRes.ReqMeta.Header = req.Header
-			if r := req.RawRequest; r != nil {
-				r.Body = io.NopCloser(bytes.NewReader(body))
-				// set raw request text
-				if b, err := httputil.DumpRequestOut(r, true); err == nil {
-					taskRes.ReqMeta.Raw = string(b)
-				}
-			}
-		}
-		// Parse the result for response
-		if resp := v.RawResponse; resp != nil {
-			b := v.Bytes()
-			taskRes.ContentSize = humanSize(b)
-			resp.Body = io.NopCloser(bytes.NewReader(b))
-			if b, err := httputil.DumpResponse(resp, true); err == nil {
-				// set raw response text
-				taskRes.ResMeta.Raw = string(b)
-			}
-		}
-		taskRes.ResMeta.Body = v.String()
-		taskRes.ResMeta.Header = v.Header()
-	}
-
-	return taskRes
 }
 func humanSize(b []byte) string {
 	const base = 1024

@@ -12,15 +12,17 @@ type TestRes struct {
 	Passed bool   `json:"passed"`
 	Err    error  `json:"err"`
 }
-
-type ResultMeta struct {
+type ResultCover struct {
 	Success bool `json:"success"`
+	// results of test
+	Tests []TestRes `json:"tests"`
+}
+type ResultMeta struct {
+	ResultCover
 	// this means the tag of status,such as "2xx","4xx","5xx","err","failed"
 	Status string `json:"status"`
 	// the end-to-end duration between send request and received response
 	Duration time.Duration `json:"duration"`
-	// results of test
-	Tests []TestRes `json:"tests"`
 	// this is default nil if not get error in context
 	Err error `json:"err"`
 }
