@@ -3,7 +3,11 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-// Package sulid provides ULID generation backed by crypto/rand with a global
+// Package uid provides
+// atomic64 id generator,
+// ULID generation,
+//
+// Package uid provides ULID generation backed by crypto/rand with a global
 // random pool, mirroring the pool strategy used by github.com/google/uuid.
 package uid
 
