@@ -5,7 +5,11 @@
 
 package protocol
 
-import "time"
+import (
+	"time"
+
+	"github.com/oklog/ulid/v2"
+)
 
 type TraceKind string
 
@@ -14,6 +18,7 @@ const (
 )
 
 type Trace struct {
+	ReqID     ulid.ULID
 	Meta      map[string]string
 	Payload   []byte
 	Timestamp time.Time
