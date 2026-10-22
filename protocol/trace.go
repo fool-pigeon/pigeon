@@ -17,7 +17,7 @@ const (
 	TraceNetwork TraceKind = "network"
 )
 
-type TraceHandler func(Trace)
+type TraceHandler func(*Trace)
 type Trace struct {
 	ID   uint64
 	Kind TraceKind

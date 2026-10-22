@@ -38,8 +38,8 @@ func New(client *resty.Client) *RESTSender {
 	return &RESTSender{client: client}
 }
 
-// Send implements [pcl.Sender].
-func (s *RESTSender) Send(ctx context.Context, r *pcl.Request, emitTrace func(pcl.Trace)) (*pcl.Result, error) {
+// Send implements [protocol.Sender].
+func (s *RESTSender) Send(ctx context.Context, req *pcl.Request, emitTrace pcl.TraceHandler) (*pcl.Result, error) {
 	panic("unimplemented")
 }
 func (s *RESTSender) Instance(ctx context.Context, r *pcl.Request) (*ActualRequest, error) {

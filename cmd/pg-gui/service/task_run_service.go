@@ -157,7 +157,7 @@ func (tr *TaskRunService) run(task Task) error {
 		ResultHandler: func(res core.RunResult) {
 			// TODO
 		},
-		TraceHandler: func(t protocol.Trace) {
+		TraceHandler: func(t *protocol.Trace) {
 			// TODO
 		},
 		ClientInit: func(client *protocol.ActualClient) {

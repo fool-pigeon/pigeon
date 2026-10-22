@@ -126,7 +126,7 @@ var runCmd = &cobra.Command{
 			RootConf: rootConf,
 			Start:    runPaths.Start,
 			Tasks:    runPaths.Tasks,
-			TraceHandler: func(t protocol.Trace) {
+			TraceHandler: func(t *protocol.Trace) {
 				pterm.Info.Println(t)
 			},
 			ResultHandler: func(res core.RunResult) {
