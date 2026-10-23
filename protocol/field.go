@@ -9,6 +9,6 @@ import "time"
 
 type DurationStr string
 
-func (ts *DurationStr) Parse() (time.Duration, error) {
-	return time.ParseDuration(string(*ts))
+func (ts DurationStr) Parse() (time.Duration, error) {
+	return time.ParseDuration(string(ts))
 }

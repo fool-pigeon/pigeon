@@ -40,23 +40,3 @@ type Result struct {
 	// the raw content of response,e.g. [resty.Response]
 	Raw any
 }
-
-func (result *Result) SetRaw(Raw any) *Result {
-	result.Raw = Raw
-	return result
-}
-
-func NewResult() Result {
-	return Result{}
-}
-
-type ResultView[T any] struct {
-	ResMeta
-	// the raw content of response,e.g. [httpx.Response]
-	Raw T
-}
-
-func View[T any](r Result) ResultView[T] {
-	v, _ := r.Raw.(T)
-	return ResultView[T]{r.ResMeta, v}
-}

@@ -6,6 +6,10 @@
 package protocol
 
 import (
+	"fmt"
+	"net"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -18,7 +22,8 @@ const (
 )
 
 type TraceHandler func(*Trace)
-type Trace struct {
+
+type TraceBody struct {
 	ID   uint64
 	Kind TraceKind
 
@@ -27,12 +32,20 @@ type Trace struct {
 	Timestamp time.Time
 
 	Msg     string
-	Meta    map[string]any
 	Payload []byte
 }
 
+type Trace struct {
+	TraceBody
+	Meta map[string]any
+}
+type TraceView struct {
+	*TraceBody
+	Meta map[string]string
+}
+
 func NewTrace(id uint64, reqID ulid.ULID, resID ulid.ULID, kind TraceKind) *Trace {
-	return &Trace{ID: id, ReqID: reqID, ResID: resID, Kind: kind, Timestamp: time.Now()}
+	return &Trace{TraceBody: TraceBody{ID: id, ReqID: reqID, ResID: resID, Kind: kind, Timestamp: time.Now()}}
 }
 func (t *Trace) SetMsg(msg string) *Trace {
 	t.Msg = msg
@@ -45,4 +58,69 @@ func (t *Trace) SetMeta(meta map[string]any) *Trace {
 func (t *Trace) SetPayload(payload []byte) *Trace {
 	t.Payload = payload
 	return t
+}
+func (t *Trace) ToView() TraceView {
+	meta := make(map[string]string, len(t.Meta))
+	for k, v := range t.Meta {
+		if str, ok := v.(string); ok {
+			meta[k] = str
+		} else {
+			meta[k] = convAnyToString(v)
+		}
+	}
+	return TraceView{&t.TraceBody, meta}
+}
+func convAnyToString(a any) string {
+	switch v := a.(type) {
+	default:
+		return fmt.Sprint(v)
+	case nil:
+		return ""
+	case string:
+		return v
+	case bool:
+		return strconv.FormatBool(v)
+	case int:
+		return strconv.Itoa(v)
+	case int8:
+		return strconv.FormatInt(int64(v), 10)
+	case int16:
+		return strconv.FormatInt(int64(v), 10)
+	case int32: // include rune
+		return strconv.FormatInt(int64(v), 10)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case uint:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint8: // include byte
+		return strconv.FormatUint(uint64(v), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint64:
+		return strconv.FormatUint(v, 10)
+	case uintptr:
+		return strconv.FormatUint(uint64(v), 10)
+	case float32:
+		return strconv.FormatFloat(float64(v), 'g', -1, 32)
+	case float64:
+		return strconv.FormatFloat(v, 'g', -1, 64)
+	case complex64:
+		return strconv.FormatComplex(complex128(v), 'g', -1, 64)
+	case complex128:
+		return strconv.FormatComplex(v, 'g', -1, 128)
+	case []byte:
+		return string(v)
+
+	case error:
+		return v.Error()
+
+	case net.Addr:
+		var sb strings.Builder
+		sb.WriteString(v.Network())
+		sb.WriteRune(' ')
+		sb.WriteString(v.String())
+		return sb.String()
+	}
 }
