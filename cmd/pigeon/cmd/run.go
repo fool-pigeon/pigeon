@@ -129,7 +129,7 @@ var runCmd = &cobra.Command{
 			TraceHandler: func(t *protocol.Trace) {
 				pterm.Info.Println(t)
 			},
-			ResultHandler: func(res core.RunResult, err error) {
+			ResultHandler: func(res *core.RunResult, err error) {
 				taskResPrint(res, err)
 				taskTotal++
 				if err == nil && res.Res.Success {
@@ -161,7 +161,7 @@ var runCmd = &cobra.Command{
 	},
 }
 
-func taskResPrint(res core.RunResult, err error) {
+func taskResPrint(res *core.RunResult, err error) {
 
 	// filter result
 	isPassed := err == nil && res.Res.Success

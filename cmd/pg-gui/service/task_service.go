@@ -221,7 +221,7 @@ func (tr *TaskService) run(task Task) error {
 		runResult *core.RunResult
 		err       error
 	}
-	innerCh := make(chan resultInner, 4096)
+	innerCh := make(chan resultInner, 8)
 	defer close(innerCh)
 	go func() {
 		for {
@@ -251,7 +251,7 @@ func (tr *TaskService) run(task Task) error {
 		}
 	}()
 
-	traceCh := make(chan protocol.Trace, 4096)
+	traceCh := make(chan protocol.Trace, 32)
 	defer close(traceCh)
 	go func() {
 		for {
@@ -274,11 +274,10 @@ func (tr *TaskService) run(task Task) error {
 		Start:    task.RunPaths.Start,
 		Tasks:    task.RunPaths.Tasks,
 		RootConf: rootConf,
-		ResultHandler: func(runResult core.RunResult, err error) {
+		ResultHandler: func(runResult *core.RunResult, err error) {
 			select {
-			case innerCh <- resultInner{&runResult, err}:
-			default:
-				alert.error("[task-service] run runResult chan flood")
+			case innerCh <- resultInner{runResult, err}:
+			case <-ctx.Done():
 			}
 		},
 		TraceHandler: func(t *protocol.Trace) {

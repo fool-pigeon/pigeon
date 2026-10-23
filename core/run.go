@@ -74,55 +74,53 @@ type reqSendInput struct {
 	path        string
 }
 
-func sendReq(ctx context.Context, input reqSendInput) (RunResult, error) {
-	var zero RunResult
-	zero.Path = input.path
+func sendReq(ctx context.Context, input reqSendInput) (*RunResult, error) {
 	if input.dispatcher == nil {
-		return zero, fmt.Errorf("exec request dispatcher:%w", ErrNilValue)
+		return nil, fmt.Errorf("exec request dispatcher:%w", ErrNilValue)
 	}
 	if input.reqCtx == nil || input.reqCtx.Env == nil || input.reqCtx.Conf == nil {
-		return zero, fmt.Errorf("exec request reqCtx:%w", ErrNilValue)
+		return nil, fmt.Errorf("exec request reqCtx:%w", ErrNilValue)
 	}
 
 	var res RunResult
 	absPath, err := filepath.Abs(input.path)
 	if err != nil {
-		return zero, err
+		return nil, err
 	}
 	res.AbsPath = absPath
 
 	// ep.root is abs path, should use absPath to rel
 	relPath, err := filepath.Rel(input.start, absPath)
 	if err != nil {
-		return zero, err
+		return nil, err
 	}
 	res.Path = relPath
 
 	req, err := loadReq(ctx, absPath, input.reqCtx)
 	if err != nil {
-		return zero, err
+		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
-		return zero, err
+		return nil, err
 	}
 
 	resID, err := uid.NewULIDMonotonic()
 	if err != nil {
-		return zero, err
+		return nil, err
 	}
 	response, err := input.dispatcher.Send(ctx, req, resID, uid.NewU64Gen(), input.traceHandle)
 	if err != nil {
-		return zero, err
+		return nil, err
 	}
 	res.Res = response
 
-	return res, nil
+	return &res, nil
 }
 
 // the request will stop when ctx.Done()
 func sendReqWithStop(ctx context.Context, resHandle RunResultHandler, input reqSendInput) {
 	done := make(chan struct{})
-	var res RunResult
+	var res *RunResult
 	var err error
 	go func() {
 		defer close(done)
@@ -133,6 +131,9 @@ func sendReqWithStop(ctx context.Context, resHandle RunResultHandler, input reqS
 	case <-done:
 		if ctx.Err() != nil {
 			return
+		}
+		if err != nil || res == nil {
+			res = &RunResult{RunMeta: RunMeta{Path: input.path}}
 		}
 		resHandle(res, err)
 
@@ -150,7 +151,7 @@ type RunResult struct {
 	RunMeta
 	Res *protocol.Result
 }
-type RunResultHandler func(res RunResult, err error)
+type RunResultHandler func(res *RunResult, err error)
 
 // paths params for run needed
 type RunInput struct {
@@ -222,7 +223,7 @@ func Run(ctx context.Context, rp RunInput) error {
 		info, err := os.Lstat(taskPath)
 		if err != nil {
 			go func() {
-				rp.ResultHandler(RunResult{RunMeta: RunMeta{Path: taskPath}}, err)
+				rp.ResultHandler(&RunResult{RunMeta: RunMeta{Path: taskPath}}, err)
 			}()
 			continue
 		}
