@@ -14,7 +14,7 @@ import (
 type TestRes struct {
 	Name   string `json:"name"`
 	Passed bool   `json:"passed"`
-	Err    error  `json:"err"`
+	ErrStr string `json:"err"`
 }
 type ResultCover struct {
 	Success bool `json:"success"`

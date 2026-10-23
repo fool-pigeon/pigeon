@@ -202,14 +202,13 @@ func taskResPrint(res *core.RunResult, err error) {
 
 	if !printConfig.noTests {
 		for _, t := range rRes.Tests {
-			if t.Err != nil {
-				printErr("test: ", t.Name, t.Err)
-				continue
-			}
 			if t.Passed {
-				printPassed("    ✓: ", t.Name)
+				printPassed("	✓: ", t.Name)
 			} else {
-				printFailed("    ✗: ", t.Name)
+				printFailed("	✗: ", t.Name, t.ErrStr)
+				if t.ErrStr != "" {
+					printErr(t.ErrStr)
+				}
 			}
 		}
 	}

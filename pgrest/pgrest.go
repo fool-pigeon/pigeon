@@ -6,6 +6,7 @@
 package pgrest
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"maps"
 	"mime/multipart"
 	"net/textproto"
+	"strings"
 
 	"github.com/expr-lang/expr"
 	"github.com/oklog/ulid/v2"
@@ -42,7 +44,117 @@ func New(client *resty.Client) *RESTSender {
 
 // Send implements [protocol.Sender].
 func (s *RESTSender) Send(ctx context.Context, req *pcl.Request, resID ulid.ULID, idGen *uid.Atomic64Gen, emitTrace pcl.TraceHandler) (*pcl.Result, error) {
-	panic("unimplemented")
+	if req == nil {
+		return nil, fmt.Errorf("request:%w", pcl.ErrNilValue)
+	}
+	reqInstance, err := s.Instance(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := reqInstance.SetResponseDoNotParse(true).Send()
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.Contains(res.Header().Get(pcl.HdrContentTypeKey), "text/event-stream") {
+		call := func(event []byte, data []byte) {
+			emitTrace(pcl.NewTrace(idGen.Next(), req.ID, resID, pcl.TraceReceived).
+				SetMsg(string(event)).SetPayload(data))
+		}
+		bodyBuf, err := parseSSE(res.Body, call)
+		if err != nil {
+			return nil, err
+		}
+		res.Body = bodyBuf
+	}
+	res.Request.SetResponseDoNotParse(false)
+
+	result := pcl.Result{
+		ResMeta: pcl.ResMeta{
+			ResultCover: pcl.ResultCover{Success: res.IsStatusSuccess()},
+			ID:          resID,
+			Status:      res.Status(),
+			Duration:    res.Duration(),
+			Request:     *req,
+		},
+		Raw: res,
+	}
+	if n := len(req.ConfigREST.Tests); n > 0 {
+		result.Tests = make([]pcl.TestRes, 0, n)
+		env := map[string]any{
+			"res":  res,
+			"fake": faker.New(),
+		}
+		for name, code := range req.ConfigREST.Tests {
+			program, err := expr.Compile(code, expr.Env(env), expr.AsBool())
+			if err != nil {
+				return nil, err
+			}
+			output, err := expr.Run(program, env)
+			if err != nil {
+				result.Success = false
+				result.Tests = append(result.Tests, pcl.TestRes{
+					Name:   name,
+					Passed: false,
+					ErrStr: err.Error(),
+				})
+			}
+
+			passed := output.(bool)
+			result.Success = passed && result.Success
+			result.Tests = append(result.Tests, pcl.TestRes{
+				Name:   name,
+				Passed: passed,
+			})
+		}
+	}
+
+	return &result, nil
+}
+func parseSSE(r io.Reader, call func(event []byte, data []byte)) (io.ReadCloser, error) {
+	var buf bytes.Buffer
+	tee := io.TeeReader(r, &buf)
+	scanner := bufio.NewScanner(tee)
+	// TODO config scanner buffer
+	// scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	var data, event []byte
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		// empty line,means event end
+		if len(line) <= 0 {
+			if len(data) > 0 {
+				if data[len(data)-1] == '\n' {
+					data = data[:len(data)-1]
+				}
+				if len(event) <= 0 {
+					event = []byte("message")
+				}
+				call(event, data)
+			}
+			data = nil
+			event = nil
+			continue
+		}
+		if i := bytes.IndexByte(line, ':'); i >= 0 {
+			v := line[i+1:]
+			if len(v) > 0 && v[0] == ' ' {
+				v = v[1:]
+			}
+			switch string(line[:i]) {
+			case "data":
+				data = append(data, v...)
+				data = append(data, '\n')
+			case "event":
+				event = append(event, v...)
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return io.NopCloser(&buf), nil
 }
 func (s *RESTSender) Instance(ctx context.Context, r *pcl.Request) (*ActualRequest, error) {
 	if s.client == nil {
@@ -55,11 +167,17 @@ func (s *RESTSender) Instance(ctx context.Context, r *pcl.Request) (*ActualReque
 		return nil, fmt.Errorf("%s:%w", r.Protocol, protocol.ErrNotSupport)
 	}
 
+	timeout, err := r.Timeout.Parse()
+	if err != nil {
+		return nil, err
+	}
+
 	req := s.client.R().
 		SetURL(r.URL).
 		SetMethod(string(r.Method)).
 		SetPathParams(r.ConfigREST.Path).
-		SetQueryParamsFromValues(r.Query)
+		SetQueryParamsFromValues(r.Query).
+		SetTimeout(timeout)
 
 	// Filter out empty string keys & set raw headers
 	delete(r.Header, "")
@@ -130,7 +248,6 @@ func applyConfigREST(req *ActualRequest, cfg *pcl.ConfigREST) error {
 
 	return nil
 }
-
 func applyRetry(req *ActualRequest, retry *pcl.Retry) error {
 	if count := retry.Count; count > 0 {
 		req.SetRetryCount(count)
@@ -225,7 +342,6 @@ func applyBody(req *ActualRequest, b *pcl.Body) error {
 		}
 		req.SetContentType(mWriter.FormDataContentType()).
 			SetBody(buf.Bytes())
-
 	}
-	panic("TODO")
+	return nil
 }

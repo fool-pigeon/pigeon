@@ -18,7 +18,8 @@ import (
 type TraceKind string
 
 const (
-	TraceNetwork TraceKind = "network"
+	TraceNetwork  TraceKind = "network"
+	TraceReceived TraceKind = "received"
 )
 
 type TraceHandler func(*Trace)
