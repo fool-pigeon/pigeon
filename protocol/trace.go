@@ -23,6 +23,7 @@ type Trace struct {
 	Kind TraceKind
 
 	ReqID     ulid.ULID
+	ResID     ulid.ULID
 	Timestamp time.Time
 
 	Msg     string
@@ -30,8 +31,8 @@ type Trace struct {
 	Payload []byte
 }
 
-func NewTrace(id uint64, reqID ulid.ULID, kind TraceKind) *Trace {
-	return &Trace{ID: id, ReqID: reqID, Kind: kind, Timestamp: time.Now()}
+func NewTrace(id uint64, reqID ulid.ULID, resID ulid.ULID, kind TraceKind) *Trace {
+	return &Trace{ID: id, ReqID: reqID, ResID: resID, Kind: kind, Timestamp: time.Now()}
 }
 func (t *Trace) SetMsg(msg string) *Trace {
 	t.Msg = msg

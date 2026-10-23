@@ -129,10 +129,10 @@ var runCmd = &cobra.Command{
 			TraceHandler: func(t *protocol.Trace) {
 				pterm.Info.Println(t)
 			},
-			ResultHandler: func(res core.RunResult) {
-				taskResPrint(res)
+			ResultHandler: func(res core.RunResult, err error) {
+				taskResPrint(res, err)
 				taskTotal++
-				if res.Err == nil && res.Res.Err == nil && res.Res.Success {
+				if err == nil && res.Res.Success {
 					taskPassed++
 				}
 			},
@@ -161,10 +161,10 @@ var runCmd = &cobra.Command{
 	},
 }
 
-func taskResPrint(res core.RunResult) {
+func taskResPrint(res core.RunResult, err error) {
 
 	// filter result
-	isPassed := res.Err == nil && res.Res.Err == nil && res.Res.Success
+	isPassed := err == nil && res.Res.Success
 	if printConfig.onlyFail && isPassed {
 		return
 	}
@@ -178,16 +178,12 @@ func taskResPrint(res core.RunResult) {
 	// printSuccess := func(a ...any) { pterm.Println(pterm.Green(a...)) }
 	printInfo := func(a ...any) { pterm.Println(pterm.LightBlue(a...)) }
 
-	if res.Err != nil {
-		pterm.Error.Println(res.Path, res.Err)
+	if err != nil {
+		pterm.Error.Println(res.Path, err)
 		return
 	}
 	rRes := res.Res
 	req := rRes.Request
-	if rRes.Err != nil {
-		pterm.Error.Println(res.Path, req.ID, rRes.Err)
-		return
-	}
 
 	// print status
 	var sb strings.Builder

@@ -52,7 +52,7 @@ const (
 )
 
 type Task struct {
-	Id ulid.ULID `json:"id"`
+	ID ulid.ULID `json:"id"`
 	// For Task:this is file path for calc collection's root path
 	Path string `json:"path"`
 	// file content of run file
@@ -92,10 +92,14 @@ func (h *TaskHTTPExt) toView() (*TaskHTTPExtView, error) {
 	}, nil
 }
 
+type taskResMeta struct {
+	RunMeta core.RunMeta
+	ResMeta protocol.ResMeta
+	ErrStr  string
+	Content []byte
+}
 type taskRes struct {
-	core.RunResult
-	ID ulid.ULID
-
+	taskResMeta
 	HTTPRequest  TaskHTTPExt
 	HTTPResponse TaskHTTPExt
 }
@@ -105,45 +109,37 @@ type TaskResViewMeta struct {
 	Path string
 }
 type TaskResView struct {
-	taskRes
+	taskResMeta
 	Spent string
 	// response body size
-	ContentSize string
-
+	ContentSize  string
 	HTTPRequest  *TaskHTTPExtView
 	HTTPResponse *TaskHTTPExtView
 }
 
-func (res *taskRes) toViewMeta() (*TaskResViewMeta, error) {
-	if res.Res == nil {
-		return nil, ErrNilValue
+func (res *taskRes) toViewMeta() TaskResViewMeta {
+	return TaskResViewMeta{
+		ID:          res.ResMeta.ID,
+		Path:        res.RunMeta.Path,
+		ResultCover: res.ResMeta.ResultCover,
 	}
-	return &TaskResViewMeta{
-		ResultCover: res.Res.ResultCover,
-		ID:          res.ID,
-		Path:        res.Path,
-	}, nil
 }
 func (res *taskRes) toView() (*TaskResView, error) {
-	if res.Res == nil {
-		return nil, ErrNilValue
-	}
-
-	var view TaskResView
-	var err error
-	view.HTTPRequest, err = res.HTTPRequest.toView()
+	reqExt, err := res.HTTPRequest.toView()
 	if err != nil {
 		return nil, err
 	}
-	view.HTTPResponse, err = res.HTTPResponse.toView()
+	resExt, err := res.HTTPResponse.toView()
 	if err != nil {
 		return nil, err
 	}
-	view.taskRes = *res
-	view.Spent = res.Res.Duration.Round(time.Millisecond / 10).String()
-	view.ContentSize = humanSize(len([]byte(view.HTTPResponse.Body)))
-
-	return &view, nil
+	return &TaskResView{
+		taskResMeta:  res.taskResMeta,
+		Spent:        res.ResMeta.Duration.Round(time.Millisecond / 10).String(),
+		ContentSize:  humanSize(len(resExt.Body)),
+		HTTPRequest:  reqExt,
+		HTTPResponse: resExt,
+	}, nil
 }
 
 // service for running run tasks or collection
@@ -170,7 +166,7 @@ func (tr *TaskService) RunDir(path string, rootConf string) error {
 		return err
 	}
 	task := Task{
-		Id: id, Path: path,
+		ID: id, Path: path,
 		RunPaths: core.RunPaths{
 			Start:    path,
 			Tasks:    []string{path},
@@ -209,7 +205,7 @@ func (tr *TaskService) run(task Task) error {
 
 	if tr.evt != nil {
 		ungister := tr.evt.On(TaskSECancel, func(event *application.CustomEvent) {
-			if cancelledId, ok := event.Data.(string); ok && cancelledId == task.Id.String() {
+			if cancelledId, ok := event.Data.(string); ok && cancelledId == task.ID.String() {
 				cancel()
 			}
 		})
@@ -221,35 +217,79 @@ func (tr *TaskService) run(task Task) error {
 		alert.warn(fmt.Sprintf("%s read error,using empty root conf", task.RunPaths.RootConf))
 	}
 
-	resID, err := uid.NewULIDMonotonic()
-	if err != nil {
-		return err
+	type resultInner struct {
+		runResult *core.RunResult
+		err       error
 	}
+	innerCh := make(chan resultInner, 4096)
+	defer close(innerCh)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case inner, ok := <-innerCh:
+				if !ok {
+					return
+				}
+				runResult := inner.runResult
+				if runResult.Res == nil {
+					alert.error(fmt.Sprint(runResult.Path, ErrNilValue))
+					continue
+				}
+				tRes := taskRes{taskResMeta: taskResMeta{RunMeta: runResult.RunMeta, ResMeta: runResult.Res.ResMeta}}
+				if err := inner.err; err != nil {
+					tRes.ErrStr = err.Error()
+				} else {
+					tr.parseRunResRaw(runResult, &tRes)
+				}
+				if err := tr.storeTaskRes(tRes, task.ID); err != nil {
+					// TODO
+					continue
+				}
+			}
+		}
+	}()
+
+	traceCh := make(chan protocol.Trace, 4096)
+	defer close(traceCh)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case trace, ok := <-traceCh:
+				if !ok {
+					return
+				}
+				if err := tr.storeTaskResTrace(trace); err != nil {
+					// TODO
+					continue
+				}
+			}
+		}
+	}()
+
 	input := core.RunInput{
 		Start:    task.RunPaths.Start,
 		Tasks:    task.RunPaths.Tasks,
 		RootConf: rootConf,
-		ResultHandler: func(res core.RunResult) {
-			// TODO
-			if res.Err != nil {
-				alert.error(fmt.Sprint(res.Path, res.Err))
-				return
+		ResultHandler: func(runResult core.RunResult, err error) {
+			select {
+			case innerCh <- resultInner{&runResult, err}:
+			default:
+				alert.error("[task-service] run runResult chan flood")
 			}
-			if res.Res == nil {
-				alert.error(fmt.Sprint(res.Path, ErrNilValue))
-				return
-			}
-
-			tRes := taskRes{RunResult: res, ID: resID}
-			tr.parseRunResRaw(&res, &tRes)
-			if err := tr.storeTaskRes(tRes, task.Id); err != nil {
-				// TODO
-				return
-			}
-
 		},
 		TraceHandler: func(t *protocol.Trace) {
-			// TODO
+			if t == nil {
+				return
+			}
+			select {
+			case traceCh <- *t:
+			default:
+				alert.error("[task-service] run traceCh chan flood")
+			}
 		},
 		ClientInit: func(client *protocol.ActualClient) {
 			client.SetRequestMiddlewares(
@@ -276,16 +316,17 @@ func (tr *TaskService) run(task Task) error {
 		return err
 	}
 
-	if ctx.Err() != nil {
-		if errors.Is(ctx.Err(), context.Canceled) {
-			tr.evt.Emit(TaskSECancelled, task.Id)
-			return fmt.Errorf("cancelled task:%w", ctx.Err())
+	if err := ctx.Err(); err != nil {
+		if errors.Is(err, context.Canceled) {
+			tr.evt.Emit(TaskSECancelled, task.ID)
+			return fmt.Errorf("cancelled task:%w", err)
 		}
+		return err
 	}
-	return ctx.Err()
+	return nil
 }
-func (tr *TaskService) parseRunResRaw(res *core.RunResult, tRes *taskRes) {
-	switch v := res.Res.Raw.(type) {
+func (tr *TaskService) parseRunResRaw(runRes *core.RunResult, tRes *taskRes) {
+	switch v := runRes.Res.Raw.(type) {
 	case *pgrest.Response:
 		// Parse the result for request
 		if req := v.Request; req != nil {
@@ -314,23 +355,30 @@ func (tr *TaskService) parseRunResRaw(res *core.RunResult, tRes *taskRes) {
 		tRes.HTTPResponse.Body, _ = gzipCompress(v.Bytes())
 	}
 }
-func (tr *TaskService) storeTaskRes(res taskRes, taskID ulid.ULID) error {
+func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
-		viewMeta, err := res.toViewMeta()
-		if err != nil {
+		viewMeta := tRes.toViewMeta()
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixTaskRes), taskID[:], tRes.ResMeta.ID[:]), viewMeta); err != nil {
 			return err
 		}
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixTaskRes), taskID[:], res.ID[:]), viewMeta); err != nil {
+		if err := txn.Set(makeDBKey([]byte(dbKeyPrefixReqRes), tRes.ResMeta.Request.ID[:], tRes.ResMeta.ID[:]), nil); err != nil {
 			return err
 		}
-		if err := txn.Set(makeDBKey([]byte(dbKeyPrefixReqRes), res.Res.Request.ID[:], res.ID[:]), nil); err != nil {
-			return err
-		}
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixRes), res.ID[:]), res); err != nil {
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResID), tRes.ResMeta.ID[:]), tRes); err != nil {
 			return err
 		}
 
 		// TODO emit event view meta to front
+
+		return nil
+	})
+}
+func (tr *TaskService) storeTaskResTrace(trace protocol.Trace) error {
+	return tr.db.getDB().Update(func(txn *badger.Txn) error {
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResTrace), trace.ResID[:], uid.Uint64ToBytes(trace.ID)), trace); err != nil {
+			return err
+		}
+		// TODO wrapper and emit task res trace
 
 		return nil
 	})
@@ -351,12 +399,15 @@ func gobEncode[T any](data T) ([]byte, error) {
 }
 func gobDecode[T any](b []byte) (T, error) {
 	var data T
-	if err := gob.NewDecoder(bytes.NewReader(b)).Decode(data); err != nil {
+	if err := gob.NewDecoder(bytes.NewReader(b)).Decode(&data); err != nil {
 		return *new(T), err
 	}
 	return data, nil
 }
 func gzipCompress(b []byte) ([]byte, error) {
+	if len(b) <= 0 {
+		return b, nil
+	}
 	var buf bytes.Buffer
 	w := gzip.NewWriter(&buf)
 	if _, err := w.Write(b); err != nil {
@@ -368,6 +419,9 @@ func gzipCompress(b []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 func gzipDecompress(b []byte) ([]byte, error) {
+	if len(b) <= 0 {
+		return b, nil
+	}
 	r, err := gzip.NewReader(bytes.NewReader(b))
 	if err != nil {
 		return nil, err

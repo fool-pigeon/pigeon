@@ -74,59 +74,59 @@ type reqSendInput struct {
 	path        string
 }
 
-func sendReq(ctx context.Context, input reqSendInput) RunResult {
-
+func sendReq(ctx context.Context, input reqSendInput) (RunResult, error) {
+	var zero RunResult
+	zero.Path = input.path
 	if input.dispatcher == nil {
-		return RunResult{Path: input.path, Err: fmt.Errorf("exec request dispatcher:%w", ErrNilValue)}
+		return zero, fmt.Errorf("exec request dispatcher:%w", ErrNilValue)
 	}
 	if input.reqCtx == nil || input.reqCtx.Env == nil || input.reqCtx.Conf == nil {
-		return RunResult{Path: input.path, Err: fmt.Errorf("exec request reqCtx:%w", ErrNilValue)}
+		return zero, fmt.Errorf("exec request reqCtx:%w", ErrNilValue)
 	}
 
 	var res RunResult
 	absPath, err := filepath.Abs(input.path)
 	if err != nil {
-		res.Err = errors.Join(res.Err, err)
+		return zero, err
 	}
 	res.AbsPath = absPath
 
 	// ep.root is abs path, should use absPath to rel
 	relPath, err := filepath.Rel(input.start, absPath)
 	if err != nil {
-		res.Err = errors.Join(res.Err, err)
+		return zero, err
 	}
 	res.Path = relPath
 
-	if res.Err != nil {
-		return res
-	}
-
 	req, err := loadReq(ctx, absPath, input.reqCtx)
 	if err != nil {
-		res.Err = errors.Join(res.Err, err)
-		return res
+		return zero, err
 	}
 	if err := ctx.Err(); err != nil {
-		res.Err = errors.Join(res.Err, err)
-		return res
+		return zero, err
 	}
 
-	response, err := input.dispatcher.Send(ctx, req, uid.NewU64Gen(), input.traceHandle)
+	resID, err := uid.NewULIDMonotonic()
 	if err != nil {
-		return RunResult{Path: input.path, Err: err}
+		return zero, err
+	}
+	response, err := input.dispatcher.Send(ctx, req, resID, uid.NewU64Gen(), input.traceHandle)
+	if err != nil {
+		return zero, err
 	}
 	res.Res = response
 
-	return res
+	return res, nil
 }
 
 // the request will stop when ctx.Done()
 func sendReqWithStop(ctx context.Context, resHandle RunResultHandler, input reqSendInput) {
 	done := make(chan struct{})
 	var res RunResult
+	var err error
 	go func() {
 		defer close(done)
-		res = sendReq(ctx, input)
+		res, err = sendReq(ctx, input)
 	}()
 
 	select {
@@ -134,21 +134,23 @@ func sendReqWithStop(ctx context.Context, resHandle RunResultHandler, input reqS
 		if ctx.Err() != nil {
 			return
 		}
-		resHandle(res)
+		resHandle(res, err)
 
 	case <-ctx.Done():
 		return
 	}
 }
 
-type RunResult struct {
+type RunMeta struct {
 	// Path relative to the root collection
 	Path    string
 	AbsPath string
-	Res     *protocol.Result
-	Err     error
 }
-type RunResultHandler func(res RunResult)
+type RunResult struct {
+	RunMeta
+	Res *protocol.Result
+}
+type RunResultHandler func(res RunResult, err error)
 
 // paths params for run needed
 type RunInput struct {
@@ -220,7 +222,7 @@ func Run(ctx context.Context, rp RunInput) error {
 		info, err := os.Lstat(taskPath)
 		if err != nil {
 			go func() {
-				rp.ResultHandler(RunResult{Path: taskPath, Err: err})
+				rp.ResultHandler(RunResult{RunMeta: RunMeta{Path: taskPath}}, err)
 			}()
 			continue
 		}

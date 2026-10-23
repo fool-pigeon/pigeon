@@ -15,6 +15,7 @@ import (
 	"net/textproto"
 
 	"github.com/expr-lang/expr"
+	"github.com/oklog/ulid/v2"
 
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/fool-pigeon/pigeon/protocol"
@@ -40,7 +41,7 @@ func New(client *resty.Client) *RESTSender {
 }
 
 // Send implements [protocol.Sender].
-func (s *RESTSender) Send(ctx context.Context, req *pcl.Request, idGen *uid.AtomicGen, emitTrace pcl.TraceHandler) (*pcl.Result, error) {
+func (s *RESTSender) Send(ctx context.Context, req *pcl.Request, resID ulid.ULID, idGen *uid.Atomic64Gen, emitTrace pcl.TraceHandler) (*pcl.Result, error) {
 	panic("unimplemented")
 }
 func (s *RESTSender) Instance(ctx context.Context, r *pcl.Request) (*ActualRequest, error) {

@@ -9,8 +9,9 @@ import (
 	"context"
 
 	"github.com/fool-pigeon/pigeon/uid"
+	"github.com/oklog/ulid/v2"
 )
 
 type Sender interface {
-	Send(ctx context.Context, req *Request, idGen *uid.AtomicGen, emitTrace TraceHandler) (*Result, error)
+	Send(ctx context.Context, req *Request, resID ulid.ULID, idGen *uid.Atomic64Gen, emitTrace TraceHandler) (*Result, error)
 }

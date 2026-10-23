@@ -25,21 +25,21 @@ func New(client *protocol.ActualClient) *Dispatcher {
 }
 
 // Send implements [protocol.Sender].
-func (d *Dispatcher) Send(ctx context.Context, req *protocol.Request, idGen *uid.AtomicGen, emitTrace protocol.TraceHandler) (*protocol.Result, error) {
+func (d *Dispatcher) Send(ctx context.Context, req *protocol.Request, resID ulid.ULID, idGen *uid.Atomic64Gen, emitTrace protocol.TraceHandler) (*protocol.Result, error) {
 
 	if emitTrace != nil {
-		ctx = httptrace.WithClientTrace(ctx, getHTTPTrace(idGen, req.ID, emitTrace))
+		ctx = httptrace.WithClientTrace(ctx, getHTTPTrace(idGen, req.ID, resID, emitTrace))
 	}
 
 	switch req.Protocol {
 	case protocol.ProtocolREST, protocol.ProtocolGQL:
-		return pgrest.New(d.client).Send(ctx, req, idGen, emitTrace)
+		return pgrest.New(d.client).Send(ctx, req, resID, idGen, emitTrace)
 	default:
 		return nil, protocol.ErrNotSupport
 	}
 }
-func getHTTPTrace(idGen *uid.AtomicGen, reqID ulid.ULID, emit protocol.TraceHandler) *httptrace.ClientTrace {
-	traceNetwork := func() *protocol.Trace { return protocol.NewTrace(idGen.Next(), reqID, protocol.TraceNetwork) }
+func getHTTPTrace(idGen *uid.Atomic64Gen, reqID ulid.ULID, resID ulid.ULID, emit protocol.TraceHandler) *httptrace.ClientTrace {
+	traceNetwork := func() *protocol.Trace { return protocol.NewTrace(idGen.Next(), reqID, resID, protocol.TraceNetwork) }
 	return &httptrace.ClientTrace{
 		GetConn: func(hostPort string) {
 			emit(traceNetwork().SetMsg("GetConn").SetMeta(map[string]any{

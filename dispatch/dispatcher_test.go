@@ -32,10 +32,10 @@ type stubConn struct{ net.Conn }
 func (stubConn) LocalAddr() net.Addr  { return stubAddr("127.0.0.1:1") }
 func (stubConn) RemoteAddr() net.Addr { return stubAddr("127.0.0.1:2") }
 
-func capture(t *testing.T, reqID ulid.ULID, call func(*httptrace.ClientTrace)) []*protocol.Trace {
+func capture(t *testing.T, reqID ulid.ULID, resID ulid.ULID, call func(*httptrace.ClientTrace)) []*protocol.Trace {
 	t.Helper()
 	var got []*protocol.Trace
-	tr := getHTTPTrace(&uid.AtomicGen{}, reqID, func(ev *protocol.Trace) {
+	tr := getHTTPTrace(&uid.Atomic64Gen{}, reqID, resID, func(ev *protocol.Trace) {
 		got = append(got, ev)
 	})
 	call(tr)
@@ -45,7 +45,7 @@ func capture(t *testing.T, reqID ulid.ULID, call func(*httptrace.ClientTrace)) [
 func TestGetHTTPTrace(t *testing.T) {
 	t.Run("all hooks set", func(t *testing.T) {
 		assert := assert.New(t)
-		tr := getHTTPTrace(&uid.AtomicGen{}, ulid.Make(), func(*protocol.Trace) {})
+		tr := getHTTPTrace(&uid.Atomic64Gen{}, ulid.Make(), ulid.Make(), func(*protocol.Trace) {})
 
 		assert.NotNil(tr.GetConn, "GetConn")
 		assert.NotNil(tr.GotConn, "GotConn")
@@ -63,6 +63,7 @@ func TestGetHTTPTrace(t *testing.T) {
 	})
 
 	reqID := ulid.Make()
+	resID := ulid.Make()
 	tests := []struct {
 		name    string
 		call    func(*httptrace.ClientTrace)
@@ -234,7 +235,7 @@ func TestGetHTTPTrace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := capture(t, reqID, tt.call)
+			got := capture(t, reqID, resID, tt.call)
 			require.Len(t, got, 1)
 			tr := got[0]
 
@@ -249,7 +250,7 @@ func TestGetHTTPTrace(t *testing.T) {
 	}
 
 	t.Run("trace IDs increase monotonically", func(t *testing.T) {
-		got := capture(t, reqID, func(c *httptrace.ClientTrace) {
+		got := capture(t, reqID, resID, func(c *httptrace.ClientTrace) {
 			c.GetConn("a:1")
 			c.GetConn("b:2")
 			c.GetConn("c:3")
@@ -262,11 +263,11 @@ func TestGetHTTPTrace(t *testing.T) {
 
 func TestSend(t *testing.T) {
 	reqID := ulid.Make()
-
+	resID := ulid.Make()
 	t.Run("unsupported protocol", func(t *testing.T) {
 		d := New(nil)
 		req := &protocol.Request{ReqMeta: protocol.ReqMeta{ID: reqID, Protocol: "bogus"}}
-		res, err := d.Send(context.Background(), req, &uid.AtomicGen{}, nil)
+		res, err := d.Send(context.Background(), req, resID, &uid.Atomic64Gen{}, nil)
 		require.ErrorIs(t, err, protocol.ErrNotSupport)
 		assert.Nil(t, res)
 	})
@@ -275,7 +276,7 @@ func TestSend(t *testing.T) {
 		d := New(nil)
 		req := &protocol.Request{ReqMeta: protocol.ReqMeta{ID: reqID, Protocol: "bogus"}}
 		var got []*protocol.Trace
-		_, err := d.Send(context.Background(), req, &uid.AtomicGen{}, func(tr *protocol.Trace) {
+		_, err := d.Send(context.Background(), req, resID, &uid.Atomic64Gen{}, func(tr *protocol.Trace) {
 			got = append(got, tr)
 		})
 		require.ErrorIs(t, err, protocol.ErrNotSupport)

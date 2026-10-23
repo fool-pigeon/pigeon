@@ -5,7 +5,11 @@
 
 package protocol
 
-import "time"
+import (
+	"time"
+
+	"github.com/oklog/ulid/v2"
+)
 
 type TestRes struct {
 	Name   string `json:"name"`
@@ -17,20 +21,22 @@ type ResultCover struct {
 	// results of test
 	Tests []TestRes `json:"tests"`
 }
-type ResultMeta struct {
+type ResMeta struct {
 	ResultCover
+
+	ID ulid.ULID
+
 	// this means the tag of status,such as "2xx","4xx","5xx","err","failed"
 	Status string `json:"status"`
 	// the end-to-end duration between send request and received response
 	Duration time.Duration `json:"duration"`
-	// this is default nil if not get error in context
-	Err error `json:"err"`
+
+	Request Request
 }
 
 // As the View Result
 type Result struct {
-	ResultMeta
-	Request Request
+	ResMeta
 	// the raw content of response,e.g. [resty.Response]
 	Raw any
 }
@@ -45,13 +51,12 @@ func NewResult() Result {
 }
 
 type ResultView[T any] struct {
-	ResultMeta
-	Request Request
+	ResMeta
 	// the raw content of response,e.g. [httpx.Response]
 	Raw T
 }
 
 func View[T any](r Result) ResultView[T] {
 	v, _ := r.Raw.(T)
-	return ResultView[T]{r.ResultMeta, r.Request, v}
+	return ResultView[T]{r.ResMeta, v}
 }

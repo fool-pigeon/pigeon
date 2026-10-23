@@ -21,14 +21,14 @@ import (
 
 const (
 	// task:id:{task_ulid} -> [Task]
-	dbKeyPrefixTaskId = "task:id"
+	dbKeyPrefixTaskID = "task:id"
 	// task:res:{task_ulid}:{res_ulid} -> [TaskResViewMeta]
 	dbKeyPrefixTaskRes = "task:res"
 
 	// req:res:{req_ulid}:{res_ulid} -> nil
 	dbKeyPrefixReqRes = "req:res"
 	// res:id:{res_ulid} -> [TaskRes]
-	dbKeyPrefixRes = "res:id"
+	dbKeyPrefixResID = "res:id"
 	// res:trace:{res_ulid}:{trace_ulid} -> [protocol.Trace]
 	dbKeyPrefixResTrace = "res:trace"
 )
@@ -135,13 +135,13 @@ func (db *CacheDB) getDB() *badger.DB {
 }
 func (db *CacheDB) GetTaskRepo() *BaseRepoULID[Task] {
 	if db.taskRepo == nil {
-		db.taskRepo = &BaseRepoULID[Task]{prefix: dbKeyPrefixTaskId, db: db.getDB()}
+		db.taskRepo = &BaseRepoULID[Task]{prefix: dbKeyPrefixTaskID, db: db.getDB()}
 	}
 	return db.taskRepo
 }
 func (db *CacheDB) GetTaskResRepo() *BaseRepoULID[taskRes] {
 	if db.resRepo == nil {
-		db.resRepo = &BaseRepoULID[taskRes]{prefix: dbKeyPrefixRes, db: db.getDB()}
+		db.resRepo = &BaseRepoULID[taskRes]{prefix: dbKeyPrefixResID, db: db.getDB()}
 	}
 	return db.resRepo
 }
