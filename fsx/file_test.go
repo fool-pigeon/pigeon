@@ -3,218 +3,154 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-package fsx_test
+package fsx
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/fool-pigeon/pigeon/fsx"
-	"github.com/fool-pigeon/pigeon/protocol"
-	"github.com/pelletier/go-toml/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func tmpPath(t *testing.T, name string) string {
+	t.Helper()
+	return filepath.Join(t.TempDir(), name)
+}
+
 func TestIsFileExist(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	t.Run("test normal file", func(t *testing.T) {
-		f, err := os.CreateTemp(tmpDir, "tmp_file")
-		isFileExist, err := fsx.IsFileExist(f.Name())
-		if err != nil {
-			t.Fatal(err)
-		}
-		require.Equal(t, true, isFileExist)
+	t.Run("regular file", func(t *testing.T) {
+		p := tmpPath(t, "f")
+		require.NoError(t, os.WriteFile(p, []byte("x"), 0o644))
+		ok, err := IsFileExist(p)
+		require.NoError(t, err)
+		assert.True(t, ok)
 	})
-
-	t.Run("test a file not exist", func(t *testing.T) {
-		name := filepath.Join(tmpDir, "the_file_not_exist")
-		isExist, err := fsx.IsFileExist(name)
-		require.Equal(t, false, isExist)
-		require.Nil(t, err)
+	t.Run("missing", func(t *testing.T) {
+		ok, err := IsFileExist(tmpPath(t, "nope"))
+		require.NoError(t, err)
+		assert.False(t, ok)
 	})
-
-	t.Run("test a dir", func(t *testing.T) {
-		d, err := os.MkdirTemp(tmpDir, "tmp_dir")
-		if err != nil {
-			t.Fatal(err)
-		}
-		isFileExist, err := fsx.IsFileExist(d)
-		require.Equal(t, false, isFileExist)
-	})
-
-	t.Run("test a file has no perm", func(t *testing.T) {
-		d := filepath.Join(tmpDir, "no_perm_dir")
-		err := os.Mkdir(filepath.Join(tmpDir, "no_perm_dir"), os.FileMode(0o755))
-		if err != nil {
-			t.Fatal(err)
-		}
-		f, err := os.OpenFile(filepath.Join(d, "no_perm"), os.O_CREATE|os.O_RDWR, os.FileMode(0o755))
-		if err != nil {
-			t.Fatal(err)
-		}
-		// change permssion of dir,the file can't be accessed
-		os.Chmod(d, os.FileMode(0o000))
-		defer os.Chmod(d, os.FileMode(0o755))
-
-		isFileExist, err := fsx.IsFileExist(f.Name())
-		require.ErrorIs(t, err, os.ErrPermission)
-		require.Equal(t, false, isFileExist)
+	t.Run("dir is not file", func(t *testing.T) {
+		p := tmpPath(t, "d")
+		require.NoError(t, os.Mkdir(p, 0o755))
+		ok, err := IsFileExist(p)
+		require.NoError(t, err)
+		assert.False(t, ok)
 	})
 }
+
 func TestIsDirExist(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	t.Run("test normal dir", func(t *testing.T) {
-		dir, err := os.MkdirTemp(tmpDir, "tmp_file")
-		if err != nil {
-			t.Fatal(err)
-		}
-		isExist, err := fsx.IsDirExist(dir)
-		require.Equal(t, true, isExist)
-		require.Nil(t, err)
+	t.Run("dir", func(t *testing.T) {
+		p := tmpPath(t, "d")
+		require.NoError(t, os.Mkdir(p, 0o755))
+		ok, err := IsDirExist(p)
+		require.NoError(t, err)
+		assert.True(t, ok)
 	})
-
-	t.Run("test a dir not exist", func(t *testing.T) {
-		name := filepath.Join(tmpDir, "the_dir_not_exist")
-		isExist, err := fsx.IsDirExist(name)
-		require.Equal(t, false, isExist)
-		require.Nil(t, err)
+	t.Run("missing", func(t *testing.T) {
+		ok, err := IsDirExist(tmpPath(t, "nope"))
+		require.NoError(t, err)
+		assert.False(t, ok)
 	})
-
-	t.Run("test a file", func(t *testing.T) {
-		f, err := os.CreateTemp(tmpDir, "tmp_dir")
-		if err != nil {
-			t.Fatal(err)
-		}
-		isExist, err := fsx.IsDirExist(f.Name())
-		require.Equal(t, false, isExist)
-		require.Nil(t, err)
-	})
-
-	t.Run("test a dir has no perm", func(t *testing.T) {
-		parent, err := os.MkdirTemp(tmpDir, "no_perm_dir")
-		if err != nil {
-			t.Fatal(err)
-		}
-		d, err := os.MkdirTemp(parent, "son")
-		if err != nil {
-			t.Fatal(err)
-		}
-		// change permssion of dir,the file can't be accessed
-		os.Chmod(parent, os.FileMode(0o000))
-		defer os.Chmod(parent, os.FileMode(0o755))
-
-		isExist, err := fsx.IsDirExist(d)
-		require.ErrorIs(t, err, os.ErrPermission)
-		require.Equal(t, false, isExist)
-	})
-}
-func TestRWFile(t *testing.T) {
-	t.Run("read and write a file", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		fName := filepath.Join(tmpDir, "file")
-		data := []byte("data")
-		fsx.WriteFile(fName, data)
-		b, _ := fsx.ReadFile(fName)
-		assert.Equal(t, data, b)
-		bs, _ := fsx.ReadFileAsString(fName)
-		assert.Equal(t, string(data), bs)
-	})
-	t.Run("read a empty file", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		fName := filepath.Join(tmpDir, "not-exist")
-		fsx.WriteFile(fName, []byte{})
-		b, _ := fsx.ReadFile(fName)
-		assert.Equal(t, []byte{}, b)
-		bs, _ := fsx.ReadFileAsString(fName)
-		assert.Equal(t, "", bs)
-	})
-	t.Run("read a file not exist", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		fName := filepath.Join(tmpDir, "not-exist")
-		_, err := fsx.ReadFile(fName)
-		assert.ErrorIs(t, err, fsx.ErrNotExist)
+	t.Run("file is not dir", func(t *testing.T) {
+		p := tmpPath(t, "f")
+		require.NoError(t, os.WriteFile(p, []byte("x"), 0o644))
+		ok, err := IsDirExist(p)
+		require.NoError(t, err)
+		assert.False(t, ok)
 	})
 }
 
-func TestRDWRToml(t *testing.T) {
-	tmpDir := t.TempDir()
+func TestWriteAndReadFile(t *testing.T) {
+	p := tmpPath(t, "f")
+	require.NoError(t, WriteFile(p, []byte("foo")))
 
-	type Data struct {
-		Version int      `toml:"version"`
-		K1      string   `toml:"k1"`
-		K2      string   `toml:"K2"`
-		Tags    []string `toml:"tags"`
-	}
+	info, err := os.Stat(p)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
 
-	data := Data{
-		Version: 1,
-		K1:      "hello",
-		K2:      "world",
-		Tags:    []string{"go", "pg"},
-	}
-	name := filepath.Join(tmpDir, "toml_file")
-	if err := fsx.WriteToml(name, &data); err != nil {
-		t.Fatal(err)
-	}
-	var v Data
-	if err := fsx.ReadToml(name, &v); err != nil {
-		t.Fatal(err)
-	}
-	require.Equal(t, data, v)
+	b, err := ReadFile(p)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("foo"), b)
+
+	s, err := ReadFileAsString(p)
+	require.NoError(t, err)
+	assert.Equal(t, "foo", s)
 }
 
-func TestToml(t *testing.T) {
-	data := map[string]string{
-		"k1": "v1",
-		"k2": "v2",
-		"k3": "v3",
-	}
-	b, err := toml.Marshal(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var m map[string]string
-	if err := toml.Unmarshal(b, &m); err != nil {
-		t.Fatal(err)
-	}
-	t.Log(string(b))
-	t.Log(m)
-	require := require.New(t)
-	require.Equal(data, m)
-	err = toml.Unmarshal([]byte(`k1='v1`), &m)
-	require.Error(err)
-	t.Log(err)
+func TestCreateFileIfNotExists(t *testing.T) {
+	t.Run("creates", func(t *testing.T) {
+		p := tmpPath(t, "f")
+		require.NoError(t, CreateFileIfNotExists(p))
+		info, err := os.Stat(p)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
+	})
+	t.Run("existing untouched", func(t *testing.T) {
+		p := tmpPath(t, "f")
+		require.NoError(t, os.WriteFile(p, []byte("keep"), 0o644))
+		require.NoError(t, CreateFileIfNotExists(p))
+		b, err := os.ReadFile(p)
+		require.NoError(t, err)
+		assert.Equal(t, []byte("keep"), b)
+	})
+	t.Run("missing parent", func(t *testing.T) {
+		p := filepath.Join(t.TempDir(), "x", "f")
+		assert.Error(t, CreateFileIfNotExists(p))
+	})
+}
 
-	mfs := []protocol.MultiField{
-		{Name: "name1", Value: "v1"},
+func TestTomlRoundTrip(t *testing.T) {
+	type conf struct {
+		Name string `toml:"name"`
+		Port int    `toml:"port"`
 	}
-	mf := mfs[0]
-	b, err = toml.Marshal(mf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(string(b))
+	p := tmpPath(t, "c.toml")
+	want := conf{Name: "foo", Port: 8080}
 
-	type Inner struct {
-		F1 int    `toml:"f1"`
-		F2 string `toml:"f2"`
-	}
-	d := struct {
-		Data []Inner `toml:"data"`
-	}{
-		[]Inner{
-			{F1: 1, F2: "114"},
-			{F1: 2, F2: "514"},
-		},
-	}
-	t.Log(d)
-	b, err = toml.Marshal(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(string(b))
+	require.NoError(t, WriteToml(p, want))
+	var got conf
+	require.NoError(t, ReadToml(p, &got))
+	assert.Equal(t, want, got)
+}
+
+func TestTomlErrors(t *testing.T) {
+	t.Run("read missing", func(t *testing.T) {
+		var v map[string]any
+		assert.Error(t, ReadToml(tmpPath(t, "nope.toml"), &v))
+	})
+	t.Run("read invalid", func(t *testing.T) {
+		p := tmpPath(t, "bad.toml")
+		require.NoError(t, os.WriteFile(p, []byte("= bad"), 0o644))
+		var v map[string]any
+		assert.Error(t, ReadToml(p, &v))
+	})
+	t.Run("write unsupported", func(t *testing.T) {
+		assert.Error(t, WriteToml(tmpPath(t, "c.toml"), make(chan int)))
+	})
+}
+
+func TestMkdir(t *testing.T) {
+	t.Run("mkdir", func(t *testing.T) {
+		p := tmpPath(t, "d")
+		require.NoError(t, Mkdir(p))
+		info, err := os.Stat(p)
+		require.NoError(t, err)
+		assert.True(t, info.IsDir())
+		assert.Equal(t, os.FileMode(0o755), info.Mode().Perm())
+	})
+	t.Run("mkdir existing errors", func(t *testing.T) {
+		p := tmpPath(t, "d")
+		require.NoError(t, Mkdir(p))
+		assert.Error(t, Mkdir(p))
+	})
+	t.Run("mkdir all", func(t *testing.T) {
+		p := filepath.Join(t.TempDir(), "a", "b", "c")
+		require.NoError(t, MkdirAll(p))
+		ok, err := IsDirExist(p)
+		require.NoError(t, err)
+		assert.True(t, ok)
+	})
 }

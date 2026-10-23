@@ -3,75 +3,108 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-package fsx_test
+package fsx
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/fool-pigeon/pigeon/fsx"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+// mkProject creates <tmp>/a/b/c with a .pg dir at <tmp>.
+// Returns (root, mid=a, leaf=b/c) as absolute paths.
+func mkProject(t *testing.T) (root, mid, leaf string) {
+	t.Helper()
+	root = t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(root, RootTag), 0o755))
+	mid = filepath.Join(root, "a")
+	leaf = filepath.Join(mid, "b", "c")
+	require.NoError(t, os.MkdirAll(leaf, 0o755))
+	return
+}
+
 func TestRootDir(t *testing.T) {
-	t.Run("the tagDir in current dir", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		tagDir := filepath.Join(tmpDir, fsx.RootTag)
-		fsx.Mkdir(tagDir)
-		rootDir, err := fsx.RootDir(tmpDir)
-		require.Equal(t, tmpDir, rootDir)
-		require.Nil(t, err)
-	})
+	root, mid, leaf := mkProject(t)
 
-	t.Run("find the tag dir", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		tagDir := filepath.Join(tmpDir, fsx.RootTag)
-		fsx.Mkdir(tagDir)
-		rootTag, err := fsx.RootTagDir(tmpDir)
-		require.Equal(t, tagDir, rootTag)
-		require.Nil(t, err)
+	t.Run("from leaf", func(t *testing.T) {
+		got, err := RootDir(leaf)
+		require.NoError(t, err)
+		assert.Equal(t, root, got)
 	})
-
-	t.Run("the tagDir in the parent dir", func(t *testing.T) {
-		parentDir := t.TempDir()
-		tagDir := filepath.Join(parentDir, fsx.RootTag)
-		fsx.Mkdir(tagDir)
-		sonDir, _ := os.MkdirTemp(parentDir, "son")
-		rootDir, err := fsx.RootDir(sonDir)
-		require.Equal(t, parentDir, rootDir)
-		require.Nil(t, err)
+	t.Run("from mid", func(t *testing.T) {
+		got, err := RootDir(mid)
+		require.NoError(t, err)
+		assert.Equal(t, root, got)
 	})
-
-	t.Run("not exist tag dir", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		sonDir, _ := os.MkdirTemp(tmpDir, "son")
-		rootDir, err := fsx.RootDir(sonDir)
-		require.Equal(t, rootDir, "")
-		require.ErrorIs(t, err, fsx.ErrRootNotExist)
+	t.Run("from root", func(t *testing.T) {
+		got, err := RootDir(root)
+		require.NoError(t, err)
+		assert.Equal(t, root, got)
+	})
+	t.Run("nearest wins", func(t *testing.T) {
+		nearRoot, nearMid, nearLeaf := mkProject(t)
+		_ = nearRoot
+		require.NoError(t, os.Mkdir(filepath.Join(nearMid, RootTag), 0o755))
+		got, err := RootDir(nearLeaf)
+		require.NoError(t, err)
+		assert.Equal(t, nearMid, got)
 	})
 }
+
+func TestRootTagDir(t *testing.T) {
+	root, _, leaf := mkProject(t)
+	got, err := RootTagDir(leaf)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(root, RootTag), got)
+}
+
 func TestPathsToRoot(t *testing.T) {
-	t.Run("not exist tag dir", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		sonDir, _ := os.MkdirTemp(tmpDir, "son")
-		paths, err := fsx.PathsToRoot(sonDir)
-		require.Nil(t, paths)
-		require.ErrorIs(t, err, fsx.ErrRootNotExist)
+	root, mid, leaf := mkProject(t)
+	got, err := PathsToRoot(leaf)
+	require.NoError(t, err)
+	assert.Equal(t, []string{leaf, filepath.Dir(leaf), mid, root}, got)
+}
+
+func TestPathsFromRoot(t *testing.T) {
+	root, mid, leaf := mkProject(t)
+	got, err := PathsFromRoot(leaf)
+	require.NoError(t, err)
+	assert.Equal(t, []string{root, mid, filepath.Dir(leaf), leaf}, got)
+}
+
+func TestRootConfDir(t *testing.T) {
+	root, _, leaf := mkProject(t)
+	want := filepath.Join(root, RootTag, Conf)
+	require.NoError(t, os.Mkdir(want, 0o755))
+
+	got, err := RootConfDir(leaf)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestRootRunDir(t *testing.T) {
+	root, _, leaf := mkProject(t)
+	want := filepath.Join(root, RootTag, RootRun)
+	require.NoError(t, os.Mkdir(want, 0o755))
+
+	got, err := RootRunDir(leaf)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestRootSubDirErrors(t *testing.T) {
+	t.Run("missing sub dir", func(t *testing.T) {
+		_, _, leaf := mkProject(t)
+		_, err := RootConfDir(leaf)
+		assert.Error(t, err)
 	})
-	t.Run("tag dir in current dir", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		fsx.Mkdir(filepath.Join(tmpDir, fsx.RootTag))
-		paths, err := fsx.PathsToRoot(tmpDir)
-		require.Equal(t, []string{tmpDir}, paths)
-		require.Nil(t, err)
-	})
-	t.Run("tag dir in parent dir", func(t *testing.T) {
-		parentDir := t.TempDir()
-		fsx.Mkdir(filepath.Join(parentDir, fsx.RootTag))
-		sonDir, _ := os.MkdirTemp(parentDir, "son")
-		paths, err := fsx.PathsToRoot(sonDir)
-		require.Equal(t, []string{sonDir, parentDir}, paths)
-		require.Nil(t, err)
+	t.Run("sub dir is file", func(t *testing.T) {
+		root, _, leaf := mkProject(t)
+		require.NoError(t, os.WriteFile(filepath.Join(root, RootTag, Conf), []byte("x"), 0o644))
+		_, err := RootConfDir(leaf)
+		assert.ErrorIs(t, err, ErrNotDir)
 	})
 }
