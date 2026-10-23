@@ -24,8 +24,8 @@ func TestConvAnyToString(t *testing.T) {
 	}{
 		{"nil", nil, ""},
 		{"string", "hello", "hello"},
-		{"bool_true", true, "true"},
-		{"bool_false", false, "false"},
+		{"bool true", true, "true"},
+		{"bool false", false, "false"},
 		{"int", int(-42), "-42"},
 		{"int8", int8(-8), "-8"},
 		{"int16", int16(-16), "-16"},
@@ -44,8 +44,8 @@ func TestConvAnyToString(t *testing.T) {
 		{"bytes", []byte("abc"), "abc"},
 		{"error", errors.New("boom"), "boom"},
 		{"addr", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 8080}, "tcp 127.0.0.1:8080"},
-		{"slice_fallback", []string{"a", "b"}, "[a b]"},
-		{"map_fallback", map[string]int{"a": 1}, "map[a:1]"},
+		{"slice fallback", []string{"a", "b"}, "[a b]"},
+		{"map fallback", map[string]int{"a": 1}, "map[a:1]"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -76,20 +76,20 @@ func TestTraceSetters(t *testing.T) {
 		return NewTrace(1, ulid.Make(), ulid.Make(), TraceNetwork)
 	}
 
-	t.Run("set_msg", func(t *testing.T) {
+	t.Run("set msg", func(t *testing.T) {
 		tr := newTrace()
 		assert.Same(t, tr, tr.SetMsg("hi"))
 		assert.Equal(t, "hi", tr.Msg)
 	})
 
-	t.Run("set_payload", func(t *testing.T) {
+	t.Run("set payload", func(t *testing.T) {
 		tr := newTrace()
 		payload := []byte("p")
 		assert.Same(t, tr, tr.SetPayload(payload))
 		assert.Equal(t, payload, tr.Payload)
 	})
 
-	t.Run("set_meta", func(t *testing.T) {
+	t.Run("set meta", func(t *testing.T) {
 		tr := newTrace()
 		meta := map[string]any{"k": "v"}
 		assert.Same(t, tr, tr.SetMeta(meta))
@@ -102,13 +102,13 @@ func TestTraceToView(t *testing.T) {
 		return NewTrace(1, ulid.Make(), ulid.Make(), TraceNetwork)
 	}
 
-	t.Run("copies_body", func(t *testing.T) {
+	t.Run("copies body", func(t *testing.T) {
 		tr := newTrace().SetMsg("hello").SetPayload([]byte("p"))
 		v := tr.ToView()
 		assert.Same(t, &tr.TraceBody, v.TraceBody)
 	})
 
-	t.Run("converts_meta", func(t *testing.T) {
+	t.Run("converts meta", func(t *testing.T) {
 		tr := newTrace().SetMeta(map[string]any{
 			"str":    "value",
 			"num":    42,
@@ -124,13 +124,13 @@ func TestTraceToView(t *testing.T) {
 		}, v.Meta)
 	})
 
-	t.Run("nil_meta_becomes_empty", func(t *testing.T) {
+	t.Run("nil meta becomes empty", func(t *testing.T) {
 		v := newTrace().ToView()
 		require.NotNil(t, v.Meta)
 		assert.Empty(t, v.Meta)
 	})
 
-	t.Run("does_not_alias_source_meta", func(t *testing.T) {
+	t.Run("does not alias source meta", func(t *testing.T) {
 		tr := newTrace().SetMeta(map[string]any{"k": "v"})
 		v := tr.ToView()
 		v.Meta["k"] = "changed"

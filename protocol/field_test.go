@@ -43,8 +43,8 @@ func TestDurationStrParse(t *testing.T) {
 			in   DurationStr
 		}{
 			{"empty", ""},
-			{"no_unit", "10"},
-			{"unknown_unit", "10x"},
+			{"no unit", "10"},
+			{"unknown unit", "10x"},
 			{"garbage", "abc"},
 		}
 		for _, c := range cases {

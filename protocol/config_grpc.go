@@ -6,8 +6,15 @@
 package protocol
 
 type ConfigGRPC struct {
+	ReadMaxBytes      int
+	SendMaxBytes      int
+	UseProtoJSON      bool
+	EnableHTTPGet     bool
+	HTTPGetMaxURLSize int
+	SendGzip          bool
 }
 
 func (c *ConfigGRPC) Copy() *ConfigGRPC {
-	return c
+	dst := *c
+	return &dst
 }

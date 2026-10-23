@@ -201,11 +201,24 @@ func (r *ReqConfig) mergeConfigREST(c *ConfigREST) {
 }
 func (r *ReqConfig) mergeConfigGRPC(c *ConfigGRPC) {
 	// TODO:merge configGRPC in ReqConfig
-	panic("TODO panic: merge configGRPC in ReqConfig")
+	if c == nil {
+		return
+	}
+	if r.ConfigGRPC == nil {
+		r.ConfigGRPC = c
+		return
+	}
+
 }
 func (r *ReqConfig) mergeConfigWS(c *ConfigWS) {
 	// TODO:merge configWS in ReqConfig
-	panic("TODO panic: merge configWS in ReqConfig")
+	if c == nil {
+		return
+	}
+	if r.ConfigWS == nil {
+		r.ConfigWS = c
+		return
+	}
 }
 
 type Request struct {

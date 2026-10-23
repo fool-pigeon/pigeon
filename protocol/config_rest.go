@@ -60,6 +60,8 @@ type ConfigREST struct {
 
 func (c *ConfigREST) Copy() *ConfigREST {
 	dst := *c
+	dst.Tests = make(map[string]string, len(c.Tests))
+	dst.Path = make(map[string]string, len(c.Path))
 	maps.Copy(dst.Tests, c.Tests)
 	maps.Copy(dst.Path, c.Path)
 	return &dst
