@@ -181,7 +181,6 @@ func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
 
 // ServiceStartup implements [application.ServiceStartup].
 func (tr *TaskService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	// TODO create stream
 	tr.app.HandleStream(TaskSSTaskResViewMeta, func(sc *application.StreamConn) {
 		defer sc.Close()
 		for {
