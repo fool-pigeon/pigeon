@@ -27,6 +27,7 @@ func TestDurationStrParse(t *testing.T) {
 			{"composite", "1h30m", 90 * time.Minute},
 			{"negative", "-10s", -10 * time.Second},
 			{"zero", "0s", 0},
+			{"empty", "", 0},
 		}
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
@@ -42,7 +43,6 @@ func TestDurationStrParse(t *testing.T) {
 			name string
 			in   DurationStr
 		}{
-			{"empty", ""},
 			{"no unit", "10"},
 			{"unknown unit", "10x"},
 			{"garbage", "abc"},
