@@ -20,17 +20,17 @@ import (
 )
 
 const (
-	// task:id:{task_ulid} -> [Task]
+	// task:id:{taskULID} -> [Task]
 	dbKeyPrefixTaskID = "task:id"
-	// task:res:{task_ulid}:{res_ulid} -> [TaskResViewMeta]
+	// task:res:{taskULID}:{resULID} -> [TaskResViewMeta]
 	dbKeyPrefixTaskRes = "task:res"
 
-	// req:res:{req_ulid}:{res_ulid} -> nil
+	// req:res:{reqULID}:{resULID} -> nil
 	dbKeyPrefixReqRes = "req:res"
-	// res:id:{res_ulid} -> [TaskRes]
+	// res:id:{resULID} -> [TaskRes]
 	dbKeyPrefixResID = "res:id"
-	// res:trace:{res_ulid}:{trace_ulid} -> [protocol.Trace]
-	dbKeyPrefixResTrace = "res:trace"
+	// res:trace:{resULID}:{traceID} -> [protocol.TraceView]
+	dbKeyPrefixResTraceView = "res:trace-view"
 )
 
 type DataSource struct {

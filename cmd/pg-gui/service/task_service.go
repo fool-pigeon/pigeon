@@ -374,7 +374,7 @@ func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 }
 func (tr *TaskService) storeTaskResTrace(trace protocol.Trace) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResTrace), trace.ResID[:], uid.Uint64ToBytes(trace.ID)), trace); err != nil {
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResTraceView), trace.ResID[:], uid.Uint64ToBytes(trace.ID)), trace); err != nil {
 			return err
 		}
 		// TODO wrapper and emit task res trace
