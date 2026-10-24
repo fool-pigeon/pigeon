@@ -51,6 +51,20 @@ const (
 	TaskSEResViewMeta TaskSEvent = "task-service:res-view-meta"
 )
 
+// [TaskService] Stream
+type TaskSStream = string
+
+const (
+	// Send
+	//
+	// [TaskResViewMeta]
+	TaskSSTaskResMeta TaskSStream = "task-service:stream:task-res-meta"
+	// Send
+	//
+	// [protocol.TraceView]
+	TaskSSTaskResTrace TaskSStream = "task-service:stream:task-res-trace"
+)
+
 type Task struct {
 	ID ulid.ULID `json:"id"`
 	// For Task:this is file path for calc collection's root path
@@ -92,24 +106,24 @@ func (h *TaskHTTPExt) toView() (*TaskHTTPExtView, error) {
 	}, nil
 }
 
-type taskResMeta struct {
+type TaskResMeta struct {
 	RunMeta core.RunMeta
 	ResMeta protocol.ResMeta
 	ErrStr  string
 	Content []byte
 }
 type taskRes struct {
-	taskResMeta
+	TaskResMeta
 	HTTPRequest  TaskHTTPExt
 	HTTPResponse TaskHTTPExt
 }
 type TaskResViewMeta struct {
 	protocol.ResultCover
-	ID   ulid.ULID
-	Path string
+	ResID ulid.ULID
+	Path  string
 }
 type TaskResView struct {
-	taskResMeta
+	TaskResMeta
 	Spent string
 	// response body size
 	ContentSize  string
@@ -119,7 +133,7 @@ type TaskResView struct {
 
 func (res *taskRes) toViewMeta() TaskResViewMeta {
 	return TaskResViewMeta{
-		ID:          res.ResMeta.ID,
+		ResID:       res.ResMeta.ID,
 		Path:        res.RunMeta.Path,
 		ResultCover: res.ResMeta.ResultCover,
 	}
@@ -134,7 +148,7 @@ func (res *taskRes) toView() (*TaskResView, error) {
 		return nil, err
 	}
 	return &TaskResView{
-		taskResMeta:  res.taskResMeta,
+		TaskResMeta:  res.TaskResMeta,
 		Spent:        res.ResMeta.Duration.Round(time.Millisecond / 10).String(),
 		ContentSize:  humanSize(len(resExt.Body)),
 		HTTPRequest:  reqExt,
@@ -144,12 +158,26 @@ func (res *taskRes) toView() (*TaskResView, error) {
 
 // service for running run tasks or collection
 type TaskService struct {
+	app *application.App
 	evt *application.EventManager
 	db  *CacheDB
+
+	metaCh  chan TaskResMeta
+	traceCh chan protocol.TraceView
+}
+
+// ServiceStartup implements [application.ServiceStartup].
+func (tr *TaskService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	// TODO create stream
+	panic("TODO")
 }
 
 func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
-	return &TaskService{app.Event, db}
+	return &TaskService{
+		app: app,
+		evt: app.Event,
+		db:  db,
+	}
 }
 
 func (tr *TaskService) RunDir(path string, rootConf string) error {
@@ -237,7 +265,7 @@ func (tr *TaskService) run(task Task) error {
 					alert.error(fmt.Sprint(runResult.Path, ErrNilValue))
 					continue
 				}
-				tRes := taskRes{taskResMeta: taskResMeta{RunMeta: runResult.RunMeta, ResMeta: runResult.Res.ResMeta}}
+				tRes := taskRes{TaskResMeta: TaskResMeta{RunMeta: runResult.RunMeta, ResMeta: runResult.Res.ResMeta}}
 				if err := inner.err; err != nil {
 					tRes.ErrStr = err.Error()
 				} else {
