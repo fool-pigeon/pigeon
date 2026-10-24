@@ -12,6 +12,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/pterm/pterm v0.12.83
 	github.com/spf13/cobra v1.10.2
+	github.com/vmihailenco/msgpack/v5 v5.4.1
 	github.com/wailsapp/wails/v3 v3.0.0-beta.16
 	resty.dev/v3 v3.0.0-rc.3
 )
@@ -43,7 +44,6 @@ require (
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel v1.41.0 // indirect
