@@ -56,7 +56,6 @@ func (s *RESTSender) Send(ctx context.Context, req *pcl.Request, resID ulid.ULID
 	if err != nil {
 		return nil, err
 	}
-
 	if strings.Contains(res.Header().Get(pcl.HdrContentTypeKey), "text/event-stream") {
 		call := func(event []byte, data []byte) {
 			emitTrace(pcl.NewTrace(idGen.Next(), req.ID, resID, pcl.TraceReceived).
