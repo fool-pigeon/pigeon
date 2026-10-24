@@ -55,14 +55,14 @@ const (
 type TaskSStream = string
 
 const (
-	// Send
+	// Send JSON
 	//
 	// [TaskResViewMeta]
-	TaskSSTaskResMeta TaskSStream = "task-service:stream:task-res-meta"
-	// Send
+	TaskSSTaskResViewMeta TaskSStream = "task-service:stream:task-res-view-meta"
+	// Send JSON
 	//
 	// [protocol.TraceView]
-	TaskSSTaskResTrace TaskSStream = "task-service:stream:task-res-trace"
+	TaskSSTaskResTraceView TaskSStream = "task-service:stream:task-res-trace-view"
 )
 
 type Task struct {
@@ -164,14 +164,8 @@ type TaskService struct {
 	evt *application.EventManager
 	db  *CacheDB
 
-	metaCh  chan TaskResMeta
-	traceCh chan protocol.TraceView
-}
-
-// ServiceStartup implements [application.ServiceStartup].
-func (tr *TaskService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	// TODO create stream
-	panic("TODO")
+	metaCh      chan TaskResMeta
+	traceViewCh chan protocol.TraceView
 }
 
 func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
@@ -179,7 +173,41 @@ func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
 		app: app,
 		evt: app.Event,
 		db:  db,
+
+		metaCh:      make(chan TaskResMeta, 8),
+		traceViewCh: make(chan protocol.TraceView, 16),
 	}
+}
+
+// ServiceStartup implements [application.ServiceStartup].
+func (tr *TaskService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	// TODO create stream
+	tr.app.HandleStream(TaskSSTaskResViewMeta, func(sc *application.StreamConn) {
+		defer sc.Close()
+		for {
+			select {
+			case <-sc.Context().Done():
+				return
+			case meta := <-tr.metaCh:
+				if err := sc.SendJSON(&meta); err != nil {
+					return
+				}
+			}
+		}
+	})
+	tr.app.HandleStream(TaskSSTaskResTraceView, func(sc *application.StreamConn) {
+		for {
+			select {
+			case <-sc.Context().Done():
+				return
+			case view := <-tr.traceViewCh:
+				if err := sc.SendJSON(&view); err != nil {
+					return
+				}
+			}
+		}
+	})
+	return nil
 }
 
 func (tr *TaskService) RunDir(path string, rootConf string) error {
@@ -387,13 +415,13 @@ func (tr *TaskService) parseRunResRaw(runRes *core.RunResult, tRes *taskRes) {
 func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
 		viewMeta := tRes.toViewMeta(taskID)
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixTaskRes), taskID[:], tRes.ResMeta.ID[:]), viewMeta); err != nil {
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixTaskRes), taskID[:], tRes.ResMeta.ID[:]), &viewMeta); err != nil {
 			return err
 		}
 		if err := txn.Set(makeDBKey([]byte(dbKeyPrefixReqRes), tRes.ResMeta.Request.ID[:], tRes.ResMeta.ID[:]), nil); err != nil {
 			return err
 		}
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResID), tRes.ResMeta.ID[:]), tRes); err != nil {
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResID), tRes.ResMeta.ID[:]), &tRes); err != nil {
 			return err
 		}
 
@@ -404,7 +432,7 @@ func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 }
 func (tr *TaskService) storeTaskResTrace(trace protocol.Trace) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResTraceView), trace.ResID[:], uid.Uint64ToBytes(trace.ID)), trace); err != nil {
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResTraceView), trace.ResID[:], uid.Uint64ToBytes(trace.ID)), &trace); err != nil {
 			return err
 		}
 		// TODO wrapper and emit task res trace
@@ -412,7 +440,7 @@ func (tr *TaskService) storeTaskResTrace(trace protocol.Trace) error {
 		return nil
 	})
 }
-func dbTxnSet[T any](txn *badger.Txn, key []byte, v T) error {
+func dbTxnSet[T any](txn *badger.Txn, key []byte, v *T) error {
 	b, err := msgpack.Marshal(v)
 	if err != nil {
 		return err
