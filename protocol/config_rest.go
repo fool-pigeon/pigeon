@@ -59,6 +59,9 @@ type ConfigREST struct {
 }
 
 func (c *ConfigREST) Copy() *ConfigREST {
+	if c == nil {
+		return nil
+	}
 	dst := *c
 	dst.Tests = make(map[string]string, len(c.Tests))
 	dst.Path = make(map[string]string, len(c.Path))

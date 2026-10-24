@@ -16,6 +16,9 @@ type ConfigWS struct {
 }
 
 func (c *ConfigWS) Copy() *ConfigWS {
+	if c == nil {
+		return nil
+	}
 	dst := *c
 	dst.Subprotocols = slices.Clone(c.Subprotocols)
 	dst.OriginPatterns = slices.Clone(c.OriginPatterns)

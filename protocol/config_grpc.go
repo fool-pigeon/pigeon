@@ -15,6 +15,9 @@ type ConfigGRPC struct {
 }
 
 func (c *ConfigGRPC) Copy() *ConfigGRPC {
+	if c == nil {
+		return nil
+	}
 	dst := *c
 	return &dst
 }
