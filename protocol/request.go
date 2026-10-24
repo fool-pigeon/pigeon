@@ -65,16 +65,16 @@ type (
 // readonly,so that it does not cause data races except [ReqConfig.Merge]
 type ReqConfig struct {
 	// do not inherited
-	Desc string
+	Desc string `toml:"desc"`
 
-	Auth    Auth
-	Query   map[string][]string
-	Header  map[string][]string
-	Timeout DurationStr
+	Auth    Auth                `toml:"auth"`
+	Query   map[string][]string `toml:"query"`
+	Header  map[string][]string `toml:"header"`
+	Timeout DurationStr         `toml:"timeout"`
 
-	ConfigREST *ConfigREST
-	ConfigGRPC *ConfigGRPC
-	ConfigWS   *ConfigWS
+	ConfigREST *ConfigREST `toml:"config_rest"`
+	ConfigGRPC *ConfigGRPC `toml:"config_grpc"`
+	ConfigWS   *ConfigWS   `toml:"config_ws"`
 }
 
 func (r *ReqConfig) Copy() *ReqConfig {
@@ -153,6 +153,7 @@ func (r *ReqConfig) mergeConfigREST(c *ConfigREST) {
 	if c == nil {
 		return
 	}
+	c = c.Copy()
 	if r.ConfigREST == nil {
 		r.ConfigREST = c
 		return
@@ -200,24 +201,69 @@ func (r *ReqConfig) mergeConfigREST(c *ConfigREST) {
 	}
 }
 func (r *ReqConfig) mergeConfigGRPC(c *ConfigGRPC) {
-	// TODO:merge configGRPC in ReqConfig
 	if c == nil {
 		return
 	}
+	c = c.Copy()
 	if r.ConfigGRPC == nil {
 		r.ConfigGRPC = c
 		return
 	}
-
+	cur := r.ConfigGRPC
+	// ReadMaxBytes
+	if cur.ReadMaxBytes == 0 {
+		cur.ReadMaxBytes = c.ReadMaxBytes
+	}
+	// SendMaxBytes
+	if cur.SendMaxBytes == 0 {
+		cur.SendMaxBytes = c.SendMaxBytes
+	}
+	// UseProtoJSON
+	if !cur.UseProtoJSON {
+		cur.UseProtoJSON = c.UseProtoJSON
+	}
+	// EnableHTTPGet
+	if !cur.EnableHTTPGet {
+		cur.EnableHTTPGet = c.EnableHTTPGet
+	}
+	// HTTPGetMaxURLSize
+	if cur.HTTPGetMaxURLSize == 0 {
+		cur.HTTPGetMaxURLSize = c.HTTPGetMaxURLSize
+	}
+	// SendGzip
+	if !cur.SendGzip {
+		cur.SendGzip = c.SendGzip
+	}
 }
 func (r *ReqConfig) mergeConfigWS(c *ConfigWS) {
-	// TODO:merge configWS in ReqConfig
 	if c == nil {
 		return
 	}
+	c = c.Copy()
 	if r.ConfigWS == nil {
 		r.ConfigWS = c
 		return
+	}
+	cur := r.ConfigWS
+	// Subprotocols
+	if len(cur.Subprotocols) <= 0 && len(c.Subprotocols) > 0 {
+		cur.Subprotocols = c.Subprotocols
+	}
+	// CompressionMode
+	if cur.CompressionMode == "" {
+		cur.CompressionMode = c.CompressionMode
+	}
+	// CompressionThreshold
+	if cur.CompressionThreshold == 0 {
+		cur.CompressionThreshold = c.CompressionThreshold
+	}
+	// OriginPatterns
+	if len(cur.OriginPatterns) <= 0 && len(c.OriginPatterns) > 0 {
+		cur.OriginPatterns = c.OriginPatterns
+	}
+	// InsecureSkipVerify
+	if !cur.InsecureSkipVerify {
+		cur.InsecureSkipVerify = c.InsecureSkipVerify
 	}
 }
 

@@ -18,10 +18,10 @@ import (
 var DefaultRootConf = RootConf{MaxRunningConcurrency: 5}
 
 type RootConf struct {
-	MaxRunningConcurrency int
+	MaxRunningConcurrency int `toml:"max_running_concurrency"`
 
-	Client protocol.Client
-	Conf   Conf
+	Client protocol.Client `toml:"client"`
+	Conf   Conf            `toml:"conf"`
 }
 
 func (rootConf *RootConf) initReqCtx(startPath string) (*ReqCtx, error) {
@@ -82,5 +82,5 @@ func loadConf(confBytes []byte, env *Env, reqConf *protocol.ReqConfig) error {
 
 type Conf struct {
 	protocol.ReqConfig
-	EnvVars map[string]any
+	EnvVars map[string]any `toml:"env_vars"`
 }

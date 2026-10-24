@@ -26,8 +26,6 @@ var (
 	ErrNilValue     = errors.New("value is nil.")
 )
 
-// TODO refact core/run for expansibility
-
 func isTomlExt(path string) bool {
 	return filepath.Ext(path) == ".toml"
 }
@@ -183,6 +181,8 @@ func Run(ctx context.Context, rp RunInput) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
+
 	if rp.ClientInit != nil {
 		rp.ClientInit(client)
 	}
@@ -263,8 +263,9 @@ func Run(ctx context.Context, rp RunInput) error {
 				if err != nil && !errors.Is(err, os.ErrNotExist) {
 					return err
 				}
-				if !info.Mode().IsRegular() || errors.Is(err, os.ErrNotExist) {
+				if errors.Is(err, os.ErrNotExist) || !info.Mode().IsRegular() {
 					reqCtxStack = append(reqCtxStack, &reqCtxFrame{p, parentFrame.ctx})
+					return nil
 				}
 
 				// override load for update env
@@ -286,9 +287,7 @@ func Run(ctx context.Context, rp RunInput) error {
 		})
 	}
 
-	go func() {
-		wg.Wait()
-	}()
+	wg.Wait()
 
 	return ctx.Err()
 }

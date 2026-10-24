@@ -72,9 +72,9 @@ type ActualClient = resty.Client
 // [Client] is wrap to store client's data into toml file for [resty.Client].
 // The client will be instanced when called [Client.InstancedClient]
 type Client struct {
-	ProxyURL string `toml:"proxy_url" json:"proxyURL"`
-	Timeout  DurationStr
-	Redirect Redirect `toml:"redirect" json:"redirect"`
+	ProxyURL string      `toml:"proxy_url"`
+	Timeout  DurationStr `toml:"timeout"`
+	Redirect Redirect    `toml:"redirect"`
 
 	client *ActualClient
 }
