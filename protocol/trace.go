@@ -25,15 +25,15 @@ const (
 type TraceHandler func(*Trace)
 
 type TraceBody struct {
-	ID   uint64
-	Kind TraceKind
+	ID   uint64    `json:"id"`
+	Kind TraceKind `json:"kind"`
 
-	ReqID     ulid.ULID
-	ResID     ulid.ULID
-	Timestamp time.Time
+	ReqID     ulid.ULID `json:"reqID"`
+	ResID     ulid.ULID `json:"resID"`
+	Timestamp time.Time `json:"timestamp"`
 
-	Msg     string
-	Payload []byte
+	Msg     string `json:"msg"`
+	Payload []byte `json:"payload"`
 }
 
 type Trace struct {
@@ -42,7 +42,7 @@ type Trace struct {
 }
 type TraceView struct {
 	*TraceBody
-	Meta map[string]string
+	Meta map[string]string `json:"meta"`
 }
 
 func NewTrace(id uint64, reqID ulid.ULID, resID ulid.ULID, kind TraceKind) *Trace {

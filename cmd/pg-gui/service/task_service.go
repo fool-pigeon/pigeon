@@ -107,10 +107,10 @@ func (h *TaskHTTPExt) toView() (*TaskHTTPExtView, error) {
 }
 
 type TaskResMeta struct {
-	RunMeta core.RunMeta
-	ResMeta protocol.ResMeta
-	ErrStr  string
-	Content []byte
+	RunMeta core.RunMeta     `json:"runMeta"`
+	ResMeta protocol.ResMeta `json:"resMeta"`
+	ErrStr  string           `json:"errStr"`
+	Content []byte           `json:"content"`
 }
 type taskRes struct {
 	TaskResMeta
@@ -164,7 +164,7 @@ type TaskService struct {
 	evt *application.EventManager
 	db  *CacheDB
 
-	metaCh      chan TaskResMeta
+	metaCh      chan TaskResViewMeta
 	traceViewCh chan protocol.TraceView
 }
 
@@ -174,9 +174,16 @@ func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
 		evt: app.Event,
 		db:  db,
 
-		metaCh:      make(chan TaskResMeta, 8),
+		metaCh:      make(chan TaskResViewMeta, 8),
 		traceViewCh: make(chan protocol.TraceView, 16),
 	}
+}
+
+// ServiceShutdown implements [application.ServiceShutdown].
+func (tr *TaskService) ServiceShutdown() error {
+	close(tr.metaCh)
+	close(tr.traceViewCh)
+	return nil
 }
 
 // ServiceStartup implements [application.ServiceStartup].
@@ -301,14 +308,14 @@ func (tr *TaskService) run(task Task) error {
 					tr.parseRunResRaw(runResult, &tRes)
 				}
 				if err := tr.storeTaskRes(tRes, task.ID); err != nil {
-					// TODO
+					alert.error(fmt.Sprint(tRes.RunMeta.Path, err))
 					continue
 				}
 			}
 		}
 	}()
 
-	traceCh := make(chan protocol.Trace, 32)
+	traceCh := make(chan protocol.Trace, 16)
 	defer close(traceCh)
 	go func() {
 		for {
@@ -320,7 +327,7 @@ func (tr *TaskService) run(task Task) error {
 					return
 				}
 				if err := tr.storeTaskResTrace(trace); err != nil {
-					// TODO
+					alert.error(fmt.Sprint(trace.ResID, trace.ID, err))
 					continue
 				}
 			}
@@ -343,6 +350,7 @@ func (tr *TaskService) run(task Task) error {
 			}
 			select {
 			case traceCh <- *t:
+			case <-ctx.Done():
 			default:
 				alert.error("[task-service] run traceCh chan flood")
 			}
@@ -413,6 +421,7 @@ func (tr *TaskService) parseRunResRaw(runRes *core.RunResult, tRes *taskRes) {
 }
 func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
+		// write txn
 		viewMeta := tRes.toViewMeta(taskID)
 		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixTaskRes), taskID[:], tRes.ResMeta.ID[:]), &viewMeta); err != nil {
 			return err
@@ -424,7 +433,8 @@ func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 			return err
 		}
 
-		// TODO emit event view meta to front
+		// to stream,emit to front
+		tr.metaCh <- viewMeta
 
 		return nil
 	})
@@ -434,7 +444,9 @@ func (tr *TaskService) storeTaskResTrace(trace protocol.Trace) error {
 		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResTraceView), trace.ResID[:], uid.Uint64ToBytes(trace.ID)), &trace); err != nil {
 			return err
 		}
-		// TODO wrapper and emit task res trace
+
+		// to stream,emit to front
+		tr.traceViewCh <- trace.ToView()
 
 		return nil
 	})
