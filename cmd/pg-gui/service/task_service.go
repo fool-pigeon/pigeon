@@ -119,8 +119,9 @@ type taskRes struct {
 }
 type TaskResViewMeta struct {
 	protocol.ResultCover
-	ResID ulid.ULID
-	Path  string
+	TaskID ulid.ULID
+	ResID  ulid.ULID
+	Path   string
 }
 type TaskResView struct {
 	TaskResMeta
@@ -131,8 +132,9 @@ type TaskResView struct {
 	HTTPResponse *TaskHTTPExtView
 }
 
-func (res *taskRes) toViewMeta() TaskResViewMeta {
+func (res *taskRes) toViewMeta(taskID ulid.ULID) TaskResViewMeta {
 	return TaskResViewMeta{
+		TaskID:      taskID,
 		ResID:       res.ResMeta.ID,
 		Path:        res.RunMeta.Path,
 		ResultCover: res.ResMeta.ResultCover,
@@ -384,7 +386,7 @@ func (tr *TaskService) parseRunResRaw(runRes *core.RunResult, tRes *taskRes) {
 }
 func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
-		viewMeta := tRes.toViewMeta()
+		viewMeta := tRes.toViewMeta(taskID)
 		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixTaskRes), taskID[:], tRes.ResMeta.ID[:]), viewMeta); err != nil {
 			return err
 		}
