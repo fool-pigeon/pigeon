@@ -43,12 +43,6 @@ const (
 	//
 	// it will send the cancelled task's id
 	TaskSECancelled TaskSEvent = "task-service:cancelled"
-	// go Send data:
-	// [TaskSEResView]
-	TaskSEResView TaskSEvent = "task-service:res-view"
-	// go Send data:
-	// [TaskResViewMeta]
-	TaskSEResViewMeta TaskSEvent = "task-service:res-view-meta"
 )
 
 // [TaskService] Stream
