@@ -40,11 +40,11 @@ type DataSource struct {
 func (d *DataSource) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	const dbName = "badger"
 
-	cacheDbPath := filepath.Join(gui.Paths.Cache(), dbName)
-	if err := fsx.MkdirAll(cacheDbPath); err != nil {
+	cacheDBPath := filepath.Join(gui.Paths.Cache(), dbName)
+	if err := fsx.MkdirAll(cacheDBPath); err != nil {
 		return err
 	}
-	db, err := badger.Open(badger.DefaultOptions(cacheDbPath))
+	db, err := badger.Open(badger.DefaultOptions(cacheDBPath))
 	if err != nil {
 		return err
 	}

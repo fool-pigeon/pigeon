@@ -36,17 +36,17 @@ func Execute() {
 }
 
 const (
-	GROUP_ID_MANAGE  string = "management"
-	GROUP_ID_REQUEST string = "request"
+	groupIDManager string = "management"
+	groupIDRequest string = "request"
 )
 
 func init() {
 	manageGroup := cobra.Group{
-		ID:    GROUP_ID_MANAGE,
+		ID:    groupIDManager,
 		Title: "Management Commands",
 	}
 	requestGroup := cobra.Group{
-		ID:    GROUP_ID_REQUEST,
+		ID:    groupIDRequest,
 		Title: "Request Commands",
 	}
 

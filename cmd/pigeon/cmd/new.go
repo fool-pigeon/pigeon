@@ -20,7 +20,7 @@ import (
 var newCmd = &cobra.Command{
 	Use:     "new [files]",
 	Aliases: []string{"n"},
-	GroupID: GROUP_ID_REQUEST,
+	GroupID: groupIDRequest,
 	Short:   "alias n, Create request into new .toml file",
 	Example: `pg new r1 r2 -p http`,
 	Args:    cobra.MinimumNArgs(1),

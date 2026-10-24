@@ -52,7 +52,7 @@ var runCmd = &cobra.Command{
 	Use:     "run [paths]",
 	Example: "pigeon run file1.toml folder/ file2.toml",
 	Aliases: []string{"r"},
-	GroupID: GROUP_ID_REQUEST,
+	GroupID: groupIDRequest,
 	Short:   "alias r, Run collection or request",
 	Args:    cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {

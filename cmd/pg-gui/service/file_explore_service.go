@@ -40,15 +40,15 @@ const (
 	ReqGRPC // [protocol.ProtocolGRPC]
 	ReqWS   // [protocol.ProtocolWS]
 
-	HttpGet     // GET: http GET Method
-	HttpPost    // POST: http POST Method
-	HttpPut     // PUT: http PUT Method
-	HttpDelete  // DELETE: http DELETE Method
-	HttpHead    // HEAD: http HEAD Mehtod
-	HttpPatch   // PATCH: http PATCH Method
-	HttpOptions // OPTIONS: http OPTIONS Method
-	HttpConnect // CONNECT: http CONNECT Method
-	HttpTrace   // TRACE: http TRACE Method
+	HTTPGet     // GET: http GET Method
+	HTTPPost    // POST: http POST Method
+	HTTPPut     // PUT: http PUT Method
+	HTTPDelete  // DELETE: http DELETE Method
+	HTTPHead    // HEAD: http HEAD Mehtod
+	HTTPPatch   // PATCH: http PATCH Method
+	HTTPOptions // OPTIONS: http OPTIONS Method
+	HTTPConnect // CONNECT: http CONNECT Method
+	HTTPTrace   // TRACE: http TRACE Method
 )
 
 func (m NodeMode) Has(role NodeMode) bool {
@@ -357,23 +357,23 @@ func getFileMode(b []byte) NodeMode {
 			// add HTTP flag
 			switch req.Method {
 			case protocol.MethodGet:
-				res |= HttpGet
+				res |= HTTPGet
 			case protocol.MethodPost:
-				res |= HttpPost
+				res |= HTTPPost
 			case protocol.MethodPut:
-				res |= HttpPut
+				res |= HTTPPut
 			case protocol.MethodDelete:
-				res |= HttpDelete
+				res |= HTTPDelete
 			case protocol.MethodPatch:
-				res |= HttpPatch
+				res |= HTTPPatch
 			case protocol.MethodHead:
-				res |= HttpHead
+				res |= HTTPHead
 			case protocol.MethodOptions:
-				res |= HttpOptions
+				res |= HTTPOptions
 			case protocol.MethodTrace:
-				res |= HttpTrace
+				res |= HTTPTrace
 			case protocol.MethodConnect:
-				res |= HttpConnect
+				res |= HTTPConnect
 			}
 		}
 		return res
@@ -760,23 +760,23 @@ func createFile(path string, mode NodeMode) error {
 		}
 		req := protocol.Request{ReqMeta: protocol.ReqMeta{ID: id}}
 		switch {
-		case m.Has(HttpGet):
+		case m.Has(HTTPGet):
 			req.Method = protocol.MethodGet
-		case m.Has(HttpPost):
+		case m.Has(HTTPPost):
 			req.Method = protocol.MethodPost
-		case m.Has(HttpPut):
+		case m.Has(HTTPPut):
 			req.Method = protocol.MethodPut
-		case m.Has(HttpDelete):
+		case m.Has(HTTPDelete):
 			req.Method = protocol.MethodDelete
-		case m.Has(HttpHead):
+		case m.Has(HTTPHead):
 			req.Method = protocol.MethodHead
-		case m.Has(HttpPatch):
+		case m.Has(HTTPPatch):
 			req.Method = protocol.MethodPatch
-		case m.Has(HttpOptions):
+		case m.Has(HTTPOptions):
 			req.Method = protocol.MethodOptions
-		case m.Has(HttpConnect):
+		case m.Has(HTTPConnect):
 			req.Method = protocol.MethodConnect
-		case m.Has(HttpTrace):
+		case m.Has(HTTPTrace):
 			req.Method = protocol.MethodTrace
 		}
 		content, _ = toml.Marshal(req)

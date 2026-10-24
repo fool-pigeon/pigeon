@@ -254,8 +254,8 @@ func (tr *TaskService) Run(task Task) error {
 // The key for get body in Context of [httpx.Request]
 // For example,get the body value from context of [http.Request] named req:
 //
-// b := req.Context().Value(HttpBodyKey{}).([]byte)
-type HttpBodyKey struct{}
+// b := req.Context().Value(HTTPBodyKey{}).([]byte)
+type HTTPBodyKey struct{}
 
 func (tr *TaskService) run(task Task) error {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -263,7 +263,7 @@ func (tr *TaskService) run(task Task) error {
 
 	if tr.evt != nil {
 		ungister := tr.evt.On(TaskSECancel, func(event *application.CustomEvent) {
-			if cancelledId, ok := event.Data.(string); ok && cancelledId == task.ID.String() {
+			if cancelledID, ok := event.Data.(string); ok && cancelledID == task.ID.String() {
 				cancel()
 			}
 		})
@@ -364,7 +364,7 @@ func (tr *TaskService) run(task Task) error {
 						// Resume Body, subsequent requests sent normally
 						r.Body = io.NopCloser(bytes.NewReader(b))
 					}
-					req.SetContext(context.WithValue(req.Context(), HttpBodyKey{}, bodyBytes))
+					req.SetContext(context.WithValue(req.Context(), HTTPBodyKey{}, bodyBytes))
 					return nil
 				},
 			)
@@ -389,7 +389,7 @@ func (tr *TaskService) parseRunResRaw(runRes *core.RunResult, tRes *taskRes) {
 		// Parse the result for request
 		if req := v.Request; req != nil {
 			// get request body
-			body, _ := req.Context().Value(HttpBodyKey{}).([]byte)
+			body, _ := req.Context().Value(HTTPBodyKey{}).([]byte)
 			tRes.HTTPRequest.Body, _ = gzipCompress(body)
 			// set request header
 			tRes.HTTPRequest.Header = req.Header

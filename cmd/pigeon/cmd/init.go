@@ -14,7 +14,7 @@ import (
 var initCmd = &cobra.Command{
 	Use:     "init",
 	Aliases: []string{"i"},
-	GroupID: GROUP_ID_MANAGE,
+	GroupID: groupIDManager,
 	Short:   "alias i, Init the project struct",
 	Args:    cobra.RangeArgs(0, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {

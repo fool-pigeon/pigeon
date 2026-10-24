@@ -19,7 +19,7 @@ import (
 // infoCmd represents the inspect command
 var infoCmd = &cobra.Command{
 	Use:     "info  [file]",
-	GroupID: GROUP_ID_REQUEST,
+	GroupID: groupIDRequest,
 	Short:   "Inspect the request config",
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
