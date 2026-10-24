@@ -6,9 +6,7 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"errors"
 	"path/filepath"
 
@@ -16,6 +14,7 @@ import (
 	"github.com/fool-pigeon/pigeon/cmd/pg-gui/gui"
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/oklog/ulid/v2"
+	"github.com/vmihailenco/msgpack/v5"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -91,7 +90,7 @@ func (repo *BaseRepoULID[T]) makeKey(id ulid.ULID) []byte {
 	return makeDBKey([]byte(repo.prefix), id[:])
 }
 func (repo *BaseRepoULID[T]) GetByID(id ulid.ULID) (*T, error) {
-	var data T
+	var res *T
 	// Database query
 	err := repo.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(repo.makeKey(id))
@@ -99,18 +98,18 @@ func (repo *BaseRepoULID[T]) GetByID(id ulid.ULID) (*T, error) {
 			return err
 		}
 		return item.Value(func(val []byte) error {
-			return gob.NewDecoder(bytes.NewReader(val)).Decode(&data)
+			return msgpack.Unmarshal(val, res)
 		})
 	})
-	return &data, err
+	return res, err
 }
-func (repo *BaseRepoULID[T]) Set(id ulid.ULID, entry *T) error {
+func (repo *BaseRepoULID[T]) Set(id ulid.ULID, v *T) error {
 	return repo.db.Update(func(txn *badger.Txn) error {
-		var buf bytes.Buffer
-		if err := gob.NewEncoder(&buf).Encode(entry); err != nil {
+		b, err := msgpack.Marshal(v)
+		if err != nil {
 			return err
 		}
-		return txn.Set(repo.makeKey(id), buf.Bytes())
+		return txn.Set(repo.makeKey(id), b)
 	})
 }
 func (repo *BaseRepoULID[T]) Delete(id ulid.ULID) error {

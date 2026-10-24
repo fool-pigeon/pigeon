@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +24,7 @@ import (
 	"github.com/fool-pigeon/pigeon/protocol"
 	"github.com/fool-pigeon/pigeon/uid"
 	"github.com/oklog/ulid/v2"
+	"github.com/vmihailenco/msgpack/v5"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"resty.dev/v3"
 )
@@ -410,27 +410,14 @@ func (tr *TaskService) storeTaskResTrace(trace protocol.Trace) error {
 		return nil
 	})
 }
-func dbTxnSet[T any](txn *badger.Txn, key []byte, data T) error {
-	b, err := gobEncode(data)
+func dbTxnSet[T any](txn *badger.Txn, key []byte, v T) error {
+	b, err := msgpack.Marshal(v)
 	if err != nil {
 		return err
 	}
 	return txn.Set(key, b)
 }
-func gobEncode[T any](data T) ([]byte, error) {
-	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(data); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-func gobDecode[T any](b []byte) (T, error) {
-	var data T
-	if err := gob.NewDecoder(bytes.NewReader(b)).Decode(&data); err != nil {
-		return *new(T), err
-	}
-	return data, nil
-}
+
 func gzipCompress(b []byte) ([]byte, error) {
 	if len(b) <= 0 {
 		return b, nil
