@@ -23,7 +23,7 @@
 	import CMFromHttpURL from '@comp/form/CMFormHttpURL.svelte';
 	import type { PageLoadStatus } from '@type/page';
 	import HttpResViewer from './HttpResViewer.svelte';
-	import HttpReqEditor from './HttpReqEditor.svelte';
+	import ReqEditor from './ReqEditor/ReqEditor.svelte';
 
 	export type HttpResState = {
 		loaded: boolean;
@@ -210,7 +210,7 @@
 </div>
 
 {#snippet reqEditor()}
-	<HttpReqEditor bind:temp bind:bodyPart />
+	<ReqEditor bind:temp bind:bodyPart />
 {/snippet}
 
 {#snippet respViewer()}

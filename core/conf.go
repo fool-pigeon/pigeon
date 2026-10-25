@@ -34,7 +34,7 @@ func (rootConf *RootConf) initReqCtx(startPath string) (*ReqCtx, error) {
 	if err := initialEnv.LoadNestedMap(rootConf.Conf.EnvVars); err != nil {
 		return nil, err
 	}
-	initialConf := rootConf.Conf.ReqConfig
+	initialConf := rootConf.Conf.ReqConf
 	initialConfBytes, err := toml.Marshal(initialConf)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (rootConf *RootConf) initReqCtx(startPath string) (*ReqCtx, error) {
 	return &ReqCtx{&initialConf, initialEnv}, nil
 }
 
-func loadConf(confBytes []byte, env *Env, reqConf *protocol.ReqConfig) error {
+func loadConf(confBytes []byte, env *Env, reqConf *protocol.ReqConf) error {
 	var conf Conf
 	if err := toml.Unmarshal(confBytes, &conf); err != nil {
 		return err
@@ -76,11 +76,11 @@ func loadConf(confBytes []byte, env *Env, reqConf *protocol.ReqConfig) error {
 	if err := toml.Unmarshal([]byte(env.Expand(string(confBytes))), &conf); err != nil {
 		return err
 	}
-	reqConf.Merge(&conf.ReqConfig)
+	reqConf.Merge(&conf.ReqConf)
 	return nil
 }
 
 type Conf struct {
-	protocol.ReqConfig
+	protocol.ReqConf
 	EnvVars map[string]any `toml:"env_vars"`
 }

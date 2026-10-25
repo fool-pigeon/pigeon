@@ -15,6 +15,7 @@
 	import CMInput from './CMInput.svelte';
 	import { PathSelectService } from '@services';
 	import { msgAlert } from '@comp/message/AlertNotify.svelte';
+	import type { MultiField } from '@pg/protocol';
 
 	type Multipart = MultiField[] | null;
 	type Prop = {

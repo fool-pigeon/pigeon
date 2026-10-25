@@ -61,7 +61,7 @@ func newDispatcher(t *testing.T) *dispatch.Dispatcher {
 
 // newReqCtx returns a ReqCtx with an empty Conf and a fresh Env.
 func newReqCtx() *ReqCtx {
-	return &ReqCtx{Conf: &protocol.ReqConfig{}, Env: NewEnv()}
+	return &ReqCtx{Conf: &protocol.ReqConf{}, Env: NewEnv()}
 }
 
 // countCancelCtx reports a nil Err until n calls, then context.Canceled. It
@@ -115,7 +115,7 @@ func TestIsTomlExt(t *testing.T) {
 }
 
 func TestLoadReq(t *testing.T) {
-	conf := &protocol.ReqConfig{Timeout: "1s"}
+	conf := &protocol.ReqConf{Timeout: "1s"}
 	env := NewEnv()
 	assert.NoError(t, env.Set("HOST", "example.com"))
 
@@ -182,7 +182,7 @@ func TestSendReq(t *testing.T) {
 		assert.ErrorIs(t, err, ErrNilValue)
 	})
 	t.Run("nil env", func(t *testing.T) {
-		_, err := sendReq(context.Background(), reqSendInput{dispatcher: newDispatcher(t), reqCtx: &ReqCtx{Conf: &protocol.ReqConfig{}}})
+		_, err := sendReq(context.Background(), reqSendInput{dispatcher: newDispatcher(t), reqCtx: &ReqCtx{Conf: &protocol.ReqConf{}}})
 		assert.ErrorIs(t, err, ErrNilValue)
 	})
 	t.Run("nil conf", func(t *testing.T) {

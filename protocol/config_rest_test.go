@@ -29,8 +29,8 @@ func TestBodyTypes(t *testing.T) {
 }
 
 func TestConfigRESTCopy(t *testing.T) {
-	seed := func() *ConfigREST {
-		return &ConfigREST{
+	seed := func() *ConfREST {
+		return &ConfREST{
 			Tests:             map[string]string{"a": "1", "b": "2"},
 			Path:              map[string]string{"p": "/x"},
 			Retry:             Retry{Count: 3, WaitTime: "1s", MaxWaitTime: "10s", IsAllowNonIdempotent: true},
@@ -62,7 +62,7 @@ func TestConfigRESTCopy(t *testing.T) {
 	})
 
 	t.Run("nil maps", func(t *testing.T) {
-		src := &ConfigREST{}
+		src := &ConfREST{}
 		dst := src.Copy()
 		require.NotSame(t, src, dst)
 		require.NotNil(t, dst.Tests)

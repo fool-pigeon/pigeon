@@ -13,8 +13,8 @@ import (
 )
 
 func TestConfigGRPCCopy(t *testing.T) {
-	seed := func() *ConfigGRPC {
-		return &ConfigGRPC{
+	seed := func() *ConfGRPC {
+		return &ConfGRPC{
 			ReadMaxBytes:      1024,
 			SendMaxBytes:      2048,
 			UseProtoJSON:      true,
@@ -41,8 +41,8 @@ func TestConfigGRPCCopy(t *testing.T) {
 	})
 
 	t.Run("zero value", func(t *testing.T) {
-		dst := (&ConfigGRPC{}).Copy()
+		dst := (&ConfGRPC{}).Copy()
 		require.NotNil(t, dst)
-		assert.Equal(t, &ConfigGRPC{}, dst)
+		assert.Equal(t, &ConfGRPC{}, dst)
 	})
 }

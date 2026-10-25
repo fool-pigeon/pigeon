@@ -62,8 +62,8 @@ type (
 
 // the config of request and can be merge
 //
-// readonly,so that it does not cause data races except [ReqConfig.Merge]
-type ReqConfig struct {
+// readonly,so that it does not cause data races except [ReqConf.Merge]
+type ReqConf struct {
 	// do not inherited
 	Desc string `json:"desc" toml:"desc"`
 
@@ -72,26 +72,26 @@ type ReqConfig struct {
 	Header  map[string][]string `json:"header" toml:"header"`
 	Timeout DurationStr         `json:"timeout" toml:"timeout"`
 
-	ConfigREST *ConfigREST `json:"configREST" toml:"config_rest"`
-	ConfigGRPC *ConfigGRPC `json:"configGRPC" toml:"config_grpc"`
-	ConfigWS   *ConfigWS   `json:"configWS" toml:"config_ws"`
+	ConfREST *ConfREST `json:"confREST" toml:"conf_rest"`
+	ConfGRPC *ConfGRPC `json:"confGRPC" toml:"conf_grpc"`
+	ConfWS   *ConfWS   `json:"confWS" toml:"conf_ws"`
 }
 
-func (r *ReqConfig) Copy() *ReqConfig {
+func (r *ReqConf) Copy() *ReqConf {
 	dst := *r
 
 	dst.Query = cloneSliceMap(r.Query)
 	dst.Header = cloneSliceMap(r.Header)
 
-	dst.ConfigREST = r.ConfigREST.Copy()
-	dst.ConfigGRPC = r.ConfigGRPC.Copy()
-	dst.ConfigWS = r.ConfigWS.Copy()
+	dst.ConfREST = r.ConfREST.Copy()
+	dst.ConfGRPC = r.ConfGRPC.Copy()
+	dst.ConfWS = r.ConfWS.Copy()
 
 	return &dst
 }
 
 // inherit required value from parent if the value is default
-func (r *ReqConfig) Merge(p *ReqConfig) {
+func (r *ReqConf) Merge(p *ReqConf) {
 	if p == nil {
 		return
 	}
@@ -99,11 +99,11 @@ func (r *ReqConfig) Merge(p *ReqConfig) {
 	r.mergeHeader(p.Header)
 	r.mergeQuery(p.Query)
 	r.mergeTimeout(p.Timeout)
-	r.mergeConfigREST(p.ConfigREST)
-	r.mergeConfigGRPC(p.ConfigGRPC)
-	r.mergeConfigWS(p.ConfigWS)
+	r.mergeConfigREST(p.ConfREST)
+	r.mergeConfigGRPC(p.ConfGRPC)
+	r.mergeConfigWS(p.ConfWS)
 }
-func (r *ReqConfig) mergeAuth(auth Auth) {
+func (r *ReqConf) mergeAuth(auth Auth) {
 	if r.Auth.Kind != AuthInherited {
 		return
 	}
@@ -123,7 +123,7 @@ func mergeMap[M1 ~map[K]V, M2 ~map[K]V, K comparable, V any](dst M1, src M2) {
 		}
 	}
 }
-func (r *ReqConfig) mergeQuery(query map[string][]string) {
+func (r *ReqConf) mergeQuery(query map[string][]string) {
 	if len(query) <= 0 {
 		return
 	}
@@ -133,7 +133,7 @@ func (r *ReqConfig) mergeQuery(query map[string][]string) {
 	}
 	mergeMap(r.Query, query)
 }
-func (r *ReqConfig) mergeHeader(header map[string][]string) {
+func (r *ReqConf) mergeHeader(header map[string][]string) {
 	if len(header) <= 0 {
 		return
 	}
@@ -143,22 +143,22 @@ func (r *ReqConfig) mergeHeader(header map[string][]string) {
 	}
 	mergeMap(r.Header, header)
 }
-func (r *ReqConfig) mergeTimeout(durationStr DurationStr) {
+func (r *ReqConf) mergeTimeout(durationStr DurationStr) {
 	if r.Timeout != "" {
 		return
 	}
 	r.Timeout = durationStr
 }
-func (r *ReqConfig) mergeConfigREST(c *ConfigREST) {
+func (r *ReqConf) mergeConfigREST(c *ConfREST) {
 	if c == nil {
 		return
 	}
-	if r.ConfigREST == nil {
-		r.ConfigREST = c
+	if r.ConfREST == nil {
+		r.ConfREST = c
 		return
 	}
-	r.ConfigREST = r.ConfigREST.Copy()
-	cur := r.ConfigREST
+	r.ConfREST = r.ConfREST.Copy()
+	cur := r.ConfREST
 	// merge Tests
 	if len(c.Tests) > 0 {
 		if len(cur.Tests) <= 0 {
@@ -200,16 +200,16 @@ func (r *ReqConfig) mergeConfigREST(c *ConfigREST) {
 		cur.ResponseBodyLimit = rbl
 	}
 }
-func (r *ReqConfig) mergeConfigGRPC(c *ConfigGRPC) {
+func (r *ReqConf) mergeConfigGRPC(c *ConfGRPC) {
 	if c == nil {
 		return
 	}
-	if r.ConfigGRPC == nil {
-		r.ConfigGRPC = c
+	if r.ConfGRPC == nil {
+		r.ConfGRPC = c
 		return
 	}
-	cur := r.ConfigGRPC.Copy()
-	r.ConfigGRPC = cur
+	cur := r.ConfGRPC.Copy()
+	r.ConfGRPC = cur
 	// ReadMaxBytes
 	if cur.ReadMaxBytes == 0 {
 		cur.ReadMaxBytes = c.ReadMaxBytes
@@ -235,16 +235,16 @@ func (r *ReqConfig) mergeConfigGRPC(c *ConfigGRPC) {
 		cur.SendGzip = c.SendGzip
 	}
 }
-func (r *ReqConfig) mergeConfigWS(c *ConfigWS) {
+func (r *ReqConf) mergeConfigWS(c *ConfWS) {
 	if c == nil {
 		return
 	}
-	if r.ConfigWS == nil {
-		r.ConfigWS = c
+	if r.ConfWS == nil {
+		r.ConfWS = c
 		return
 	}
-	cur := r.ConfigWS.Copy()
-	r.ConfigWS = cur
+	cur := r.ConfWS.Copy()
+	r.ConfWS = cur
 	// Subprotocols
 	if len(c.Subprotocols) > 0 {
 		if len(cur.Subprotocols) <= 0 {
@@ -285,7 +285,7 @@ func (r *ReqConfig) mergeConfigWS(c *ConfigWS) {
 
 type Request struct {
 	ReqMeta
-	ReqConfig
+	ReqConf
 
 	URL    string `json:"url" toml:"url"`
 	Method Method `json:"method" toml:"method"`
@@ -311,21 +311,21 @@ func (r *Request) ParseRESTRawURL(rawURL string) error {
 	// set URL
 	r.URL = s[0]
 	// Set PathParams
-	if r.ConfigREST == nil {
-		r.ConfigREST = &ConfigREST{}
+	if r.ConfREST == nil {
+		r.ConfREST = &ConfREST{}
 	}
 	pathMap := make(map[string]string)
 	for _, matched := range pathParamRe.FindAllStringSubmatch(r.URL, -1) {
 		name := matched[1]
 		pathMap[name] = ""
-		if r.ConfigREST.Path == nil {
+		if r.ConfREST.Path == nil {
 			continue
 		}
-		if v, ok := r.ConfigREST.Path[name]; ok {
+		if v, ok := r.ConfREST.Path[name]; ok {
 			pathMap[name] = v
 		}
 	}
-	r.ConfigREST.Path = pathMap
+	r.ConfREST.Path = pathMap
 	// set QueryParams
 	if len(s) > 1 {
 		query, err := url.ParseQuery(s[1])

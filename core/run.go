@@ -31,7 +31,7 @@ func isTomlExt(path string) bool {
 }
 
 type ReqCtx struct {
-	Conf *protocol.ReqConfig
+	Conf *protocol.ReqConf
 	Env  *Env
 }
 
@@ -59,7 +59,7 @@ func loadReq(ctx context.Context, path string, reqCtx *ReqCtx) (*protocol.Reques
 		return nil, err
 	}
 
-	req.ReqConfig.Merge(reqCtx.Conf)
+	req.ReqConf.Merge(reqCtx.Conf)
 
 	return &req, nil
 }

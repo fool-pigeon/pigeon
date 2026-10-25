@@ -5,7 +5,7 @@
 
 package protocol
 
-type ConfigGRPC struct {
+type ConfGRPC struct {
 	ReadMaxBytes      int  `json:"readMaxBytes" toml:"read_max_bytes"`
 	SendMaxBytes      int  `json:"sendMaxBytes" toml:"send_max_bytes"`
 	UseProtoJSON      bool `json:"useProtoJSON" toml:"use_proto_json"`
@@ -14,7 +14,7 @@ type ConfigGRPC struct {
 	SendGzip          bool `json:"sendGzip" toml:"send_gzip"`
 }
 
-func (c *ConfigGRPC) Copy() *ConfigGRPC {
+func (c *ConfGRPC) Copy() *ConfGRPC {
 	if c == nil {
 		return nil
 	}

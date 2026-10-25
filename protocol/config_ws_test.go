@@ -13,8 +13,8 @@ import (
 )
 
 func TestConfigWSCopy(t *testing.T) {
-	seed := func() *ConfigWS {
-		return &ConfigWS{
+	seed := func() *ConfWS {
+		return &ConfWS{
 			Subprotocols:         []string{"foo", "bar"},
 			CompressionMode:      "context_takeover",
 			CompressionThreshold: 512,
@@ -44,14 +44,14 @@ func TestConfigWSCopy(t *testing.T) {
 	})
 
 	t.Run("empty slices", func(t *testing.T) {
-		dst := (&ConfigWS{}).Copy()
+		dst := (&ConfWS{}).Copy()
 		require.NotNil(t, dst)
 		assert.Empty(t, dst.Subprotocols)
 		assert.Empty(t, dst.OriginPatterns)
 	})
 
 	t.Run("nil slices stay nil", func(t *testing.T) {
-		src := &ConfigWS{CompressionMode: "disabled"}
+		src := &ConfWS{CompressionMode: "disabled"}
 		dst := src.Copy()
 		assert.Nil(t, dst.Subprotocols)
 		assert.Nil(t, dst.OriginPatterns)

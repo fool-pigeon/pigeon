@@ -48,19 +48,19 @@ func TestAuthKindConstants(t *testing.T) {
 }
 
 func TestReqConfigCopy(t *testing.T) {
-	seed := func() *ReqConfig {
-		return &ReqConfig{
+	seed := func() *ReqConf {
+		return &ReqConf{
 			Desc:    "d",
 			Auth:    Auth{Kind: AuthToken, Token: AuthDataToken{Header: "h", Scheme: "Bearer", Value: "v"}},
 			Query:   map[string][]string{"a": {"1", "2"}},
 			Header:  map[string][]string{"h": {"x"}},
 			Timeout: "5s",
-			ConfigREST: &ConfigREST{
+			ConfREST: &ConfREST{
 				Tests: map[string]string{"t": "1"},
 				Path:  map[string]string{"p": "/"},
 			},
-			ConfigGRPC: &ConfigGRPC{},
-			ConfigWS:   &ConfigWS{},
+			ConfGRPC: &ConfGRPC{},
+			ConfWS:   &ConfWS{},
 		}
 	}
 
@@ -73,8 +73,8 @@ func TestReqConfigCopy(t *testing.T) {
 		assert.Equal(t, src.Timeout, dst.Timeout)
 		assert.Equal(t, src.Query, dst.Query)
 		assert.Equal(t, src.Header, dst.Header)
-		assert.Equal(t, src.ConfigREST.Tests, dst.ConfigREST.Tests)
-		assert.Equal(t, src.ConfigREST.Path, dst.ConfigREST.Path)
+		assert.Equal(t, src.ConfREST.Tests, dst.ConfREST.Tests)
+		assert.Equal(t, src.ConfREST.Path, dst.ConfREST.Path)
 	})
 
 	t.Run("slices not aliased", func(t *testing.T) {
@@ -89,169 +89,169 @@ func TestReqConfigCopy(t *testing.T) {
 	t.Run("sub configs not aliased", func(t *testing.T) {
 		src := seed()
 		dst := src.Copy()
-		assert.NotSame(t, src.ConfigREST, dst.ConfigREST)
-		assert.NotSame(t, src.ConfigGRPC, dst.ConfigGRPC)
-		assert.NotSame(t, src.ConfigWS, dst.ConfigWS)
+		assert.NotSame(t, src.ConfREST, dst.ConfREST)
+		assert.NotSame(t, src.ConfGRPC, dst.ConfGRPC)
+		assert.NotSame(t, src.ConfWS, dst.ConfWS)
 	})
 }
 
 func TestReqConfigMerge(t *testing.T) {
 	t.Run("nil parent noop", func(t *testing.T) {
-		r := &ReqConfig{Desc: "d"}
+		r := &ReqConf{Desc: "d"}
 		r.Merge(nil)
 		assert.Equal(t, "d", r.Desc)
 	})
 
 	t.Run("auth", func(t *testing.T) {
 		t.Run("inherited overridden", func(t *testing.T) {
-			r := &ReqConfig{Auth: Auth{Kind: AuthInherited}}
-			p := &ReqConfig{Auth: Auth{Kind: AuthBasic, Creds: AuthDataCreds{Username: "u", Password: "p"}}}
+			r := &ReqConf{Auth: Auth{Kind: AuthInherited}}
+			p := &ReqConf{Auth: Auth{Kind: AuthBasic, Creds: AuthDataCreds{Username: "u", Password: "p"}}}
 			r.Merge(p)
 			assert.Equal(t, p.Auth, r.Auth)
 		})
 		t.Run("explicit kept", func(t *testing.T) {
-			r := &ReqConfig{Auth: Auth{Kind: AuthNone}}
-			r.Merge(&ReqConfig{Auth: Auth{Kind: AuthBasic}})
+			r := &ReqConf{Auth: Auth{Kind: AuthNone}}
+			r.Merge(&ReqConf{Auth: Auth{Kind: AuthBasic}})
 			assert.Equal(t, AuthNone, r.Auth.Kind)
 		})
 	})
 
 	t.Run("header", func(t *testing.T) {
 		t.Run("parent empty noop", func(t *testing.T) {
-			r := &ReqConfig{Header: map[string][]string{"a": {"1"}}}
-			r.Merge(&ReqConfig{})
+			r := &ReqConf{Header: map[string][]string{"a": {"1"}}}
+			r.Merge(&ReqConf{})
 			assert.Equal(t, map[string][]string{"a": {"1"}}, r.Header)
 		})
 		t.Run("self empty takes parent", func(t *testing.T) {
-			r := &ReqConfig{}
+			r := &ReqConf{}
 			p := map[string][]string{"a": {"1"}}
-			r.Merge(&ReqConfig{Header: p})
+			r.Merge(&ReqConf{Header: p})
 			assert.Equal(t, p, r.Header)
 		})
 		t.Run("dst preferred", func(t *testing.T) {
-			r := &ReqConfig{Header: map[string][]string{"a": {"1"}}}
-			r.Merge(&ReqConfig{Header: map[string][]string{"a": {"9"}, "b": {"2"}}})
+			r := &ReqConf{Header: map[string][]string{"a": {"1"}}}
+			r.Merge(&ReqConf{Header: map[string][]string{"a": {"9"}, "b": {"2"}}})
 			assert.Equal(t, map[string][]string{"a": {"1"}, "b": {"2"}}, r.Header)
 		})
 	})
 
 	t.Run("query", func(t *testing.T) {
 		t.Run("parent empty noop", func(t *testing.T) {
-			r := &ReqConfig{Query: map[string][]string{"a": {"1"}}}
-			r.Merge(&ReqConfig{})
+			r := &ReqConf{Query: map[string][]string{"a": {"1"}}}
+			r.Merge(&ReqConf{})
 			assert.Equal(t, map[string][]string{"a": {"1"}}, r.Query)
 		})
 		t.Run("dst preferred", func(t *testing.T) {
-			r := &ReqConfig{Query: map[string][]string{"a": {"1"}}}
-			r.Merge(&ReqConfig{Query: map[string][]string{"a": {"9"}, "b": {"2"}}})
+			r := &ReqConf{Query: map[string][]string{"a": {"1"}}}
+			r.Merge(&ReqConf{Query: map[string][]string{"a": {"9"}, "b": {"2"}}})
 			assert.Equal(t, map[string][]string{"a": {"1"}, "b": {"2"}}, r.Query)
 		})
 	})
 
 	t.Run("timeout", func(t *testing.T) {
 		t.Run("empty takes parent", func(t *testing.T) {
-			r := &ReqConfig{}
-			r.Merge(&ReqConfig{Timeout: "5s"})
+			r := &ReqConf{}
+			r.Merge(&ReqConf{Timeout: "5s"})
 			assert.Equal(t, DurationStr("5s"), r.Timeout)
 		})
 		t.Run("set kept", func(t *testing.T) {
-			r := &ReqConfig{Timeout: "1s"}
-			r.Merge(&ReqConfig{Timeout: "5s"})
+			r := &ReqConf{Timeout: "1s"}
+			r.Merge(&ReqConf{Timeout: "5s"})
 			assert.Equal(t, DurationStr("1s"), r.Timeout)
 		})
 	})
 
 	t.Run("config rest", func(t *testing.T) {
 		t.Run("parent nil noop", func(t *testing.T) {
-			r := &ReqConfig{ConfigREST: &ConfigREST{}}
-			r.Merge(&ReqConfig{})
-			assert.NotNil(t, r.ConfigREST)
+			r := &ReqConf{ConfREST: &ConfREST{}}
+			r.Merge(&ReqConf{})
+			assert.NotNil(t, r.ConfREST)
 		})
 		t.Run("self nil takes parent", func(t *testing.T) {
-			r := &ReqConfig{}
-			p := &ConfigREST{Tests: map[string]string{"t": "1"}}
-			r.Merge(&ReqConfig{ConfigREST: p})
-			assert.Same(t, p, r.ConfigREST)
+			r := &ReqConf{}
+			p := &ConfREST{Tests: map[string]string{"t": "1"}}
+			r.Merge(&ReqConf{ConfREST: p})
+			assert.Same(t, p, r.ConfREST)
 		})
 		t.Run("merge tests", func(t *testing.T) {
-			r := &ReqConfig{ConfigREST: &ConfigREST{Tests: map[string]string{"a": "1"}}}
-			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{Tests: map[string]string{"a": "9", "b": "2"}}})
-			assert.Equal(t, map[string]string{"a": "1", "b": "2"}, r.ConfigREST.Tests)
+			r := &ReqConf{ConfREST: &ConfREST{Tests: map[string]string{"a": "1"}}}
+			r.Merge(&ReqConf{ConfREST: &ConfREST{Tests: map[string]string{"a": "9", "b": "2"}}})
+			assert.Equal(t, map[string]string{"a": "1", "b": "2"}, r.ConfREST.Tests)
 		})
 		t.Run("merge path", func(t *testing.T) {
-			r := &ReqConfig{ConfigREST: &ConfigREST{Path: map[string]string{"a": "1"}}}
-			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{Path: map[string]string{"a": "9", "b": "2"}}})
-			assert.Equal(t, map[string]string{"a": "1", "b": "2"}, r.ConfigREST.Path)
+			r := &ReqConf{ConfREST: &ConfREST{Path: map[string]string{"a": "1"}}}
+			r.Merge(&ReqConf{ConfREST: &ConfREST{Path: map[string]string{"a": "9", "b": "2"}}})
+			assert.Equal(t, map[string]string{"a": "1", "b": "2"}, r.ConfREST.Path)
 		})
 		t.Run("merge retry", func(t *testing.T) {
-			r := &ReqConfig{ConfigREST: &ConfigREST{}}
-			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{Retry: Retry{
+			r := &ReqConf{ConfREST: &ConfREST{}}
+			r.Merge(&ReqConf{ConfREST: &ConfREST{Retry: Retry{
 				Count: 3, WaitTime: "1s", MaxWaitTime: "10s", IsAllowNonIdempotent: true,
 			}}})
-			assert.Equal(t, 3, r.ConfigREST.Retry.Count)
-			assert.Equal(t, DurationStr("1s"), r.ConfigREST.Retry.WaitTime)
-			assert.Equal(t, DurationStr("10s"), r.ConfigREST.Retry.MaxWaitTime)
-			assert.True(t, r.ConfigREST.Retry.IsAllowNonIdempotent)
+			assert.Equal(t, 3, r.ConfREST.Retry.Count)
+			assert.Equal(t, DurationStr("1s"), r.ConfREST.Retry.WaitTime)
+			assert.Equal(t, DurationStr("10s"), r.ConfREST.Retry.MaxWaitTime)
+			assert.True(t, r.ConfREST.Retry.IsAllowNonIdempotent)
 		})
 		t.Run("retry dst kept", func(t *testing.T) {
-			r := &ReqConfig{ConfigREST: &ConfigREST{Retry: Retry{Count: 5, WaitTime: "2s"}}}
-			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{Retry: Retry{Count: 3, WaitTime: "1s"}}})
-			assert.Equal(t, 5, r.ConfigREST.Retry.Count)
-			assert.Equal(t, DurationStr("2s"), r.ConfigREST.Retry.WaitTime)
+			r := &ReqConf{ConfREST: &ConfREST{Retry: Retry{Count: 5, WaitTime: "2s"}}}
+			r.Merge(&ReqConf{ConfREST: &ConfREST{Retry: Retry{Count: 3, WaitTime: "1s"}}})
+			assert.Equal(t, 5, r.ConfREST.Retry.Count)
+			assert.Equal(t, DurationStr("2s"), r.ConfREST.Retry.WaitTime)
 		})
 		t.Run("merge flags", func(t *testing.T) {
-			r := &ReqConfig{ConfigREST: &ConfigREST{}}
-			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{
+			r := &ReqConf{ConfREST: &ConfREST{}}
+			r.Merge(&ReqConf{ConfREST: &ConfREST{
 				UnescapeQuery: true, UnescapeJSON: true, ResponseBodyLimit: 100,
 			}})
-			assert.True(t, r.ConfigREST.UnescapeQuery)
-			assert.True(t, r.ConfigREST.UnescapeJSON)
-			assert.Equal(t, int64(100), r.ConfigREST.ResponseBodyLimit)
+			assert.True(t, r.ConfREST.UnescapeQuery)
+			assert.True(t, r.ConfREST.UnescapeJSON)
+			assert.Equal(t, int64(100), r.ConfREST.ResponseBodyLimit)
 		})
 		t.Run("empty maps take parent", func(t *testing.T) {
-			r := &ReqConfig{ConfigREST: &ConfigREST{}}
-			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{
+			r := &ReqConf{ConfREST: &ConfREST{}}
+			r.Merge(&ReqConf{ConfREST: &ConfREST{
 				Tests: map[string]string{"t": "1"},
 				Path:  map[string]string{"p": "/x"},
 			}})
-			assert.Equal(t, map[string]string{"t": "1"}, r.ConfigREST.Tests)
-			assert.Equal(t, map[string]string{"p": "/x"}, r.ConfigREST.Path)
+			assert.Equal(t, map[string]string{"t": "1"}, r.ConfREST.Tests)
+			assert.Equal(t, map[string]string{"p": "/x"}, r.ConfREST.Path)
 		})
 		t.Run("retry partial fill", func(t *testing.T) {
-			r := &ReqConfig{ConfigREST: &ConfigREST{Retry: Retry{Count: 5}}}
-			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{Retry: Retry{
+			r := &ReqConf{ConfREST: &ConfREST{Retry: Retry{Count: 5}}}
+			r.Merge(&ReqConf{ConfREST: &ConfREST{Retry: Retry{
 				Count: 3, WaitTime: "1s", MaxWaitTime: "10s", IsAllowNonIdempotent: true,
 			}}})
-			assert.Equal(t, 5, r.ConfigREST.Retry.Count)
-			assert.Equal(t, DurationStr("1s"), r.ConfigREST.Retry.WaitTime)
-			assert.Equal(t, DurationStr("10s"), r.ConfigREST.Retry.MaxWaitTime)
-			assert.True(t, r.ConfigREST.Retry.IsAllowNonIdempotent)
+			assert.Equal(t, 5, r.ConfREST.Retry.Count)
+			assert.Equal(t, DurationStr("1s"), r.ConfREST.Retry.WaitTime)
+			assert.Equal(t, DurationStr("10s"), r.ConfREST.Retry.MaxWaitTime)
+			assert.True(t, r.ConfREST.Retry.IsAllowNonIdempotent)
 		})
 		t.Run("flags dst kept", func(t *testing.T) {
-			r := &ReqConfig{ConfigREST: &ConfigREST{UnescapeQuery: true, UnescapeJSON: true, ResponseBodyLimit: 100}}
-			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{UnescapeQuery: false, UnescapeJSON: false, ResponseBodyLimit: 200}})
-			assert.True(t, r.ConfigREST.UnescapeQuery)
-			assert.True(t, r.ConfigREST.UnescapeJSON)
-			assert.Equal(t, int64(100), r.ConfigREST.ResponseBodyLimit)
+			r := &ReqConf{ConfREST: &ConfREST{UnescapeQuery: true, UnescapeJSON: true, ResponseBodyLimit: 100}}
+			r.Merge(&ReqConf{ConfREST: &ConfREST{UnescapeQuery: false, UnescapeJSON: false, ResponseBodyLimit: 200}})
+			assert.True(t, r.ConfREST.UnescapeQuery)
+			assert.True(t, r.ConfREST.UnescapeJSON)
+			assert.Equal(t, int64(100), r.ConfREST.ResponseBodyLimit)
 		})
 	})
 
 	t.Run("config grpc", func(t *testing.T) {
 		t.Run("nil parent noop", func(t *testing.T) {
-			own := &ConfigGRPC{ReadMaxBytes: 1}
-			r := &ReqConfig{ConfigGRPC: own}
-			r.Merge(&ReqConfig{})
-			assert.Same(t, own, r.ConfigGRPC)
+			own := &ConfGRPC{ReadMaxBytes: 1}
+			r := &ReqConf{ConfGRPC: own}
+			r.Merge(&ReqConf{})
+			assert.Same(t, own, r.ConfGRPC)
 		})
 		t.Run("self nil takes parent", func(t *testing.T) {
-			r := &ReqConfig{}
-			p := &ConfigGRPC{ReadMaxBytes: 1}
-			r.Merge(&ReqConfig{ConfigGRPC: p})
-			assert.Same(t, p, r.ConfigGRPC)
+			r := &ReqConf{}
+			p := &ConfGRPC{ReadMaxBytes: 1}
+			r.Merge(&ReqConf{ConfGRPC: p})
+			assert.Same(t, p, r.ConfGRPC)
 		})
 		t.Run("empty fields filled", func(t *testing.T) {
-			r := &ReqConfig{ConfigGRPC: &ConfigGRPC{}}
-			r.Merge(&ReqConfig{ConfigGRPC: &ConfigGRPC{
+			r := &ReqConf{ConfGRPC: &ConfGRPC{}}
+			r.Merge(&ReqConf{ConfGRPC: &ConfGRPC{
 				ReadMaxBytes:      1,
 				SendMaxBytes:      2,
 				UseProtoJSON:      true,
@@ -259,17 +259,17 @@ func TestReqConfigMerge(t *testing.T) {
 				HTTPGetMaxURLSize: 3,
 				SendGzip:          true,
 			}})
-			assert.Equal(t, &ConfigGRPC{
+			assert.Equal(t, &ConfGRPC{
 				ReadMaxBytes:      1,
 				SendMaxBytes:      2,
 				UseProtoJSON:      true,
 				EnableHTTPGet:     true,
 				HTTPGetMaxURLSize: 3,
 				SendGzip:          true,
-			}, r.ConfigGRPC)
+			}, r.ConfGRPC)
 		})
 		t.Run("set values kept", func(t *testing.T) {
-			own := &ConfigGRPC{
+			own := &ConfGRPC{
 				ReadMaxBytes:      10,
 				SendMaxBytes:      20,
 				UseProtoJSON:      true,
@@ -277,8 +277,8 @@ func TestReqConfigMerge(t *testing.T) {
 				HTTPGetMaxURLSize: 30,
 				SendGzip:          true,
 			}
-			r := &ReqConfig{ConfigGRPC: own}
-			r.Merge(&ReqConfig{ConfigGRPC: &ConfigGRPC{
+			r := &ReqConf{ConfGRPC: own}
+			r.Merge(&ReqConf{ConfGRPC: &ConfGRPC{
 				ReadMaxBytes:      1,
 				SendMaxBytes:      2,
 				UseProtoJSON:      false,
@@ -286,65 +286,65 @@ func TestReqConfigMerge(t *testing.T) {
 				HTTPGetMaxURLSize: 3,
 				SendGzip:          false,
 			}})
-			assert.Equal(t, own, r.ConfigGRPC)
+			assert.Equal(t, own, r.ConfGRPC)
 			// Merge reassigns a copy, never mutating or reusing the original.
-			assert.NotSame(t, own, r.ConfigGRPC)
+			assert.NotSame(t, own, r.ConfGRPC)
 		})
 	})
 	t.Run("config ws", func(t *testing.T) {
 		t.Run("nil parent noop", func(t *testing.T) {
-			own := &ConfigWS{CompressionMode: "disabled"}
-			r := &ReqConfig{ConfigWS: own}
-			r.Merge(&ReqConfig{})
-			assert.Same(t, own, r.ConfigWS)
+			own := &ConfWS{CompressionMode: "disabled"}
+			r := &ReqConf{ConfWS: own}
+			r.Merge(&ReqConf{})
+			assert.Same(t, own, r.ConfWS)
 		})
 		t.Run("self nil takes parent", func(t *testing.T) {
-			r := &ReqConfig{}
-			p := &ConfigWS{CompressionMode: "disabled"}
-			r.Merge(&ReqConfig{ConfigWS: p})
-			assert.Same(t, p, r.ConfigWS)
+			r := &ReqConf{}
+			p := &ConfWS{CompressionMode: "disabled"}
+			r.Merge(&ReqConf{ConfWS: p})
+			assert.Same(t, p, r.ConfWS)
 		})
 		t.Run("empty fields filled", func(t *testing.T) {
-			r := &ReqConfig{ConfigWS: &ConfigWS{}}
-			r.Merge(&ReqConfig{ConfigWS: &ConfigWS{
+			r := &ReqConf{ConfWS: &ConfWS{}}
+			r.Merge(&ReqConf{ConfWS: &ConfWS{
 				Subprotocols:         []string{"a", "b"},
 				CompressionMode:      "context_takeover",
 				CompressionThreshold: 100,
 				OriginPatterns:       []string{"x"},
 				InsecureSkipVerify:   true,
 			}})
-			assert.Equal(t, &ConfigWS{
+			assert.Equal(t, &ConfWS{
 				Subprotocols:         []string{"a", "b"},
 				CompressionMode:      "context_takeover",
 				CompressionThreshold: 100,
 				OriginPatterns:       []string{"x"},
 				InsecureSkipVerify:   true,
-			}, r.ConfigWS)
+			}, r.ConfWS)
 		})
 		t.Run("scalars dst kept", func(t *testing.T) {
-			r := &ReqConfig{ConfigWS: &ConfigWS{
+			r := &ReqConf{ConfWS: &ConfWS{
 				CompressionMode:      "no_context_takeover",
 				CompressionThreshold: 50,
 				InsecureSkipVerify:   true,
 			}}
-			r.Merge(&ReqConfig{ConfigWS: &ConfigWS{
+			r.Merge(&ReqConf{ConfWS: &ConfWS{
 				CompressionMode:      "disabled",
 				CompressionThreshold: 10,
 				InsecureSkipVerify:   false,
 			}})
-			assert.Equal(t, "no_context_takeover", r.ConfigWS.CompressionMode)
-			assert.Equal(t, 50, r.ConfigWS.CompressionThreshold)
-			assert.True(t, r.ConfigWS.InsecureSkipVerify)
+			assert.Equal(t, "no_context_takeover", r.ConfWS.CompressionMode)
+			assert.Equal(t, 50, r.ConfWS.CompressionThreshold)
+			assert.True(t, r.ConfWS.InsecureSkipVerify)
 		})
 		t.Run("subprotocols union", func(t *testing.T) {
-			r := &ReqConfig{ConfigWS: &ConfigWS{Subprotocols: []string{"a"}}}
-			r.Merge(&ReqConfig{ConfigWS: &ConfigWS{Subprotocols: []string{"a", "b"}}})
-			assert.Equal(t, []string{"a", "b"}, r.ConfigWS.Subprotocols)
+			r := &ReqConf{ConfWS: &ConfWS{Subprotocols: []string{"a"}}}
+			r.Merge(&ReqConf{ConfWS: &ConfWS{Subprotocols: []string{"a", "b"}}})
+			assert.Equal(t, []string{"a", "b"}, r.ConfWS.Subprotocols)
 		})
 		t.Run("origin patterns union", func(t *testing.T) {
-			r := &ReqConfig{ConfigWS: &ConfigWS{OriginPatterns: []string{"a"}}}
-			r.Merge(&ReqConfig{ConfigWS: &ConfigWS{OriginPatterns: []string{"a", "b"}}})
-			assert.Equal(t, []string{"a", "b"}, r.ConfigWS.OriginPatterns)
+			r := &ReqConf{ConfWS: &ConfWS{OriginPatterns: []string{"a"}}}
+			r.Merge(&ReqConf{ConfWS: &ConfWS{OriginPatterns: []string{"a", "b"}}})
+			assert.Equal(t, []string{"a", "b"}, r.ConfWS.OriginPatterns)
 		})
 	})
 }
@@ -386,14 +386,14 @@ func TestRequestParseRESTRawURL(t *testing.T) {
 	t.Run("extracts path params", func(t *testing.T) {
 		r := restReq()
 		require.NoError(t, r.ParseRESTRawURL("http://x/users/{id}/posts/{pid}"))
-		assert.Equal(t, map[string]string{"id": "", "pid": ""}, r.ConfigREST.Path)
+		assert.Equal(t, map[string]string{"id": "", "pid": ""}, r.ConfREST.Path)
 	})
 
 	t.Run("preserves existing path values", func(t *testing.T) {
 		r := restReq()
-		r.ConfigREST = &ConfigREST{Path: map[string]string{"id": "42", "old": "x"}}
+		r.ConfREST = &ConfREST{Path: map[string]string{"id": "42", "old": "x"}}
 		require.NoError(t, r.ParseRESTRawURL("http://x/users/{id}"))
-		assert.Equal(t, map[string]string{"id": "42"}, r.ConfigREST.Path)
+		assert.Equal(t, map[string]string{"id": "42"}, r.ConfREST.Path)
 	})
 
 	t.Run("parses query", func(t *testing.T) {
@@ -416,17 +416,17 @@ func TestRequestRawURL(t *testing.T) {
 		assert.Equal(t, "http://x/p", r.RawURL())
 	})
 	t.Run("empty query map", func(t *testing.T) {
-		r := &Request{URL: "http://x/p", ReqConfig: ReqConfig{Query: map[string][]string{}}}
+		r := &Request{URL: "http://x/p", ReqConf: ReqConf{Query: map[string][]string{}}}
 		assert.Equal(t, "http://x/p", r.RawURL())
 	})
 	t.Run("sorted by key", func(t *testing.T) {
-		r := &Request{URL: "http://x/p", ReqConfig: ReqConfig{Query: map[string][]string{
+		r := &Request{URL: "http://x/p", ReqConf: ReqConf{Query: map[string][]string{
 			"b": {"2"}, "a": {"1"},
 		}}}
 		assert.Equal(t, "http://x/p?a=1&b=2", r.RawURL())
 	})
 	t.Run("multi values", func(t *testing.T) {
-		r := &Request{URL: "http://x/p", ReqConfig: ReqConfig{Query: map[string][]string{
+		r := &Request{URL: "http://x/p", ReqConf: ReqConf{Query: map[string][]string{
 			"a": {"1", "2"},
 		}}}
 		assert.Equal(t, "http://x/p?a=1&a=2", r.RawURL())

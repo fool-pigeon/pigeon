@@ -79,13 +79,13 @@ func (s *RESTSender) Send(ctx context.Context, req *pcl.Request, resID ulid.ULID
 		},
 		Raw: res,
 	}
-	if n := len(req.ConfigREST.Tests); n > 0 {
+	if n := len(req.ConfREST.Tests); n > 0 {
 		result.Tests = make([]pcl.TestRes, 0, n)
 		env := map[string]any{
 			"res":  res,
 			"fake": faker.New(),
 		}
-		for name, code := range req.ConfigREST.Tests {
+		for name, code := range req.ConfREST.Tests {
 			program, err := expr.Compile(code, expr.Env(env), expr.AsBool())
 			if err != nil {
 				return nil, err
@@ -159,7 +159,7 @@ func (s *RESTSender) Instance(ctx context.Context, r *pcl.Request) (*ActualReque
 	if s.client == nil {
 		return nil, fmt.Errorf("rest client:%w", protocol.ErrNilValue)
 	}
-	if r.ConfigREST == nil {
+	if r.ConfREST == nil {
 		return nil, fmt.Errorf("request config rest:%w", protocol.ErrNilValue)
 	}
 	if r.Protocol != pcl.ProtocolREST && r.Protocol != pcl.ProtocolGQL {
@@ -174,7 +174,7 @@ func (s *RESTSender) Instance(ctx context.Context, r *pcl.Request) (*ActualReque
 	req := s.client.R().
 		SetURL(r.URL).
 		SetMethod(string(r.Method)).
-		SetPathParams(r.ConfigREST.Path).
+		SetPathParams(r.ConfREST.Path).
 		SetQueryParamsFromValues(r.Query).
 		SetTimeout(timeout)
 
@@ -190,7 +190,7 @@ func (s *RESTSender) Instance(ctx context.Context, r *pcl.Request) (*ActualReque
 		return nil, err
 	}
 
-	if err := applyConfigREST(req, r.ConfigREST); err != nil {
+	if err := applyConfigREST(req, r.ConfREST); err != nil {
 		return nil, err
 	}
 
@@ -235,7 +235,7 @@ func applyAuth(req *ActualRequest, auth *pcl.Auth) error {
 
 	return nil
 }
-func applyConfigREST(req *ActualRequest, cfg *pcl.ConfigREST) error {
+func applyConfigREST(req *ActualRequest, cfg *pcl.ConfREST) error {
 
 	if err := applyRetry(req, &cfg.Retry); err != nil {
 		return err

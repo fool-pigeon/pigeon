@@ -12,9 +12,10 @@
 	import CMFormKV from '@comp/form/CMFormKV.svelte';
 	import CMTextArea from '@comp/form/CMTextArea.svelte';
 	import FileSelector from '@comp/form/FileSelector.svelte';
-	import { EditPart, BodyPart } from './HttpView.svelte';
+	import { EditPart, BodyPart } from '../ReqView.svelte';
+	import type { Request } from '@pg/protocol';
 
-	type Prop = { temp: ReqData | null; bodyPart: BodyPart };
+	type Prop = { temp: Request | null; bodyPart: BodyPart };
 	let { temp = $bindable(), bodyPart = $bindable() }: Prop = $props();
 </script>
 

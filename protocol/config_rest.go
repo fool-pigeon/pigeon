@@ -47,7 +47,7 @@ type Retry struct {
 	IsAllowNonIdempotent bool        `json:"isAllowNonIdempotent" toml:"is_allow_non_idempotent"`
 }
 
-type ConfigREST struct {
+type ConfREST struct {
 	// test expr script
 	Tests             map[string]string `json:"tests" toml:"tests"`
 	Path              map[string]string `json:"path" toml:"path"`
@@ -57,7 +57,7 @@ type ConfigREST struct {
 	ResponseBodyLimit int64             `json:"responseBodyLimit" toml:"response_body_limit"`
 }
 
-func (c *ConfigREST) Copy() *ConfigREST {
+func (c *ConfREST) Copy() *ConfREST {
 	if c == nil {
 		return nil
 	}

@@ -89,24 +89,24 @@ func TestInitReqCtx(t *testing.T) {
 
 func TestLoadConf(t *testing.T) {
 	t.Run("valid plain", func(t *testing.T) {
-		conf := &protocol.ReqConfig{}
+		conf := &protocol.ReqConf{}
 		require.NoError(t, loadConf([]byte(`timeout = "5s"`), NewEnv(), conf))
 		assert.Equal(t, protocol.DurationStr("5s"), conf.Timeout)
 	})
 
 	t.Run("invalid toml", func(t *testing.T) {
-		conf := &protocol.ReqConfig{}
+		conf := &protocol.ReqConf{}
 		assert.Error(t, loadConf([]byte("= bad"), NewEnv(), conf))
 	})
 
 	t.Run("existing wins on merge", func(t *testing.T) {
-		conf := &protocol.ReqConfig{Timeout: "1s"}
+		conf := &protocol.ReqConf{Timeout: "1s"}
 		require.NoError(t, loadConf([]byte(`timeout = "5s"`), NewEnv(), conf))
 		assert.Equal(t, protocol.DurationStr("1s"), conf.Timeout)
 	})
 
 	t.Run("expands env vars", func(t *testing.T) {
-		conf := &protocol.ReqConfig{}
+		conf := &protocol.ReqConf{}
 		body := `
 timeout = "${TIME}"
 

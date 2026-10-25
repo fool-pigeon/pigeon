@@ -7,7 +7,7 @@ package protocol
 
 import "slices"
 
-type ConfigWS struct {
+type ConfWS struct {
 	Subprotocols []string `json:"subprotocols" toml:"subprotocols"`
 	// "disabled" / "context_takeover" / "no_context_takeover"
 	CompressionMode      string   `json:"compressionMode" toml:"compression_mode"`
@@ -16,7 +16,7 @@ type ConfigWS struct {
 	InsecureSkipVerify   bool     `json:"insecureSkipVerify" toml:"insecure_skip_verify"`
 }
 
-func (c *ConfigWS) Copy() *ConfigWS {
+func (c *ConfWS) Copy() *ConfWS {
 	if c == nil {
 		return nil
 	}

@@ -37,8 +37,8 @@ func baseReq(url string) *pcl.Request {
 		ReqMeta: pcl.ReqMeta{Protocol: pcl.ProtocolREST},
 		URL:     url,
 		Method:  pcl.MethodGet,
-		ReqConfig: pcl.ReqConfig{
-			ConfigREST: &pcl.ConfigREST{},
+		ReqConf: pcl.ReqConf{
+			ConfREST: &pcl.ConfREST{},
 		},
 	}
 }
@@ -86,7 +86,7 @@ func TestSend(t *testing.T) {
 		defer srv.Close()
 
 		req := baseReq(srv.URL)
-		req.ConfigREST.Tests = map[string]string{
+		req.ConfREST.Tests = map[string]string{
 			"status is 200": "res.StatusCode() == 200",
 		}
 		s := newSender(t)
@@ -104,7 +104,7 @@ func TestSend(t *testing.T) {
 		defer srv.Close()
 
 		req := baseReq(srv.URL)
-		req.ConfigREST.Tests = map[string]string{
+		req.ConfREST.Tests = map[string]string{
 			"status is 500": "res.StatusCode() == 500",
 		}
 		s := newSender(t)
@@ -150,7 +150,7 @@ func TestInstance(t *testing.T) {
 	t.Run("nil config rest", func(t *testing.T) {
 		s := newSender(t)
 		req := baseReq("http://x")
-		req.ConfigREST = nil
+		req.ConfREST = nil
 		_, err := s.Instance(context.Background(), req)
 		assert.ErrorIs(t, err, pcl.ErrNilValue)
 	})
@@ -318,7 +318,7 @@ func TestInstance(t *testing.T) {
 	t.Run("retry config", func(t *testing.T) {
 		s := newSender(t)
 		req := baseReq("http://x")
-		req.ConfigREST.Retry = pcl.Retry{
+		req.ConfREST.Retry = pcl.Retry{
 			Count:                2,
 			WaitTime:             "10ms",
 			MaxWaitTime:          "20ms",
@@ -334,7 +334,7 @@ func TestInstance(t *testing.T) {
 	t.Run("invalid retry wait time", func(t *testing.T) {
 		s := newSender(t)
 		req := baseReq("http://x")
-		req.ConfigREST.Retry.WaitTime = "bad"
+		req.ConfREST.Retry.WaitTime = "bad"
 		_, err := s.Instance(context.Background(), req)
 		assert.Error(t, err)
 	})

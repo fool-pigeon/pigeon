@@ -32,7 +32,7 @@
 	import { ModeContains } from '@lib/utils/asserts';
 	import { NodeMode } from '@cmd-gui/service';
 	import FileView from './FileView.svelte';
-	import HttpView from './HttpView.svelte';
+	import ReqView from './ReqView.svelte';
 
 	export const EditorEvent = {
 		Reload: 'editor:reload',
@@ -179,7 +179,7 @@
 						<FileView openedFS={eState.ofs[eState.index]} />
 					{:else if ModeContains(mode, NodeMode.Request)}
 						<!-- the cur should not be bindable -->
-						<HttpView openedFS={eState.ofs[eState.index]} bind:isFlexRow />
+						<ReqView openedFS={eState.ofs[eState.index]} bind:isFlexRow />
 					{:else}
 						<div class="w-full h-1/3 flex items-center justify-center text-2xl text-info">
 							<div class="flex gap-1 items-center">
