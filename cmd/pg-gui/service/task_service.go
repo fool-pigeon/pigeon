@@ -28,6 +28,10 @@ import (
 	"resty.dev/v3"
 )
 
+var (
+	ErrStreamDisconnected = errors.New("stream disconnected")
+)
+
 // [TaskService] Event
 type TaskSEvent = string
 
@@ -161,9 +165,12 @@ type TaskService struct {
 	evt *application.EventManager
 	db  *CacheDB
 
-	taskCh      chan *Task
-	resMetaCh   chan *TaskResMeta
-	traceViewCh chan *protocol.TraceView
+	taskCh        chan *Task
+	taskDone      chan struct{}
+	resMetaCh     chan *TaskResMeta
+	resMetaDone   chan struct{}
+	traceViewCh   chan *protocol.TraceView
+	traceViewDone chan struct{}
 }
 
 func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
@@ -172,23 +179,34 @@ func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
 		evt: app.Event,
 		db:  db,
 
-		taskCh:      make(chan *Task),
-		resMetaCh:   make(chan *TaskResMeta, 8),
-		traceViewCh: make(chan *protocol.TraceView, 16),
+		taskCh:        make(chan *Task),
+		taskDone:      make(chan struct{}),
+		resMetaCh:     make(chan *TaskResMeta, 8),
+		resMetaDone:   make(chan struct{}),
+		traceViewCh:   make(chan *protocol.TraceView, 16),
+		traceViewDone: make(chan struct{}),
 	}
 }
 
 // ServiceShutdown implements [application.ServiceShutdown].
 func (tr *TaskService) ServiceShutdown() error {
+	close(tr.taskDone)
 	close(tr.taskCh)
+	close(tr.resMetaDone)
 	close(tr.resMetaCh)
+	close(tr.traceViewDone)
 	close(tr.traceViewCh)
 	return nil
 }
 
-func registerJSONOutputStreamHandler[T any](app *application.App, name string, ch chan T) {
+func registerJSONOutputStreamHandler[T any](app *application.App, name string, ch chan T, done ...chan struct{}) {
 	app.HandleStream(name, func(sc *application.StreamConn) {
 		defer sc.Close()
+		if len(done) > 0 {
+			defer func() {
+				done[0] <- struct{}{}
+			}()
+		}
 		for {
 			select {
 			case <-sc.Context().Done():
@@ -204,31 +222,43 @@ func registerJSONOutputStreamHandler[T any](app *application.App, name string, c
 
 // ServiceStartup implements [application.ServiceStartup].
 func (tr *TaskService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	registerJSONOutputStreamHandler(tr.app, TaskSSTask, tr.taskCh)
-	registerJSONOutputStreamHandler(tr.app, TaskSSResMeta, tr.resMetaCh)
-	registerJSONOutputStreamHandler(tr.app, TaskSSTraceView, tr.traceViewCh)
+	registerJSONOutputStreamHandler(tr.app, TaskSSTask, tr.taskCh, tr.taskDone)
+	registerJSONOutputStreamHandler(tr.app, TaskSSResMeta, tr.resMetaCh, tr.resMetaDone)
+	registerJSONOutputStreamHandler(tr.app, TaskSSTraceView, tr.traceViewCh, tr.traceViewDone)
 	return nil
 }
 
 func (tr *TaskService) LoadTaskList() error {
 	return tr.db.GetTaskRepo().SeekValues(func(t *Task) error {
-		tr.taskCh <- t
-		return nil
+		select {
+		case <-tr.taskDone:
+			return ErrStreamDisconnected
+		case tr.taskCh <- t:
+			return nil
+		}
 	}, true)
 }
 func (tr *TaskService) LoadTaskResMetaList(taskID ulid.ULID) error {
 	return tr.db.getDB().View(func(txn *badger.Txn) error {
 		return dbTxnSeekValues(txn, makeDBKey([]byte(dbKeyTaskResMeta), taskID[:], nil), func(trm *TaskResMeta) error {
-			tr.resMetaCh <- trm
-			return nil
+			select {
+			case <-tr.resMetaDone:
+				return ErrStreamDisconnected
+			case tr.resMetaCh <- trm:
+				return nil
+			}
 		})
 	})
 }
 func (tr *TaskService) LoadTraceViewList(resID ulid.ULID) error {
 	return tr.db.getDB().View(func(txn *badger.Txn) error {
 		return dbTxnSeekValues(txn, makeDBKey([]byte(dbKeyResTraceView), resID[:], nil), func(t *protocol.TraceView) error {
-			tr.traceViewCh <- t
-			return nil
+			select {
+			case <-tr.traceViewDone:
+				return ErrStreamDisconnected
+			case tr.traceViewCh <- t:
+				return nil
+			}
 		})
 	})
 }
