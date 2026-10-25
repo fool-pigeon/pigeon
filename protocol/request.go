@@ -153,63 +153,64 @@ func (r *ReqConfig) mergeConfigREST(c *ConfigREST) {
 	if c == nil {
 		return
 	}
-	c = c.Copy()
 	if r.ConfigREST == nil {
 		r.ConfigREST = c
 		return
 	}
-	current := r.ConfigREST
+	c = c.Copy()
+	r.ConfigREST = r.ConfigREST.Copy()
+	cur := r.ConfigREST
 	// merge Tests
 	if len(c.Tests) > 0 {
-		if len(current.Tests) <= 0 {
-			current.Tests = c.Tests
+		if len(cur.Tests) <= 0 {
+			cur.Tests = c.Tests
 		} else {
-			mergeMap(current.Tests, c.Tests)
+			mergeMap(cur.Tests, c.Tests)
 		}
 	}
 	// merge Path
 	if len(c.Path) > 0 {
-		if len(current.Path) <= 0 {
-			current.Path = c.Path
+		if len(cur.Path) <= 0 {
+			cur.Path = c.Path
 		} else {
-			mergeMap(current.Path, c.Path)
+			mergeMap(cur.Path, c.Path)
 		}
 	}
 	// merge Retry
 	retry := c.Retry
-	if cout := retry.Count; cout >= 0 && current.Retry.Count == 0 {
-		current.Retry.Count = cout
+	if cout := retry.Count; cout >= 0 && cur.Retry.Count == 0 {
+		cur.Retry.Count = cout
 	}
-	if wt := retry.WaitTime; wt != "" && current.Retry.WaitTime == "" {
-		current.Retry.WaitTime = wt
+	if wt := retry.WaitTime; wt != "" && cur.Retry.WaitTime == "" {
+		cur.Retry.WaitTime = wt
 	}
-	if mwt := retry.MaxWaitTime; mwt != "" && current.Retry.MaxWaitTime == "" {
-		current.Retry.MaxWaitTime = mwt
+	if mwt := retry.MaxWaitTime; mwt != "" && cur.Retry.MaxWaitTime == "" {
+		cur.Retry.MaxWaitTime = mwt
 	}
-	if isAllow := retry.IsAllowNonIdempotent; isAllow && !current.Retry.IsAllowNonIdempotent {
-		current.Retry.IsAllowNonIdempotent = isAllow
+	if isAllow := retry.IsAllowNonIdempotent; isAllow && !cur.Retry.IsAllowNonIdempotent {
+		cur.Retry.IsAllowNonIdempotent = isAllow
 	}
 	// merge other
-	if uq := c.UnescapeQuery; uq && !current.UnescapeQuery {
-		current.UnescapeQuery = uq
+	if uq := c.UnescapeQuery; uq && !cur.UnescapeQuery {
+		cur.UnescapeQuery = uq
 	}
-	if uj := c.UnescapeJSON; uj && !current.UnescapeJSON {
-		current.UnescapeJSON = uj
+	if uj := c.UnescapeJSON; uj && !cur.UnescapeJSON {
+		cur.UnescapeJSON = uj
 	}
-	if rbl := c.ResponseBodyLimit; rbl > 0 && current.ResponseBodyLimit <= 0 {
-		current.ResponseBodyLimit = rbl
+	if rbl := c.ResponseBodyLimit; rbl > 0 && cur.ResponseBodyLimit <= 0 {
+		cur.ResponseBodyLimit = rbl
 	}
 }
 func (r *ReqConfig) mergeConfigGRPC(c *ConfigGRPC) {
 	if c == nil {
 		return
 	}
-	c = c.Copy()
 	if r.ConfigGRPC == nil {
 		r.ConfigGRPC = c
 		return
 	}
-	cur := r.ConfigGRPC
+	cur := r.ConfigGRPC.Copy()
+	r.ConfigGRPC = cur
 	// ReadMaxBytes
 	if cur.ReadMaxBytes == 0 {
 		cur.ReadMaxBytes = c.ReadMaxBytes
@@ -239,15 +240,23 @@ func (r *ReqConfig) mergeConfigWS(c *ConfigWS) {
 	if c == nil {
 		return
 	}
-	c = c.Copy()
 	if r.ConfigWS == nil {
 		r.ConfigWS = c
 		return
 	}
-	cur := r.ConfigWS
+	cur := r.ConfigWS.Copy()
+	r.ConfigWS = cur
 	// Subprotocols
-	if len(cur.Subprotocols) <= 0 && len(c.Subprotocols) > 0 {
-		cur.Subprotocols = c.Subprotocols
+	if len(c.Subprotocols) > 0 {
+		if len(cur.Subprotocols) <= 0 {
+			cur.Subprotocols = c.Subprotocols
+		} else {
+			for _, v := range c.Subprotocols {
+				if slices.Contains(cur.Subprotocols, v) {
+					cur.Subprotocols = append(cur.Subprotocols, v)
+				}
+			}
+		}
 	}
 	// CompressionMode
 	if cur.CompressionMode == "" {
@@ -258,8 +267,16 @@ func (r *ReqConfig) mergeConfigWS(c *ConfigWS) {
 		cur.CompressionThreshold = c.CompressionThreshold
 	}
 	// OriginPatterns
-	if len(cur.OriginPatterns) <= 0 && len(c.OriginPatterns) > 0 {
-		cur.OriginPatterns = c.OriginPatterns
+	if len(c.OriginPatterns) > 0 {
+		if len(cur.OriginPatterns) <= 0 {
+			cur.OriginPatterns = c.OriginPatterns
+		} else {
+			for _, v := range c.OriginPatterns {
+				if slices.Contains(cur.OriginPatterns, v) {
+					cur.OriginPatterns = append(cur.OriginPatterns, v)
+				}
+			}
+		}
 	}
 	// InsecureSkipVerify
 	if !cur.InsecureSkipVerify {
