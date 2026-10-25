@@ -296,9 +296,9 @@ func Run(ctx context.Context, rp RunInput) error {
 // paths are relative paths from collection's root path
 type RunPaths struct {
 	// conf of collection
-	RootConf string
+	RootConf string `toml:"root_conf" json:"rootConf"`
 	// the start directory
-	Start string
+	Start string `toml:"start" json:"start"`
 	// the paths sub of start directory
 	Tasks []string `toml:"tasks" json:"tasks"`
 }

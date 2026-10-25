@@ -50,12 +50,16 @@ type TaskSStream = string
 const (
 	// Send JSON
 	//
+	// [Task]
+	TaskSSTask TaskSStream = "task-service:stream:task"
+	// Send JSON
+	//
 	// [TaskResViewMeta]
-	TaskSSTaskResViewMeta TaskSStream = "task-service:stream:task-res-view-meta"
+	TaskSSResViewMeta TaskSStream = "task-service:stream:task-res-view-meta"
 	// Send JSON
 	//
 	// [protocol.TraceView]
-	TaskSSTaskResTraceView TaskSStream = "task-service:stream:task-res-trace-view"
+	TaskSSTraceView TaskSStream = "task-service:stream:task-res-trace-view"
 )
 
 type Task struct {
@@ -157,6 +161,7 @@ type TaskService struct {
 	evt *application.EventManager
 	db  *CacheDB
 
+	taskCh      chan Task
 	metaCh      chan TaskResViewMeta
 	traceViewCh chan protocol.TraceView
 }
@@ -167,6 +172,7 @@ func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
 		evt: app.Event,
 		db:  db,
 
+		taskCh:      make(chan Task, 2),
 		metaCh:      make(chan TaskResViewMeta, 8),
 		traceViewCh: make(chan protocol.TraceView, 16),
 	}
@@ -174,38 +180,33 @@ func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
 
 // ServiceShutdown implements [application.ServiceShutdown].
 func (tr *TaskService) ServiceShutdown() error {
+	close(tr.taskCh)
 	close(tr.metaCh)
 	close(tr.traceViewCh)
 	return nil
 }
 
-// ServiceStartup implements [application.ServiceStartup].
-func (tr *TaskService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	tr.app.HandleStream(TaskSSTaskResViewMeta, func(sc *application.StreamConn) {
+func registerJSONOutputStreamHandler[T any](app *application.App, name string, ch chan T) {
+	app.HandleStream(name, func(sc *application.StreamConn) {
 		defer sc.Close()
 		for {
 			select {
 			case <-sc.Context().Done():
 				return
-			case meta := <-tr.metaCh:
-				if err := sc.SendJSON(&meta); err != nil {
+			case v := <-ch:
+				if err := sc.SendJSON(&v); err != nil {
 					return
 				}
 			}
 		}
 	})
-	tr.app.HandleStream(TaskSSTaskResTraceView, func(sc *application.StreamConn) {
-		for {
-			select {
-			case <-sc.Context().Done():
-				return
-			case view := <-tr.traceViewCh:
-				if err := sc.SendJSON(&view); err != nil {
-					return
-				}
-			}
-		}
-	})
+}
+
+// ServiceStartup implements [application.ServiceStartup].
+func (tr *TaskService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	registerJSONOutputStreamHandler(tr.app, TaskSSTask, tr.taskCh)
+	registerJSONOutputStreamHandler(tr.app, TaskSSResViewMeta, tr.metaCh)
+	registerJSONOutputStreamHandler(tr.app, TaskSSTraceView, tr.traceViewCh)
 	return nil
 }
 
