@@ -22,8 +22,8 @@ import (
 const (
 	// db Key Prefix Part task:id:{taskULID} -> [Task]
 	dbKeyTaskID = "task:id"
-	// db Key Prefix Part task:res-view-meta:{taskULID}:{resULID} -> [TaskResViewMeta]
-	dbKeyTaskResViewMeta = "task:res-view-meta"
+	// db Key Prefix Part task:res-meta:{taskULID}:{resULID} -> [TaskResViewMeta]
+	dbKeyTaskResMeta = "task:res-meta"
 
 	// db Key Prefix Part req:res:{reqULID}:{resULID} -> nil
 	dbKeyReqRes = "req:res"
@@ -99,14 +99,14 @@ func dbTxnSeekValues[T any](txn *badger.Txn, prefix []byte, call func(*T) error,
 
 	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 		item := it.Item()
+		var v T
 		err := item.Value(func(val []byte) error {
-			var v T
-			if err := msgpack.Unmarshal(val, &v); err != nil {
-				return err
-			}
-			return call(&v)
+			return msgpack.Unmarshal(val, &v)
 		})
 		if err != nil {
+			return err
+		}
+		if err := call(&v); err != nil {
 			return err
 		}
 	}

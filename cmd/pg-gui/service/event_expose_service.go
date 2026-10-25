@@ -24,7 +24,7 @@ func (e *EventConstExposeService) ExposedAlertEvt(evt AlertEvent) {}
 func (e *EventConstExposeService) ExposedTrsEvt(
 	evt TaskSEvent,
 	ss TaskSStream,
-	taskResViewMeta TaskResViewMeta,
+	taskResViewMeta TaskResMeta,
 	traceView protocol.TraceView,
 ) {
 }

@@ -54,8 +54,8 @@ const (
 	TaskSSTask TaskSStream = "task-service:stream:task"
 	// Send JSON
 	//
-	// [TaskResViewMeta]
-	TaskSSResViewMeta TaskSStream = "task-service:stream:task-res-view-meta"
+	// [TaskResMeta]
+	TaskSSResMeta TaskSStream = "task-service:stream:task-res-view-meta"
 	// Send JSON
 	//
 	// [protocol.TraceView]
@@ -103,25 +103,25 @@ func (h *TaskHTTPExt) toView() (*TaskHTTPExtView, error) {
 	}, nil
 }
 
-type TaskResMeta struct {
+type TaskResBody struct {
 	RunMeta core.RunMeta     `json:"runMeta"`
 	ResMeta protocol.ResMeta `json:"resMeta"`
 	ErrStr  string           `json:"errStr"`
 	Content []byte           `json:"content"`
 }
 type taskRes struct {
-	TaskResMeta
+	TaskResBody
 	HTTPRequest  TaskHTTPExt
 	HTTPResponse TaskHTTPExt
 }
-type TaskResViewMeta struct {
+type TaskResMeta struct {
 	protocol.ResultCover
 	TaskID ulid.ULID
 	ResID  ulid.ULID
 	Path   string
 }
 type TaskResView struct {
-	TaskResMeta
+	TaskResBody
 	Spent string
 	// response body size
 	ContentSize  string
@@ -129,8 +129,8 @@ type TaskResView struct {
 	HTTPResponse *TaskHTTPExtView
 }
 
-func (res *taskRes) toViewMeta(taskID ulid.ULID) TaskResViewMeta {
-	return TaskResViewMeta{
+func (res *taskRes) toMeta(taskID ulid.ULID) TaskResMeta {
+	return TaskResMeta{
 		TaskID:      taskID,
 		ResID:       res.ResMeta.ID,
 		Path:        res.RunMeta.Path,
@@ -147,7 +147,7 @@ func (res *taskRes) toView() (*TaskResView, error) {
 		return nil, err
 	}
 	return &TaskResView{
-		TaskResMeta:  res.TaskResMeta,
+		TaskResBody:  res.TaskResBody,
 		Spent:        res.ResMeta.Duration.Round(time.Millisecond / 10).String(),
 		ContentSize:  humanSize(len(resExt.Body)),
 		HTTPRequest:  reqExt,
@@ -161,9 +161,9 @@ type TaskService struct {
 	evt *application.EventManager
 	db  *CacheDB
 
-	taskCh      chan Task
-	metaCh      chan TaskResViewMeta
-	traceViewCh chan protocol.TraceView
+	taskCh      chan *Task
+	resMetaCh   chan *TaskResMeta
+	traceViewCh chan *protocol.TraceView
 }
 
 func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
@@ -172,16 +172,16 @@ func NewTaskRunService(app *application.App, db *CacheDB) *TaskService {
 		evt: app.Event,
 		db:  db,
 
-		taskCh:      make(chan Task, 2),
-		metaCh:      make(chan TaskResViewMeta, 8),
-		traceViewCh: make(chan protocol.TraceView, 16),
+		taskCh:      make(chan *Task),
+		resMetaCh:   make(chan *TaskResMeta, 8),
+		traceViewCh: make(chan *protocol.TraceView, 16),
 	}
 }
 
 // ServiceShutdown implements [application.ServiceShutdown].
 func (tr *TaskService) ServiceShutdown() error {
 	close(tr.taskCh)
-	close(tr.metaCh)
+	close(tr.resMetaCh)
 	close(tr.traceViewCh)
 	return nil
 }
@@ -205,10 +205,35 @@ func registerJSONOutputStreamHandler[T any](app *application.App, name string, c
 // ServiceStartup implements [application.ServiceStartup].
 func (tr *TaskService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	registerJSONOutputStreamHandler(tr.app, TaskSSTask, tr.taskCh)
-	registerJSONOutputStreamHandler(tr.app, TaskSSResViewMeta, tr.metaCh)
+	registerJSONOutputStreamHandler(tr.app, TaskSSResMeta, tr.resMetaCh)
 	registerJSONOutputStreamHandler(tr.app, TaskSSTraceView, tr.traceViewCh)
 	return nil
 }
+
+func (tr *TaskService) LoadTaskList() error {
+	return tr.db.GetTaskRepo().SeekValues(func(t *Task) error {
+		tr.taskCh <- t
+		return nil
+	}, true)
+}
+func (tr *TaskService) LoadTaskResMetaList(taskID ulid.ULID) error {
+	return tr.db.getDB().View(func(txn *badger.Txn) error {
+		return dbTxnSeekValues(txn, makeDBKey([]byte(dbKeyTaskResMeta), taskID[:], nil), func(trm *TaskResMeta) error {
+			tr.resMetaCh <- trm
+			return nil
+		})
+	})
+}
+func (tr *TaskService) LoadTraceViewList(resID ulid.ULID) error {
+	return tr.db.getDB().View(func(txn *badger.Txn) error {
+		return dbTxnSeekValues(txn, makeDBKey([]byte(dbKeyResTraceView), resID[:], nil), func(t *protocol.TraceView) error {
+			tr.traceViewCh <- t
+			return nil
+		})
+	})
+}
+
+// func (tr *TaskService)
 
 func (tr *TaskService) RunDir(path string, rootConf string) error {
 	path = filepath.Clean(path)
@@ -295,7 +320,7 @@ func (tr *TaskService) run(task Task) error {
 					alert.error(fmt.Sprint(runResult.Path, ErrNilValue))
 					continue
 				}
-				tRes := taskRes{TaskResMeta: TaskResMeta{RunMeta: runResult.RunMeta, ResMeta: runResult.Res.ResMeta}}
+				tRes := taskRes{TaskResBody: TaskResBody{RunMeta: runResult.RunMeta, ResMeta: runResult.Res.ResMeta}}
 				if err := inner.err; err != nil {
 					tRes.ErrStr = err.Error()
 				} else {
@@ -416,8 +441,8 @@ func (tr *TaskService) parseRunResRaw(runRes *core.RunResult, tRes *taskRes) {
 func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
 		// write txn
-		viewMeta := tRes.toViewMeta(taskID)
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyTaskResViewMeta), taskID[:], tRes.ResMeta.ID[:]), &viewMeta); err != nil {
+		viewMeta := tRes.toMeta(taskID)
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyTaskResMeta), taskID[:], tRes.ResMeta.ID[:]), &viewMeta); err != nil {
 			return err
 		}
 		if err := txn.Set(makeDBKey([]byte(dbKeyReqRes), tRes.ResMeta.Request.ID[:], tRes.ResMeta.ID[:]), nil); err != nil {
@@ -428,7 +453,7 @@ func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 		}
 
 		// to stream,emit to front
-		tr.metaCh <- viewMeta
+		tr.resMetaCh <- &viewMeta
 
 		return nil
 	})
@@ -440,7 +465,8 @@ func (tr *TaskService) storeTaskResTrace(trace protocol.Trace) error {
 		}
 
 		// to stream,emit to front
-		tr.traceViewCh <- trace.ToView()
+		traceView := trace.ToView()
+		tr.traceViewCh <- &traceView
 
 		return nil
 	})
