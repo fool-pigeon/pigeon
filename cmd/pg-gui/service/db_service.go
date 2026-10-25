@@ -6,6 +6,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"path/filepath"
@@ -19,17 +20,17 @@ import (
 )
 
 const (
-	// task:id:{taskULID} -> [Task]
-	dbKeyPrefixTaskID = "task:id"
-	// task:res:{taskULID}:{resULID} -> [TaskResViewMeta]
-	dbKeyPrefixTaskRes = "task:res"
+	// db Key Prefix Part task:id:{taskULID} -> [Task]
+	dbKeyTaskID = "task:id"
+	// db Key Prefix Part task:res-view-meta:{taskULID}:{resULID} -> [TaskResViewMeta]
+	dbKeyTaskResViewMeta = "task:res-view-meta"
 
-	// req:res:{reqULID}:{resULID} -> nil
-	dbKeyPrefixReqRes = "req:res"
-	// res:id:{resULID} -> [TaskRes]
-	dbKeyPrefixResID = "res:id"
-	// res:trace:{resULID}:{traceID} -> [protocol.TraceView]
-	dbKeyPrefixResTraceView = "res:trace-view"
+	// db Key Prefix Part req:res:{reqULID}:{resULID} -> nil
+	dbKeyReqRes = "req:res"
+	// db Key Prefix Part res:id:{resULID} -> [taskRes]
+	dbKeyResID = "res:id"
+	// db Key Prefix Part res:trace-view:{resULID}:{traceID} -> [protocol.TraceView]
+	dbKeyResTraceView = "res:trace-view"
 )
 
 type DataSource struct {
@@ -80,6 +81,37 @@ func makeDBKey(parts ...[]byte) []byte {
 	}
 	return key
 }
+func dbTxnSet[T any](txn *badger.Txn, key []byte, v *T) error {
+	b, err := msgpack.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return txn.Set(key, b)
+}
+func dbTxnSeekValues[T any](txn *badger.Txn, prefix []byte, call func(*T) error, options ...badger.IteratorOptions) error {
+	opts := badger.DefaultIteratorOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+
+	it := txn.NewIterator(opts)
+	defer it.Close()
+
+	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		item := it.Item()
+		err := item.Value(func(val []byte) error {
+			var v T
+			if err := msgpack.Unmarshal(val, &v); err != nil {
+				return err
+			}
+			return call(&v)
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 type BaseRepoULID[T any] struct {
 	prefix string
@@ -103,13 +135,22 @@ func (repo *BaseRepoULID[T]) GetByID(id ulid.ULID) (*T, error) {
 	})
 	return res, err
 }
+func (repo *BaseRepoULID[T]) SeekValues(call func(*T) error, isReverse ...bool) error {
+	return repo.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		var prefix []byte
+		if len(isReverse) > 0 && isReverse[0] {
+			opts.Reverse = true
+			prefix = makeDBKey([]byte(repo.prefix), bytes.Repeat([]byte{0xff}, 16))
+		} else {
+			prefix = makeDBKey([]byte(repo.prefix), nil)
+		}
+		return dbTxnSeekValues(txn, prefix, call, opts)
+	})
+}
 func (repo *BaseRepoULID[T]) Set(id ulid.ULID, v *T) error {
 	return repo.db.Update(func(txn *badger.Txn) error {
-		b, err := msgpack.Marshal(v)
-		if err != nil {
-			return err
-		}
-		return txn.Set(repo.makeKey(id), b)
+		return dbTxnSet(txn, repo.makeKey(id), v)
 	})
 }
 func (repo *BaseRepoULID[T]) Delete(id ulid.ULID) error {
@@ -134,13 +175,13 @@ func (db *CacheDB) getDB() *badger.DB {
 }
 func (db *CacheDB) GetTaskRepo() *BaseRepoULID[Task] {
 	if db.taskRepo == nil {
-		db.taskRepo = &BaseRepoULID[Task]{prefix: dbKeyPrefixTaskID, db: db.getDB()}
+		db.taskRepo = &BaseRepoULID[Task]{prefix: dbKeyTaskID, db: db.getDB()}
 	}
 	return db.taskRepo
 }
 func (db *CacheDB) GetTaskResRepo() *BaseRepoULID[taskRes] {
 	if db.resRepo == nil {
-		db.resRepo = &BaseRepoULID[taskRes]{prefix: dbKeyPrefixResID, db: db.getDB()}
+		db.resRepo = &BaseRepoULID[taskRes]{prefix: dbKeyResID, db: db.getDB()}
 	}
 	return db.resRepo
 }

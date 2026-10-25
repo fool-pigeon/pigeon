@@ -24,7 +24,6 @@ import (
 	"github.com/fool-pigeon/pigeon/protocol"
 	"github.com/fool-pigeon/pigeon/uid"
 	"github.com/oklog/ulid/v2"
-	"github.com/vmihailenco/msgpack/v5"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"resty.dev/v3"
 )
@@ -417,13 +416,13 @@ func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
 		// write txn
 		viewMeta := tRes.toViewMeta(taskID)
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixTaskRes), taskID[:], tRes.ResMeta.ID[:]), &viewMeta); err != nil {
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyTaskResViewMeta), taskID[:], tRes.ResMeta.ID[:]), &viewMeta); err != nil {
 			return err
 		}
-		if err := txn.Set(makeDBKey([]byte(dbKeyPrefixReqRes), tRes.ResMeta.Request.ID[:], tRes.ResMeta.ID[:]), nil); err != nil {
+		if err := txn.Set(makeDBKey([]byte(dbKeyReqRes), tRes.ResMeta.Request.ID[:], tRes.ResMeta.ID[:]), nil); err != nil {
 			return err
 		}
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResID), tRes.ResMeta.ID[:]), &tRes); err != nil {
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyResID), tRes.ResMeta.ID[:]), &tRes); err != nil {
 			return err
 		}
 
@@ -435,7 +434,7 @@ func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 }
 func (tr *TaskService) storeTaskResTrace(trace protocol.Trace) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyPrefixResTraceView), trace.ResID[:], uid.Uint64ToBytes(trace.ID)), &trace); err != nil {
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyResTraceView), trace.ResID[:], uid.Uint64ToBytes(trace.ID)), &trace); err != nil {
 			return err
 		}
 
@@ -444,13 +443,6 @@ func (tr *TaskService) storeTaskResTrace(trace protocol.Trace) error {
 
 		return nil
 	})
-}
-func dbTxnSet[T any](txn *badger.Txn, key []byte, v *T) error {
-	b, err := msgpack.Marshal(v)
-	if err != nil {
-		return err
-	}
-	return txn.Set(key, b)
 }
 
 func gzipCompress(b []byte) ([]byte, error) {
