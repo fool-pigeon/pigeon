@@ -1,9 +1,9 @@
 // Copyright (c) 2026 Homoarea <homoarea114@gmail.com>
-// 
+//
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-package formatter
+package cmd
 
 import (
 	"strings"
@@ -11,13 +11,17 @@ import (
 	"github.com/pterm/pterm"
 )
 
-func FieldColor(a ...any) string {
+var formatter formatPrinter
+
+type formatPrinter struct{}
+
+func (f formatPrinter) fieldColor(a ...any) string {
 	return pterm.LightBlue(a...)
 }
-func FieldLine(name string, val any) string {
-	return pterm.Sprintfln("%v %v", FieldColor(name), val)
+func (f formatPrinter) fieldLine(name string, val any) string {
+	return pterm.Sprintfln("%v %v", f.fieldColor(name), val)
 }
-func PrintValues(title string, isAddLine bool, content ...string) {
+func (f formatPrinter) printValues(title string, isAddLine bool, content ...string) {
 	var sb strings.Builder
 	sb.WriteString(pterm.Cyan(title, ": "))
 	if isAddLine {
@@ -35,31 +39,31 @@ func PrintValues(title string, isAddLine bool, content ...string) {
 	pterm.Print(sb.String())
 }
 
-func FormatValues(data map[string][]string, sep ...string) []string {
+func (f formatPrinter) formatValues(data map[string][]string, sep ...string) []string {
 	s := ", "
 	if len(sep) > 0 {
 		s = sep[0]
 	}
 	values := make([]string, 0, len(data))
 	for k, v := range data {
-		values = append(values, pterm.Sprintf("%v %v", FieldColor(k, ":"), strings.Join(v, FieldColor(s))))
+		values = append(values, pterm.Sprintf("%v %v", f.fieldColor(k, ":"), strings.Join(v, f.fieldColor(s))))
 	}
 	return values
 }
 
-func FlattenValues(data map[string][]string) []string {
+func (f formatPrinter) flattenValues(data map[string][]string) []string {
 	values := make([]string, 0)
 	for k, v := range data {
 		for _, vv := range v {
-			values = append(values, pterm.Sprintf("%v %v", FieldColor(k, ":"), vv))
+			values = append(values, pterm.Sprintf("%v %v", f.fieldColor(k, ":"), vv))
 		}
 	}
 	return values
 }
-func FormatMap(data map[string]string) []string {
+func (f formatPrinter) formatMap(data map[string]string) []string {
 	values := make([]string, 0, len(data))
 	for k, v := range data {
-		values = append(values, FieldLine(k, v))
+		values = append(values, f.fieldLine(k, v))
 	}
 	return values
 }
