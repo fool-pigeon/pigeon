@@ -9,8 +9,7 @@
 	import IconSave from '@lucide/svelte/icons/save';
 
 	import CMFormHttpURL from '@comp/form/CMFormHttpURL.svelte';
-	import { Method, type ReqData } from '@internal/request/httpx';
-	import { MenuEvent } from '@pg/gui';
+	import { MenuEvent } from '@cmd-gui/gui';
 	import { Events } from '@wailsio/runtime';
 
 	let { req = $bindable(), isSending }: { req: ReqData; isSending: boolean } = $props();

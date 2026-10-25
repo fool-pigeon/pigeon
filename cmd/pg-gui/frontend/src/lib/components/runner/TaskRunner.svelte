@@ -13,7 +13,7 @@
 	import IconPause from '@lucide/svelte/icons/pause';
 	import IconRotateCcwClock from '@lucide/svelte/icons/rotate-ccw-clock';
 
-	import { MenuEvent } from '@pg/gui';
+	import { MenuEvent } from '@cmd-gui/gui';
 	import { msgAlert } from '@comp/message/AlertNotify.svelte';
 	import { fileExplorer } from '@comp/navigation/FileExplorer.svelte';
 
@@ -113,20 +113,11 @@
 </script>
 
 <script lang="ts">
-	import {
-		NodeMode,
-		TaskRunService,
-		TrsEvent,
-		type FileMeta,
-		type TaskMeta,
-		type TaskRes,
-		type TaskResHttp,
-	} from '@services';
+	import { NodeMode, type FileMeta } from '@services';
 	import { Events } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import TaskViewer from './TaskViewer.svelte';
-	import { Duration } from '@bindings/time';
 	import { assertPath } from '@lib/utils/asserts';
 	import { contextmenu } from '@comp/base/ContextMenu.svelte';
 	import TaskRunModal from './TaskRunModal.svelte';

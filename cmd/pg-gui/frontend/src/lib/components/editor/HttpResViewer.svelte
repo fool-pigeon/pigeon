@@ -17,7 +17,6 @@
 	import type { KArr } from '@type/form';
 	import CollapseXs from '@comp/base/CollapseXs.svelte';
 	import type { HttpMeta, HttpRes, TaskResHttp } from '@services';
-	import type { TestRes } from '@internal/request';
 
 	const ViewPart = {
 		ResBody: 'Response',

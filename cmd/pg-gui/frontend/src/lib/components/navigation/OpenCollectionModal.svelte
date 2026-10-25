@@ -9,8 +9,8 @@
 	// Icons
 	import IconLoaderCircle from '@lucide/svelte/icons/loader-circle';
 
-	import { MenuEvent } from '@pg/gui';
-	import { FileExploreService, PathSelectService } from '@pg/service';
+	import { MenuEvent } from '@cmd-gui/gui';
+	import { FileExploreService, PathSelectService } from '@cmd-gui/service';
 	import { Events } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
 	import { modal } from '../base/Modal.svelte';

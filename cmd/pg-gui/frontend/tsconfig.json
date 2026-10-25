@@ -13,8 +13,11 @@
       "@services/*": [
         "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/service/*"
       ],
-      "@pg/*": [
+      "@cmd-gui/*": [
         "./bindings/github.com/fool-pigeon/pigeon/cmd/pg-gui/*"
+      ],
+      "@pg/*": [
+        "./bindings/github.com/fool-pigeon/pigeon/*"
       ],
       "@bindings/*": [
         "./bindings/*"

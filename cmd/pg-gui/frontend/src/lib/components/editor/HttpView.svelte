@@ -11,13 +11,12 @@
 	import IconLoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import IconSend from '@lucide/svelte/icons/send';
 
-	import { Method, type Body, type ReqData } from '@internal/request/httpx';
 	import type { OpenedFS } from './Editor.svelte';
 	import { onMount } from 'svelte';
-	import { HttpReqFileService, ReqCtxService, type TaskResHttp } from '@pg/service';
+	import { ReqCtxService } from '@cmd-gui/service';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { Events } from '@wailsio/runtime';
-	import { MenuEvent } from '@pg/gui';
+	import { MenuEvent } from '@cmd-gui/gui';
 	import equal from 'fast-deep-equal';
 	import { DataEvent } from '@lib/enum/events';
 	import DynamicJoin, { NewPanel } from '../base/DynamicJoin.svelte';

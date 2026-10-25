@@ -12,7 +12,6 @@
 	import IconUpload from '@lucide/svelte/icons/upload';
 	import IconFile from '@lucide/svelte/icons/file';
 
-	import type { MultiField } from '@internal/request/httpx';
 	import CMInput from './CMInput.svelte';
 	import { PathSelectService } from '@services';
 	import { msgAlert } from '@comp/message/AlertNotify.svelte';

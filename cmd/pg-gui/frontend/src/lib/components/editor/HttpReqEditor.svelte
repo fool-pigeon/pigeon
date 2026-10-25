@@ -13,7 +13,6 @@
 	import CMTextArea from '@comp/form/CMTextArea.svelte';
 	import FileSelector from '@comp/form/FileSelector.svelte';
 	import { EditPart, BodyPart } from './HttpView.svelte';
-	import type { ReqData } from '@internal/request/httpx';
 
 	type Prop = { temp: ReqData | null; bodyPart: BodyPart };
 	let { temp = $bindable(), bodyPart = $bindable() }: Prop = $props();

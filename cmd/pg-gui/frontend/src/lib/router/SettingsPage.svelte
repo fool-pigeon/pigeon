@@ -17,7 +17,7 @@
 	import { Events, WML } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
 	import { settings } from '@comp/context/AppSettings.svelte';
-	import { MenuEvent } from '@pg/gui';
+	import { MenuEvent } from '@cmd-gui/gui';
 	import CMTextArea from '@comp/form/CMTextArea.svelte';
 	import ThemePreviewPage from '@comp/pages/ThemePreviewPage.svelte';
 

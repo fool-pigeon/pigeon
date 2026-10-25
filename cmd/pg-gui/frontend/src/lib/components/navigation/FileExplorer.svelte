@@ -42,7 +42,7 @@
 	import { ModeContains } from '@lib/utils/asserts';
 	import OpenCollectionModal from './OpenCollectionModal.svelte';
 	import { modal } from '@comp/base/Modal.svelte';
-	import { MenuEvent } from '@pg/gui';
+	import { MenuEvent } from '@cmd-gui/gui';
 	import { EditorEvent } from '@comp/editor/Editor.svelte';
 	import { taskRunner } from '@comp/runner/TaskRunner.svelte';
 	import EnvSwitch from '@comp/context/EnvSwitch.svelte';

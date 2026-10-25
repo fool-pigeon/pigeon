@@ -19,12 +19,11 @@
 		type FSItem,
 	} from '@comp/navigation/FileExplorer.svelte';
 	import { ModeContains } from '@lib/utils/asserts';
-	import { MenuEvent } from '@pg/gui';
+	import { MenuEvent } from '@cmd-gui/gui';
 	import {
 		FesEvent,
 		FileExploreService,
 		NodeMode,
-		TaskRunService,
 		type FesEvtUpdateSubs,
 		type FileMeta,
 		type Node,
