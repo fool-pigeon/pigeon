@@ -157,7 +157,6 @@ func (r *ReqConfig) mergeConfigREST(c *ConfigREST) {
 		r.ConfigREST = c
 		return
 	}
-	c = c.Copy()
 	r.ConfigREST = r.ConfigREST.Copy()
 	cur := r.ConfigREST
 	// merge Tests
@@ -252,7 +251,7 @@ func (r *ReqConfig) mergeConfigWS(c *ConfigWS) {
 			cur.Subprotocols = c.Subprotocols
 		} else {
 			for _, v := range c.Subprotocols {
-				if slices.Contains(cur.Subprotocols, v) {
+				if !slices.Contains(cur.Subprotocols, v) {
 					cur.Subprotocols = append(cur.Subprotocols, v)
 				}
 			}
@@ -272,7 +271,7 @@ func (r *ReqConfig) mergeConfigWS(c *ConfigWS) {
 			cur.OriginPatterns = c.OriginPatterns
 		} else {
 			for _, v := range c.OriginPatterns {
-				if slices.Contains(cur.OriginPatterns, v) {
+				if !slices.Contains(cur.OriginPatterns, v) {
 					cur.OriginPatterns = append(cur.OriginPatterns, v)
 				}
 			}

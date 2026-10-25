@@ -208,35 +208,143 @@ func TestReqConfigMerge(t *testing.T) {
 			assert.True(t, r.ConfigREST.UnescapeJSON)
 			assert.Equal(t, int64(100), r.ConfigREST.ResponseBodyLimit)
 		})
+		t.Run("empty maps take parent", func(t *testing.T) {
+			r := &ReqConfig{ConfigREST: &ConfigREST{}}
+			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{
+				Tests: map[string]string{"t": "1"},
+				Path:  map[string]string{"p": "/x"},
+			}})
+			assert.Equal(t, map[string]string{"t": "1"}, r.ConfigREST.Tests)
+			assert.Equal(t, map[string]string{"p": "/x"}, r.ConfigREST.Path)
+		})
+		t.Run("retry partial fill", func(t *testing.T) {
+			r := &ReqConfig{ConfigREST: &ConfigREST{Retry: Retry{Count: 5}}}
+			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{Retry: Retry{
+				Count: 3, WaitTime: "1s", MaxWaitTime: "10s", IsAllowNonIdempotent: true,
+			}}})
+			assert.Equal(t, 5, r.ConfigREST.Retry.Count)
+			assert.Equal(t, DurationStr("1s"), r.ConfigREST.Retry.WaitTime)
+			assert.Equal(t, DurationStr("10s"), r.ConfigREST.Retry.MaxWaitTime)
+			assert.True(t, r.ConfigREST.Retry.IsAllowNonIdempotent)
+		})
+		t.Run("flags dst kept", func(t *testing.T) {
+			r := &ReqConfig{ConfigREST: &ConfigREST{UnescapeQuery: true, UnescapeJSON: true, ResponseBodyLimit: 100}}
+			r.Merge(&ReqConfig{ConfigREST: &ConfigREST{UnescapeQuery: false, UnescapeJSON: false, ResponseBodyLimit: 200}})
+			assert.True(t, r.ConfigREST.UnescapeQuery)
+			assert.True(t, r.ConfigREST.UnescapeJSON)
+			assert.Equal(t, int64(100), r.ConfigREST.ResponseBodyLimit)
+		})
 	})
 
-	// TODO: mergeConfigGRPC / mergeConfigWS 内部 merge 逻辑未实现，仅测 nil 与直接赋值分支。
-	t.Run("config grpc todo", func(t *testing.T) {
+	t.Run("config grpc", func(t *testing.T) {
+		t.Run("nil parent noop", func(t *testing.T) {
+			own := &ConfigGRPC{ReadMaxBytes: 1}
+			r := &ReqConfig{ConfigGRPC: own}
+			r.Merge(&ReqConfig{})
+			assert.Same(t, own, r.ConfigGRPC)
+		})
 		t.Run("self nil takes parent", func(t *testing.T) {
 			r := &ReqConfig{}
-			p := &ConfigGRPC{}
+			p := &ConfigGRPC{ReadMaxBytes: 1}
 			r.Merge(&ReqConfig{ConfigGRPC: p})
 			assert.Same(t, p, r.ConfigGRPC)
 		})
-		t.Run("self set kept", func(t *testing.T) {
-			own := &ConfigGRPC{}
+		t.Run("empty fields filled", func(t *testing.T) {
+			r := &ReqConfig{ConfigGRPC: &ConfigGRPC{}}
+			r.Merge(&ReqConfig{ConfigGRPC: &ConfigGRPC{
+				ReadMaxBytes:      1,
+				SendMaxBytes:      2,
+				UseProtoJSON:      true,
+				EnableHTTPGet:     true,
+				HTTPGetMaxURLSize: 3,
+				SendGzip:          true,
+			}})
+			assert.Equal(t, &ConfigGRPC{
+				ReadMaxBytes:      1,
+				SendMaxBytes:      2,
+				UseProtoJSON:      true,
+				EnableHTTPGet:     true,
+				HTTPGetMaxURLSize: 3,
+				SendGzip:          true,
+			}, r.ConfigGRPC)
+		})
+		t.Run("set values kept", func(t *testing.T) {
+			own := &ConfigGRPC{
+				ReadMaxBytes:      10,
+				SendMaxBytes:      20,
+				UseProtoJSON:      true,
+				EnableHTTPGet:     true,
+				HTTPGetMaxURLSize: 30,
+				SendGzip:          true,
+			}
 			r := &ReqConfig{ConfigGRPC: own}
-			r.Merge(&ReqConfig{ConfigGRPC: &ConfigGRPC{}})
-			assert.Same(t, own, r.ConfigGRPC)
+			r.Merge(&ReqConfig{ConfigGRPC: &ConfigGRPC{
+				ReadMaxBytes:      1,
+				SendMaxBytes:      2,
+				UseProtoJSON:      false,
+				EnableHTTPGet:     false,
+				HTTPGetMaxURLSize: 3,
+				SendGzip:          false,
+			}})
+			assert.Equal(t, own, r.ConfigGRPC)
+			// Merge reassigns a copy, never mutating or reusing the original.
+			assert.NotSame(t, own, r.ConfigGRPC)
 		})
 	})
-	t.Run("config ws todo", func(t *testing.T) {
+	t.Run("config ws", func(t *testing.T) {
+		t.Run("nil parent noop", func(t *testing.T) {
+			own := &ConfigWS{CompressionMode: "disabled"}
+			r := &ReqConfig{ConfigWS: own}
+			r.Merge(&ReqConfig{})
+			assert.Same(t, own, r.ConfigWS)
+		})
 		t.Run("self nil takes parent", func(t *testing.T) {
 			r := &ReqConfig{}
-			p := &ConfigWS{}
+			p := &ConfigWS{CompressionMode: "disabled"}
 			r.Merge(&ReqConfig{ConfigWS: p})
 			assert.Same(t, p, r.ConfigWS)
 		})
-		t.Run("self set kept", func(t *testing.T) {
-			own := &ConfigWS{}
-			r := &ReqConfig{ConfigWS: own}
-			r.Merge(&ReqConfig{ConfigWS: &ConfigWS{}})
-			assert.Same(t, own, r.ConfigWS)
+		t.Run("empty fields filled", func(t *testing.T) {
+			r := &ReqConfig{ConfigWS: &ConfigWS{}}
+			r.Merge(&ReqConfig{ConfigWS: &ConfigWS{
+				Subprotocols:         []string{"a", "b"},
+				CompressionMode:      "context_takeover",
+				CompressionThreshold: 100,
+				OriginPatterns:       []string{"x"},
+				InsecureSkipVerify:   true,
+			}})
+			assert.Equal(t, &ConfigWS{
+				Subprotocols:         []string{"a", "b"},
+				CompressionMode:      "context_takeover",
+				CompressionThreshold: 100,
+				OriginPatterns:       []string{"x"},
+				InsecureSkipVerify:   true,
+			}, r.ConfigWS)
+		})
+		t.Run("scalars dst kept", func(t *testing.T) {
+			r := &ReqConfig{ConfigWS: &ConfigWS{
+				CompressionMode:      "no_context_takeover",
+				CompressionThreshold: 50,
+				InsecureSkipVerify:   true,
+			}}
+			r.Merge(&ReqConfig{ConfigWS: &ConfigWS{
+				CompressionMode:      "disabled",
+				CompressionThreshold: 10,
+				InsecureSkipVerify:   false,
+			}})
+			assert.Equal(t, "no_context_takeover", r.ConfigWS.CompressionMode)
+			assert.Equal(t, 50, r.ConfigWS.CompressionThreshold)
+			assert.True(t, r.ConfigWS.InsecureSkipVerify)
+		})
+		t.Run("subprotocols union", func(t *testing.T) {
+			r := &ReqConfig{ConfigWS: &ConfigWS{Subprotocols: []string{"a"}}}
+			r.Merge(&ReqConfig{ConfigWS: &ConfigWS{Subprotocols: []string{"a", "b"}}})
+			assert.Equal(t, []string{"a", "b"}, r.ConfigWS.Subprotocols)
+		})
+		t.Run("origin patterns union", func(t *testing.T) {
+			r := &ReqConfig{ConfigWS: &ConfigWS{OriginPatterns: []string{"a"}}}
+			r.Merge(&ReqConfig{ConfigWS: &ConfigWS{OriginPatterns: []string{"a", "b"}}})
+			assert.Equal(t, []string{"a", "b"}, r.ConfigWS.OriginPatterns)
 		})
 	})
 }
