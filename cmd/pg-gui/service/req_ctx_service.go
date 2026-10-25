@@ -51,7 +51,23 @@ func (r *ReqCtxService) SetRootFromPath(path string) (string, error) {
 	r.root = root
 	return root, nil
 }
-
+func (r *ReqCtxService) SetRootConfMeta(f FileMeta) error {
+	root, err := fsx.RootDir(f.Path)
+	if err != nil {
+		return err
+	}
+	info, err := os.Lstat(f.Path)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return fsx.ErrNotFile
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.rootConfMap[root] = f
+	return nil
+}
 func (r *ReqCtxService) GetRootConfFiles(path string) ([]FileMeta, error) {
 	root, err := fsx.RootDir(path)
 	if err != nil {
