@@ -177,7 +177,7 @@
 					{#if isRawMode}
 						<!-- the cur should not be bindable -->
 						<FileView openedFS={eState.ofs[eState.index]} />
-					{:else if ModeContains(mode, NodeMode.HttpReq)}
+					{:else if ModeContains(mode, NodeMode.Request)}
 						<!-- the cur should not be bindable -->
 						<HttpView openedFS={eState.ofs[eState.index]} bind:isFlexRow />
 					{:else}

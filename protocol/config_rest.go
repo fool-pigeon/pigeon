@@ -26,36 +26,35 @@ var BodyTypes = []BodyKind{BodyNone, BodyURLEncoded, BodyMultipart, BodyRaw, Bod
 
 type (
 	Body struct {
-		Kind       BodyKind
-		Raw        string
-		Multipart  []MultiField
-		URLEncoded map[string][]string
-		BinaryPath string
+		Kind       BodyKind            `json:"kind" toml:"kind"`
+		Raw        string              `json:"raw" toml:"raw"`
+		Multipart  []MultiField        `json:"multipart" toml:"multipart"`
+		URLEncoded map[string][]string `json:"urlEncoded" toml:"url_encoded"`
+		BinaryPath string              `json:"binaryPath" toml:"binary_path"`
 	}
 	MultiField struct {
-		Name        string
-		Value       string
-		FileName    string
-		FilePath    string
-		ContentType string
+		Name        string `json:"name" toml:"name"`
+		Value       string `json:"value" toml:"value"`
+		FileName    string `json:"fileName" toml:"file_name"`
+		FilePath    string `json:"filePath" toml:"file_path"`
+		ContentType string `json:"contentType" toml:"content_type"`
 	}
 )
 type Retry struct {
-	Count                int         `toml:"count" json:"count"`
-	WaitTime             DurationStr `toml:"wait_time" json:"waitTime"`
-	MaxWaitTime          DurationStr `toml:"max_wait_time" json:"maxWaitTime"`
-	IsAllowNonIdempotent bool        `toml:"is_allow_non_idempotent" json:"isAllowNonIdempotent"`
+	Count                int         `json:"count" toml:"count"`
+	WaitTime             DurationStr `json:"waitTime" toml:"wait_time"`
+	MaxWaitTime          DurationStr `json:"maxWaitTime" toml:"max_wait_time"`
+	IsAllowNonIdempotent bool        `json:"isAllowNonIdempotent" toml:"is_allow_non_idempotent"`
 }
 
 type ConfigREST struct {
 	// test expr script
-	Tests map[string]string
-
-	Path              map[string]string
-	Retry             Retry `toml:"retry" json:"retry"`
-	UnescapeQuery     bool  `toml:"unescape_query" json:"unescapeQuery"`
-	UnescapeJSON      bool  `toml:"unescape_json" json:"unescapeJson"`
-	ResponseBodyLimit int64 `toml:"response_body_limit" comment:"if limit<=0,it means no limit" json:"responseBodyLimit"`
+	Tests             map[string]string `json:"tests" toml:"tests"`
+	Path              map[string]string `json:"path" toml:"path"`
+	Retry             Retry             `json:"retry" toml:"retry"`
+	UnescapeQuery     bool              `json:"unescapeQuery" toml:"unescape_query"`
+	UnescapeJSON      bool              `json:"unescapeJSON" toml:"unescape_json"`
+	ResponseBodyLimit int64             `json:"responseBodyLimit" toml:"response_body_limit"`
 }
 
 func (c *ConfigREST) Copy() *ConfigREST {

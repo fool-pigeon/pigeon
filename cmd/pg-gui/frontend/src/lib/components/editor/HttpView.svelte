@@ -57,6 +57,7 @@
 
 <script lang="ts">
 	import HttpReqURLBar from './HttpReqURLBar.svelte';
+	import type { Request } from '@pg/protocol';
 
 	type Prop = {
 		openedFS: OpenedFS;
@@ -64,9 +65,9 @@
 	};
 	let { openedFS, isFlexRow = $bindable() }: Prop = $props();
 	// original http request content
-	let original = $state<ReqData | null>(null);
+	let original = $state<Request | null>(null);
 	// current http request content
-	let temp = $state<ReqData | null>(null);
+	let temp = $state<Request | null>(null);
 	// load status for this page
 	let loadStatus = $state<PageLoadStatus>({ loaded: false, err: null });
 	// default state of request's run results for result viewer

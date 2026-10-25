@@ -45,18 +45,18 @@ var AuthKinds = []AuthKind{AuthInherited, AuthNone, AuthBasic, AuthDigest, AuthT
 
 type (
 	Auth struct {
-		Kind  AuthKind
-		Token AuthDataToken
-		Creds AuthDataCreds
+		Kind  AuthKind      `json:"kind" toml:"kind"`
+		Token AuthDataToken `json:"token" toml:"token"`
+		Creds AuthDataCreds `json:"creds" toml:"creds"`
 	}
 	AuthDataToken struct {
-		Header string `toml:"header,omitempty" json:"header"`
-		Scheme string `toml:"scheme,omitempty" json:"scheme"`
-		Value  string `toml:"val,omitempty" json:"value"`
+		Header string `json:"header" toml:"header"`
+		Scheme string `json:"scheme" toml:"scheme"`
+		Value  string `json:"value" toml:"value"`
 	}
 	AuthDataCreds struct {
-		Username string `toml:"username" json:"username"`
-		Password string `toml:"password" json:"password"`
+		Username string `json:"username" toml:"username"`
+		Password string `json:"password" toml:"password"`
 	}
 )
 
@@ -65,16 +65,16 @@ type (
 // readonly,so that it does not cause data races except [ReqConfig.Merge]
 type ReqConfig struct {
 	// do not inherited
-	Desc string `toml:"desc"`
+	Desc string `json:"desc" toml:"desc"`
 
-	Auth    Auth                `toml:"auth"`
-	Query   map[string][]string `toml:"query"`
-	Header  map[string][]string `toml:"header"`
-	Timeout DurationStr         `toml:"timeout"`
+	Auth    Auth                `json:"auth" toml:"auth"`
+	Query   map[string][]string `json:"query" toml:"query"`
+	Header  map[string][]string `json:"header" toml:"header"`
+	Timeout DurationStr         `json:"timeout" toml:"timeout"`
 
-	ConfigREST *ConfigREST `toml:"config_rest"`
-	ConfigGRPC *ConfigGRPC `toml:"config_grpc"`
-	ConfigWS   *ConfigWS   `toml:"config_ws"`
+	ConfigREST *ConfigREST `json:"configREST" toml:"config_rest"`
+	ConfigGRPC *ConfigGRPC `json:"configGRPC" toml:"config_grpc"`
+	ConfigWS   *ConfigWS   `json:"configWS" toml:"config_ws"`
 }
 
 func (r *ReqConfig) Copy() *ReqConfig {
@@ -287,12 +287,12 @@ type Request struct {
 	ReqMeta
 	ReqConfig
 
-	URL    string
-	Method Method
+	URL    string `json:"url" toml:"url"`
+	Method Method `json:"method" toml:"method"`
 
-	PayloadREST Body
+	PayloadREST Body `json:"payloadREST" toml:"payload_rest"`
 
-	PreReqExpr string
+	PreReqExpr string `json:"preReqExpr" toml:"pre_req_expr"`
 }
 
 func (r *Request) ParseRESTRawURL(rawURL string) error {

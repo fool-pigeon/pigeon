@@ -8,11 +8,12 @@ package protocol
 import "slices"
 
 type ConfigWS struct {
-	Subprotocols         []string
-	CompressionMode      string // "disabled" / "context_takeover" / "no_context_takeover"
-	CompressionThreshold int
-	OriginPatterns       []string
-	InsecureSkipVerify   bool
+	Subprotocols []string `json:"subprotocols" toml:"subprotocols"`
+	// "disabled" / "context_takeover" / "no_context_takeover"
+	CompressionMode      string   `json:"compressionMode" toml:"compression_mode"`
+	CompressionThreshold int      `json:"compressionThreshold" toml:"compression_threshold"`
+	OriginPatterns       []string `json:"originPatterns" toml:"origin_patterns"`
+	InsecureSkipVerify   bool     `json:"insecureSkipVerify" toml:"insecure_skip_verify"`
 }
 
 func (c *ConfigWS) Copy() *ConfigWS {

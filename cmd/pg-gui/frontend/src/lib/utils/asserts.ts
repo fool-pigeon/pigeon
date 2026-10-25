@@ -3,7 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-import type { NodeMode } from "@pg/service";
+import type { NodeMode } from "@services";
 
 /**
  * Assert the src contains dst

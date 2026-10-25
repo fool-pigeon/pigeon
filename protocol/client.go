@@ -63,8 +63,8 @@ var (
 )
 
 type Redirect struct {
-	MaxCount int      `toml:"max_count" json:"maxCount"`
-	Domains  []string `toml:"domains" json:"domains"`
+	MaxCount int      `json:"maxCount" toml:"max_count"`
+	Domains  []string `json:"domains" toml:"domains"`
 }
 
 type ActualClient = resty.Client
@@ -72,9 +72,9 @@ type ActualClient = resty.Client
 // [Client] is wrap to store client's data into toml file for [resty.Client].
 // The client will be instanced when called [Client.InstancedClient]
 type Client struct {
-	ProxyURL string      `toml:"proxy_url"`
-	Timeout  DurationStr `toml:"timeout"`
-	Redirect Redirect    `toml:"redirect"`
+	ProxyURL string      `json:"proxyURL" toml:"proxy_url"`
+	Timeout  DurationStr `json:"timeout" toml:"timeout"`
+	Redirect Redirect    `json:"redirect" toml:"redirect"`
 
 	client *ActualClient
 }

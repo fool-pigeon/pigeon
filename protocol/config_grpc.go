@@ -6,12 +6,12 @@
 package protocol
 
 type ConfigGRPC struct {
-	ReadMaxBytes      int
-	SendMaxBytes      int
-	UseProtoJSON      bool
-	EnableHTTPGet     bool
-	HTTPGetMaxURLSize int
-	SendGzip          bool
+	ReadMaxBytes      int  `json:"readMaxBytes" toml:"read_max_bytes"`
+	SendMaxBytes      int  `json:"sendMaxBytes" toml:"send_max_bytes"`
+	UseProtoJSON      bool `json:"useProtoJSON" toml:"use_proto_json"`
+	EnableHTTPGet     bool `json:"enableHTTPGet" toml:"enable_http_get"`
+	HTTPGetMaxURLSize int  `json:"httpGetMaxURLSize" toml:"http_get_max_url_size"`
+	SendGzip          bool `json:"sendGzip" toml:"send_gzip"`
 }
 
 func (c *ConfigGRPC) Copy() *ConfigGRPC {

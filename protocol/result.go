@@ -24,14 +24,14 @@ type ResultCover struct {
 type ResMeta struct {
 	ResultCover
 
-	ID ulid.ULID
+	ID ulid.ULID `json:"id"`
 
 	// this means the tag of status,such as "2xx","4xx","5xx","err","failed"
 	Status string `json:"status"`
 	// the end-to-end duration between send request and received response
 	Duration time.Duration `json:"duration"`
 
-	Request Request
+	Request Request `json:"request"`
 }
 
 // As the View Result
