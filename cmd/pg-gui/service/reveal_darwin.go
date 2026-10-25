@@ -5,10 +5,10 @@
 
 //go:build darwin
 
-package reveal
+package service
 
 import "os/exec"
 
-func Open(path string) error {
+func (r revealer) Open(path string) error {
 	return exec.Command("open", "-R", path).Start()
 }

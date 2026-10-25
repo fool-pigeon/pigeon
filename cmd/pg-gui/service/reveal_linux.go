@@ -5,7 +5,7 @@
 
 //go:build !windows && !darwin
 
-package reveal
+package service
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-func Open(path string) error {
+func (r revealer) Open(path string) error {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("abs path: %w", err)

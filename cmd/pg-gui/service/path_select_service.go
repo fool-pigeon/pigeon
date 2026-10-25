@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/fool-pigeon/pigeon/cmd/pg-gui/service/reveal"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
