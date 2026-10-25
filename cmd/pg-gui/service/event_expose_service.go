@@ -7,6 +7,7 @@ package service
 
 import (
 	"github.com/fool-pigeon/pigeon/cmd/pg-gui/gui"
+	"github.com/fool-pigeon/pigeon/protocol"
 )
 
 // A service to auto expose Event const nad Events data struct type
@@ -22,6 +23,9 @@ func (e *EventConstExposeService) ExposedAlertEvt(evt AlertEvent) {}
 
 func (e *EventConstExposeService) ExposedTrsEvt(
 	evt TaskSEvent,
+	ss TaskSStream,
+	taskResViewMeta TaskResViewMeta,
+	traceView protocol.TraceView,
 ) {
 }
 
