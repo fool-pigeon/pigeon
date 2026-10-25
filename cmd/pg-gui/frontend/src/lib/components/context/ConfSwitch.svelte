@@ -27,7 +27,7 @@
 		if (path) {
 			loaded = false;
 			untrack(() => {
-				ReqCtxService.ParseEnvs(path)
+				ReqCtxService.GetRootConfFiles(path)
 					.then((opts) => {
 						options = opts ?? [];
 						const meta = cache.get(path);

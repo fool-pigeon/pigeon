@@ -8,7 +8,7 @@
 <script lang="ts">
 	import { modal } from '@comp/base/Modal.svelte';
 	import TreeMenu from '@comp/base/TreeMenu.svelte';
-	import EnvSwitch from '@comp/context/EnvSwitch.svelte';
+	import ConfSwitch from '@comp/context/ConfSwitch.svelte';
 	import { msgAlert } from '@comp/message/AlertNotify.svelte';
 	import {
 		fileExplorer,
@@ -256,7 +256,7 @@
 			</select>
 		</label>
 		<div>
-			<EnvSwitch path={collectionFile?.path} bind:current={envFile} />
+			<ConfSwitch path={collectionFile?.path} bind:current={envFile} />
 		</div>
 	</div>
 {/snippet}

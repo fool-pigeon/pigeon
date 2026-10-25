@@ -45,7 +45,7 @@
 	import { MenuEvent } from '@cmd-gui/gui';
 	import { EditorEvent } from '@comp/editor/Editor.svelte';
 	import { taskRunner } from '@comp/runner/TaskRunner.svelte';
-	import EnvSwitch from '@comp/context/EnvSwitch.svelte';
+	import ConfSwitch from '@comp/context/ConfSwitch.svelte';
 	import { reqCtx } from '@comp/context/ReqCtx.svelte';
 
 	export type FS = Node | null;
@@ -378,7 +378,7 @@
 <div class="w-full h-full min-h-0 flex flex-col">
 	<div class="w-full flex flex-col border-b border-base-content/70">
 		<div class="w-full border-b border-base-content/30">
-			<EnvSwitch path={reqCtx.root} bind:current={reqCtx.envFile} />
+			<ConfSwitch path={reqCtx.root} bind:current={reqCtx.confFile} />
 		</div>
 		<div class="flex p-1 *:outline-none *:hover:bg-base-content/40">
 			{#each topBarBtns as btn (btn.label)}

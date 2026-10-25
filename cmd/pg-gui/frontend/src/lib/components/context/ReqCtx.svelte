@@ -6,7 +6,6 @@
 -->
 
 <script lang="ts" module>
-	import { rectangularSelection } from '@codemirror/view';
 	import { msgAlert } from '@comp/message/AlertNotify.svelte';
 	import { DataEvent } from '@lib/enum/events';
 	import { assertPath } from '@lib/utils/asserts';
@@ -15,7 +14,7 @@
 	import { onMount } from 'svelte';
 	type ReqCtx = {
 		root?: string;
-		envFile?: FileMeta;
+		confFile?: FileMeta;
 	};
 	export const reqCtx = $state<ReqCtx>({});
 </script>
@@ -44,10 +43,10 @@
 		};
 	});
 	$effect(() => {
-		const envFile = reqCtx.envFile;
-		if (envFile) {
-			ReqCtxService.SetEnvInfo(envFile)
-				.then(() => msgAlert.success(`current env ${envFile.name}`))
+		const confFile = reqCtx.confFile;
+		if (confFile) {
+			ReqCtxService.SetRootConfMeta(confFile)
+				.then(() => msgAlert.success(`current conf ${confFile.name}`))
 				.catch(msgAlert.error);
 		}
 	});
