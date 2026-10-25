@@ -27,11 +27,11 @@ type NodeMode uint32
 
 const (
 	DirMode      NodeMode = 1 << iota // Directory: is a directory
-	RootTag                           // the .pg/ directory
+	DirRootTag                        // the .pg/ directory
+	DirNormal                         // NormalDir: redundancy
+	FileMode                          // File: is a file
 	RootConfFile                      // e.g .pg/conf/conf.toml
 	RootRunFile                       // e.g .pg/run/dev.toml
-	NormalDir                         // NormalDir: redundancy
-	FileMode                          // File: is a file
 	ConfFile                          // ConfFile: toml file named .conf
 
 	Request // Req: is a request file
@@ -92,9 +92,9 @@ func NewNode(mode NodeMode, path string, name string, pre ...*Node) *Node {
 func NewDirNode(path string, name string, pre ...*Node) *Node {
 	m := DirMode
 	if name == fsx.RootTag {
-		m |= RootTag
+		m |= DirRootTag
 	} else {
-		m |= NormalDir
+		m |= DirNormal
 	}
 	return NewNode(m, path, name, pre...)
 }

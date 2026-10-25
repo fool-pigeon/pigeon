@@ -488,9 +488,9 @@
 		Raw: NodeMode.FileMode,
 	}}
 	{let mode = $state(modes.RequestFile)}
-	{let ext = $derived(ModeContains(mode, NodeMode.ConfigFile | NodeMode.Request) ? '.toml' : '')}
-	{let reqType = $state(NodeMode.HttpReq)}
-	{let methodType = $state(NodeMode.HttpGet)}
+	{let ext = $derived(ModeContains(mode, NodeMode.ConfFile | NodeMode.Request) ? '.toml' : '')}
+	{let reqType = $state(NodeMode.ReqREST)}
+	{let methodType = $state(NodeMode.HTTPGet)}
 
 	<div class="flex grow">
 		<select bind:value={mode} class="w-full select select-sm outline-none">
@@ -499,26 +499,26 @@
 			{/each}
 		</select>
 		{#if ModeContains(mode, NodeMode.Request)}
-			{const ReqTypes = { HTTP: NodeMode.HttpReq }}
+			{const ReqTypes = { HTTP: NodeMode.ReqREST }}
 			<select bind:value={reqType} class="select select-sm outline-none">
 				{#each Object.entries(ReqTypes) as [label, type]}
 					<option value={type}>{label}</option>
 				{/each}
 			</select>
-			{#if ModeContains(reqType, NodeMode.HttpReq)}
-				{const HttpMethods = {
-					GET: NodeMode.HttpGet,
-					POST: NodeMode.HttpPost,
-					PUT: NodeMode.HttpPut,
-					DELETE: NodeMode.HttpDelete,
-					HEAD: NodeMode.HttpHead,
-					PATCH: NodeMode.HttpPatch,
-					OPTIONS: NodeMode.HttpOptions,
-					CONNECT: NodeMode.HttpConnect,
-					TRACE: NodeMode.HttpTrace,
+			{#if ModeContains(reqType, NodeMode.ReqREST)}
+				{const HTTPMethods = {
+					GET: NodeMode.HTTPGet,
+					POST: NodeMode.HTTPPost,
+					PUT: NodeMode.HTTPPut,
+					DELETE: NodeMode.HTTPDelete,
+					HEAD: NodeMode.HTTPHead,
+					PATCH: NodeMode.HTTPPatch,
+					OPTIONS: NodeMode.HTTPOptions,
+					CONNECT: NodeMode.HTTPConnect,
+					TRACE: NodeMode.HTTPTrace,
 				}}
 				<select bind:value={methodType} class="select select-sm outline-none">
-					{#each Object.entries(HttpMethods) as [label, type]}
+					{#each Object.entries(HTTPMethods) as [label, type]}
 						<option value={type}>{label}</option>
 					{/each}
 				</select>
@@ -532,7 +532,7 @@
 			if (!fileName) return;
 			let m = mode;
 			if (ModeContains(m, NodeMode.Request)) m |= reqType;
-			if (ModeContains(m, NodeMode.HttpReq)) m |= methodType;
+			if (ModeContains(m, NodeMode.ReqREST)) m |= methodType;
 			FileExploreService.AddFileNode(parent, fileName + ext, m)
 				.then(() => msgAlert.success(`Create ${fileName} Success`))
 				.catch(msgAlert.error);
@@ -746,33 +746,42 @@
 		<span>Unkown</span>
 		<!-- Icon for folder -->
 	{:else if ModeContains(m, NodeMode.DirMode)}
-		<!-- config folder -->
-		{#if ModeContains(m, NodeMode.ConfigDir)}
+		<!-- config folder root tag -->
+		{#if ModeContains(m, NodeMode.DirRootTag)}
 			<IconFolderCog class="size-4" strokeWidth={1} nonScalingStroke />
 		{:else}
 			<IconFolder class="size-4" strokeWidth={1} nonScalingStroke />
 		{/if}
 		<!-- Icon for file -->
 	{:else if ModeContains(m, NodeMode.FileMode)}
-		{#if ModeContains(m, NodeMode.HttpGet)}
-			<span class="text-req-get">GET</span>
-		{:else if ModeContains(m, NodeMode.HttpPost)}
-			<span class="text-req-post">POST</span>
-		{:else if ModeContains(m, NodeMode.HttpPut)}
-			<span class="text-req-put">PUT</span>
-		{:else if ModeContains(m, NodeMode.HttpDelete)}
-			<span class="text-req-delete">DEL</span>
-		{:else if ModeContains(m, NodeMode.HttpHead)}
-			<span class="text-req-head">HEAD</span>
-		{:else if ModeContains(m, NodeMode.HttpPatch)}
-			<span class="text-req-patch">PATCH</span>
-		{:else if ModeContains(m, NodeMode.HttpOptions)}
-			<span class="text-req-options">OPT</span>
-		{:else if ModeContains(m, NodeMode.HttpTrace)}
-			<span class="text-req-trace">TRACE</span>
-		{:else if ModeContains(m, NodeMode.HttpConnect)}
-			<span class="text-req-connect">CON</span>
-			<!-- TODO: add more icon for req file -->
+		{#if ModeContains(m, NodeMode.ReqREST)}
+			{#if ModeContains(m, NodeMode.HTTPGet)}
+				<span class="text-req-get">GET</span>
+			{:else if ModeContains(m, NodeMode.HTTPPost)}
+				<span class="text-req-post">POST</span>
+			{:else if ModeContains(m, NodeMode.HTTPPut)}
+				<span class="text-req-put">PUT</span>
+			{:else if ModeContains(m, NodeMode.HTTPDelete)}
+				<span class="text-req-delete">DEL</span>
+			{:else if ModeContains(m, NodeMode.HTTPHead)}
+				<span class="text-req-head">HEAD</span>
+			{:else if ModeContains(m, NodeMode.HTTPPatch)}
+				<span class="text-req-patch">PATCH</span>
+			{:else if ModeContains(m, NodeMode.HTTPOptions)}
+				<span class="text-req-options">OPT</span>
+			{:else if ModeContains(m, NodeMode.HTTPTrace)}
+				<span class="text-req-trace">TRACE</span>
+			{:else if ModeContains(m, NodeMode.HTTPConnect)}
+				<span class="text-req-connect">CON</span>
+			{:else}
+				<span>REST</span>
+			{/if}
+		{:else if ModeContains(m, NodeMode.ReqGQL)}
+			<span class="text-info">GQL</span>
+		{:else if ModeContains(m, NodeMode.ReqGRPC)}
+			<span class="text-info">GRPC</span>
+		{:else if ModeContains(m, NodeMode.ReqWS)}
+			<span class="text-warning">WS</span>
 		{:else}
 			<IconFile class="size-4" strokeWidth={1} nonScalingStroke />
 		{/if}
