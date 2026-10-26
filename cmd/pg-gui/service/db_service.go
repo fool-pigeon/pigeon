@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/fool-pigeon/pigeon/cmd/pg-gui/gui"
@@ -45,11 +46,25 @@ func (d *DataSource) ServiceStartup(ctx context.Context, options application.Ser
 	if err := fsx.MkdirAll(cacheDBPath); err != nil {
 		return err
 	}
-	db, err := badger.Open(badger.DefaultOptions(cacheDBPath))
+	db, err := badger.Open(badger.DefaultOptions(cacheDBPath).
+		WithValueLogFileSize(64 << 20). // 64MB
+		WithMemTableSize(48 << 20),     // 48MB
+	)
 	if err != nil {
 		return err
 	}
 	d.cache = db
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+		again:
+			err := db.RunValueLogGC(0.7)
+			if err == nil {
+				goto again
+			}
+		}
+	}()
 
 	return nil
 }
