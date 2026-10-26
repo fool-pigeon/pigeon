@@ -13,7 +13,7 @@
 
 	import type { OpenedFS } from './Editor.svelte';
 	import { onMount } from 'svelte';
-	import { ReqCtxService } from '@cmd-gui/service';
+	import { ReqCtxService, ReqFileService } from '@cmd-gui/service';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { Events } from '@wailsio/runtime';
 	import { MenuEvent } from '@cmd-gui/gui';
@@ -32,27 +32,6 @@
 		history: TaskResHttp[];
 		err?: unknown;
 	};
-
-	export const EditPart = {
-		Path: 'Path',
-		Query: 'Query',
-		Body: 'Body',
-		Header: 'Header',
-		Tests: 'Tests',
-		Desc: 'Description',
-		PreReq: 'PreRequest',
-		// TODO: for more,auth,retry,other setting
-	} as const;
-	export type EditPart = (typeof EditPart)[keyof typeof EditPart];
-
-	export const BodyPart = {
-		None: 'none',
-		Raw: 'raw',
-		Multipart: 'multipart/form-data',
-		UrlEncoded: 'x-www-form-urlencoded',
-		Binary: 'binary',
-	} as const;
-	export type BodyPart = (typeof BodyPart)[keyof typeof BodyPart];
 </script>
 
 <script lang="ts">
@@ -73,43 +52,6 @@
 	// default state of request's run results for result viewer
 	let resState = $state<HttpResState>({ loaded: false, isSending: false, history: [] });
 	// Current Selected body part
-	let bodyPart = $state<BodyPart>(BodyPart.None);
-
-	function purifyTemp() {
-		if (!temp) {
-			return;
-		}
-		temp.body = purifyBody($state.snapshot(temp.body), bodyPart);
-	}
-	/**
-	 * return the body that only has one part of b
-	 * @param b
-	 * @param bodyPart
-	 */
-	function purifyBody(b: Body, bodyPart: string) {
-		const res: Body = {
-			raw: '',
-			multipart: null,
-			form: null,
-			binary: '',
-			contentType: b.contentType,
-		};
-		switch (bodyPart) {
-			case BodyPart.Raw:
-				res.raw = b.raw;
-				break;
-			case BodyPart.Multipart:
-				res.multipart = b.multipart;
-				break;
-			case BodyPart.UrlEncoded:
-				res.form = b.form;
-				break;
-			case BodyPart.Binary:
-				res.binary = b.binary;
-				break;
-		}
-		return res;
-	}
 	function send() {
 		if (resState.isSending) {
 			return;
@@ -136,8 +78,7 @@
 		const cur = { ...openedFS };
 		const fs = cur.fs;
 		const unregisterSave = Events.On(MenuEvent.Save, () => {
-			purifyTemp();
-			HttpReqFileService.Write(fs.id, temp)
+			ReqFileService.Write(fs.id, temp)
 				.then((m) => {
 					fs.additional = m;
 					// original should be set to copy of temp
@@ -150,22 +91,10 @@
 		});
 		const unregisterSend = Events.On(MenuEvent.RunRequest, () => send());
 		Promise.allSettled([
-			HttpReqFileService.Read(fs.id).then((v) => {
+			ReqFileService.Read(fs.id).then((v) => {
 				temp = v;
-				if (temp) {
-					const b = temp.body;
-					if (b.raw !== '') {
-						bodyPart = BodyPart.Raw;
-					} else if (b.multipart && b.multipart.length > 0) {
-						bodyPart = BodyPart.Multipart;
-					} else if (b.form) {
-						bodyPart = BodyPart.UrlEncoded;
-					} else if (b.binary !== '') {
-						bodyPart = BodyPart.Binary;
-					}
-				}
 			}),
-			HttpReqFileService.ReadOriginal(fs.id).then((v) => {
+			ReqFileService.ReadOriginal(fs.id).then((v) => {
 				original = v;
 			}),
 		])
@@ -178,9 +107,8 @@
 		return async () => {
 			unregisterSave();
 			unregisterSend();
-			purifyTemp();
 			// TODO: do not stage when editor's ofs not contains this
-			await HttpReqFileService.Stage(fs.id, temp);
+			await ReqFileService.Stage(fs.id, temp);
 		};
 	});
 	$effect(() => {
@@ -210,7 +138,7 @@
 </div>
 
 {#snippet reqEditor()}
-	<ReqEditor bind:temp bind:bodyPart />
+	<ReqEditor bind:temp />
 {/snippet}
 
 {#snippet respViewer()}

@@ -113,7 +113,7 @@
 </script>
 
 <script lang="ts">
-	import { NodeMode, type FileMeta } from '@services';
+	import { NodeMode, TaskSEvent, type FileMeta } from '@services';
 	import { Events } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -124,25 +124,20 @@
 	import { deleteLine } from '@codemirror/commands';
 
 	onMount(() => {
-		function pushRes<R extends TaskRes<unknown>>(mode: NodeMode, ev: Events.WailsEvent<string>) {
-			const res = ev.data as R;
-			const id = res.meta.id;
-			const w = { mode, res };
-			if (!taskResMap.has(id)) {
-				let arr = $state<TaskResWrapper[]>([w]);
-				taskResMap.set(id, arr);
-			} else {
-				taskResMap.get(id)!.push(w);
-			}
-			// taskResMap.set(id, [...(taskResMap.get(id) ?? []), w]);
-		}
+		// function pushRes<R extends TaskRes<unknown>>(mode: NodeMode, ev: Events.WailsEvent<string>) {
+		// 	const res = ev.data as R;
+		// 	const id = res.meta.id;
+		// 	const w = { mode, res };
+		// 	if (!taskResMap.has(id)) {
+		// 		let arr = $state<TaskResWrapper[]>([w]);
+		// 		taskResMap.set(id, arr);
+		// 	} else {
+		// 		taskResMap.get(id)!.push(w);
+		// 	}
+		// 	// taskResMap.set(id, [...(taskResMap.get(id) ?? []), w]);
+		// }
 		const unToggleRunBoard = Events.On(MenuEvent.ToggleRunBoard, () => (isShow = !isShow));
-		const unResErr = Events.On(TrsEvent.TrsResultErr, (ev) => pushRes(NodeMode.$zero, ev));
-		const unResAny = Events.On(TrsEvent.TrsResultAny, (ev) => pushRes(NodeMode.$zero, ev));
-		const unResHttp = Events.On(TrsEvent.TrsResultHttp, (ev) => {
-			pushRes(NodeMode.FileMode | NodeMode.HttpReq, ev);
-		});
-		const unCancelld = Events.On(TrsEvent.TrsCancelld, (ev) => {
+		const unCancelld = Events.On(TaskSEvent.TaskSECancelled, (ev) => {
 			const id = ev.data as string;
 			if (runningTaskId.has(id)) {
 				runningTaskId.delete(id);
@@ -155,7 +150,7 @@
 				msgAlert.warn('task is not running');
 				return;
 			}
-			Events.Emit(TrsEvent.TrsCancel, id);
+			Events.Emit(TaskSEvent.TaskSECancel, id);
 		});
 		const unRestart = Events.On(TaskEvent.Restart, (ev) => {
 			const id = ev.data as string;
@@ -164,8 +159,8 @@
 		const unDelete = Events.On(TaskEvent.Delete, (ev) => {
 			const id = ev.data as string;
 			if (runningTaskId.has(id)) {
-				Events.Emit(TrsEvent.TrsCancel, id);
-				const ungister = Events.On(TrsEvent.TrsCancelld, (cevt) => {
+				Events.Emit(TaskSEvent.TaskSECancel, id);
+				const ungister = Events.On(TaskSEvent.TaskSECancelled, (cevt) => {
 					const cancelledId = cevt.data as string;
 					if (cancelledId !== id) return;
 					taskInfo.delete(id);
@@ -180,9 +175,6 @@
 
 		return () => {
 			unToggleRunBoard();
-			unResErr();
-			unResAny();
-			unResHttp();
 			unCancelld();
 			unStop();
 			unRestart();
