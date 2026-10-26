@@ -36,16 +36,18 @@ var (
 type TaskSEvent = string
 
 const (
-	// go receive data:
-	// id:string
+	// receive [Task.ID]
 	//
 	// it will cancel the task whose task's id equals that
 	TaskSECancel TaskSEvent = "task-service:cancel"
-	// go send data:
-	// id:string
+	// send [Task.ID]
 	//
 	// it will send the cancelled task's id
 	TaskSECancelled TaskSEvent = "task-service:cancelled"
+	// receive [protocol.Request.ID]
+	//
+	// it will cancel the single request sending whose request's id equals that
+	TaskSECancelSingle TaskSEvent = "task-service:cancel-single"
 )
 
 // [TaskService] Stream
@@ -59,7 +61,7 @@ const (
 	// Send JSON
 	//
 	// [TaskResMeta]
-	TaskSSResMeta TaskSStream = "task-service:stream:task-res-view-meta"
+	TaskSSResMeta TaskSStream = "task-service:stream:task-res-meta"
 	// Send JSON
 	//
 	// [protocol.TraceView]
@@ -126,11 +128,11 @@ type TaskResMeta struct {
 }
 type TaskResView struct {
 	TaskResBody
-	Spent string
+	Spent string `json:"spent"`
 	// response body size
-	ContentSize  string
-	HTTPRequest  *TaskHTTPExtView
-	HTTPResponse *TaskHTTPExtView
+	ContentSize  string           `json:"contentSize"`
+	HTTPRequest  *TaskHTTPExtView `json:"httpRequest"`
+	HTTPResponse *TaskHTTPExtView `json:"httpResponse"`
 }
 
 func (res *taskRes) toMeta(taskID ulid.ULID) TaskResMeta {
@@ -263,8 +265,6 @@ func (tr *TaskService) LoadTraceViewList(resID ulid.ULID) error {
 	})
 }
 
-// func (tr *TaskService)
-
 func (tr *TaskService) RunDir(path string, rootConf string) error {
 	path = filepath.Clean(path)
 	info, err := os.Lstat(path)
@@ -303,17 +303,100 @@ func (tr *TaskService) Run(task Task) error {
 	}
 	task.RunPaths = task.RunPaths.ToAbs(root)
 
-	return tr.run(task)
+	return tr.run(context.Background(), task)
 }
 
-// The key for get body in Context of [httpx.Request]
-// For example,get the body value from context of [http.Request] named req:
-//
-// b := req.Context().Value(HTTPBodyKey{}).([]byte)
-type HTTPBodyKey struct{}
+type resultInner struct {
+	runResult *core.RunResult
+	err       error
+}
 
-func (tr *TaskService) run(task Task) error {
+func (tr *TaskService) RunSingleReq(rootConfPath string, reqPath string, request protocol.Request) (*TaskResView, error) {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if tr.evt != nil {
+		unregister := tr.evt.On(TaskSECancelSingle, func(event *application.CustomEvent) {
+			if cancelledID, ok := event.Data.(string); ok && cancelledID == request.ID.String() {
+				cancel()
+			}
+		})
+		defer unregister()
+	}
+
+	var rootConf core.RootConf
+	if err := fsx.ReadToml(rootConfPath, &rootConf); err != nil {
+		alert.warn(fmt.Sprintf("%s read error,using empty root conf", rootConfPath))
+	}
+
+	// send trace view stream
+	traceCh := make(chan *protocol.Trace, 2)
+	defer close(traceCh)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case trace, ok := <-traceCh:
+				if !ok {
+					return
+				}
+				if err := tr.storeTaskResTrace(trace); err != nil {
+					alert.error(fmt.Sprint(trace.ResID, trace.ID, err))
+					continue
+				}
+			}
+		}
+	}()
+	var inner resultInner
+	input := core.RunInput{
+		Start:      filepath.Dir(reqPath),
+		Tasks:      []string{filepath.Clean(reqPath)},
+		RootConf:   rootConf,
+		ClientInit: tr.reqClientInit,
+		ResultHandler: func(res *core.RunResult, err error) {
+			inner.runResult = res
+			inner.err = err
+		},
+		TraceHandler: func(t *protocol.Trace) {
+			if t == nil {
+				return
+			}
+			select {
+			case <-ctx.Done():
+			case traceCh <- t:
+			}
+		},
+	}
+	if err := core.Run(ctx, input); err != nil {
+		return nil, err
+	}
+	// parse result
+	if inner.runResult == nil || inner.runResult.Res == nil {
+		return nil, fmt.Errorf("result of run:%w", ErrNilValue)
+	}
+	tRes := taskRes{TaskResBody: TaskResBody{RunMeta: inner.runResult.RunMeta, ResMeta: inner.runResult.Res.ResMeta}}
+	if err := inner.err; err != nil {
+		tRes.ErrStr = err.Error()
+	} else {
+		tr.parseRunResRaw(inner.runResult, &tRes)
+	}
+	// write into db
+	if err := tr.db.getDB().Update(func(txn *badger.Txn) error {
+		if err := txn.Set(makeDBKey([]byte(dbKeyReqRes), tRes.ResMeta.Request.ID[:], tRes.ResMeta.ID[:]), nil); err != nil {
+			return err
+		}
+		return dbTxnSet(txn, makeDBKey([]byte(dbKeyResID), tRes.ResMeta.ID[:]), &tRes)
+	}); err != nil {
+		return nil, err
+	}
+
+	// convert and return
+	return tRes.toView()
+}
+
+func (tr *TaskService) run(ctx context.Context, task Task) error {
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	if tr.evt != nil {
@@ -330,10 +413,6 @@ func (tr *TaskService) run(task Task) error {
 		alert.warn(fmt.Sprintf("%s read error,using empty root conf", task.RunPaths.RootConf))
 	}
 
-	type resultInner struct {
-		runResult *core.RunResult
-		err       error
-	}
 	innerCh := make(chan resultInner, 8)
 	defer close(innerCh)
 	go func() {
@@ -364,7 +443,7 @@ func (tr *TaskService) run(task Task) error {
 		}
 	}()
 
-	traceCh := make(chan protocol.Trace, 16)
+	traceCh := make(chan *protocol.Trace, 16)
 	defer close(traceCh)
 	go func() {
 		for {
@@ -384,13 +463,14 @@ func (tr *TaskService) run(task Task) error {
 	}()
 
 	input := core.RunInput{
-		Start:    task.RunPaths.Start,
-		Tasks:    task.RunPaths.Tasks,
-		RootConf: rootConf,
+		Start:      task.RunPaths.Start,
+		Tasks:      task.RunPaths.Tasks,
+		RootConf:   rootConf,
+		ClientInit: tr.reqClientInit,
 		ResultHandler: func(runResult *core.RunResult, err error) {
 			select {
-			case innerCh <- resultInner{runResult, err}:
 			case <-ctx.Done():
+			case innerCh <- resultInner{runResult, err}:
 			}
 		},
 		TraceHandler: func(t *protocol.Trace) {
@@ -398,31 +478,11 @@ func (tr *TaskService) run(task Task) error {
 				return
 			}
 			select {
-			case traceCh <- *t:
 			case <-ctx.Done():
+			case traceCh <- t:
 			default:
 				alert.error("[task-service] run traceCh chan flood")
 			}
-		},
-		ClientInit: func(client *protocol.ActualClient) {
-			client.SetRequestMiddlewares(
-				resty.MiddlewareRequestCreate,
-				func(c *resty.Client, req *resty.Request) error {
-					var bodyBytes []byte
-					if r := req.RawRequest; r != nil && r.Body != nil {
-						b, err := io.ReadAll(r.Body)
-						if err != nil {
-							return err
-						}
-						r.Body.Close()
-						bodyBytes = b
-						// Resume Body, subsequent requests sent normally
-						r.Body = io.NopCloser(bytes.NewReader(b))
-					}
-					req.SetContext(context.WithValue(req.Context(), HTTPBodyKey{}, bodyBytes))
-					return nil
-				},
-			)
 		},
 	}
 	if err := core.Run(ctx, input); err != nil {
@@ -437,6 +497,33 @@ func (tr *TaskService) run(task Task) error {
 		return err
 	}
 	return nil
+}
+
+// The key for get body in Context of [httpx.Request]
+// For example,get the body value from context of [http.Request] named req:
+//
+// b := req.Context().Value(HTTPBodyKey{}).([]byte)
+type HTTPBodyKey struct{}
+
+func (tr *TaskService) reqClientInit(client *protocol.ActualClient) {
+	client.SetRequestMiddlewares(
+		resty.MiddlewareRequestCreate,
+		func(c *resty.Client, req *resty.Request) error {
+			var bodyBytes []byte
+			if r := req.RawRequest; r != nil && r.Body != nil {
+				b, err := io.ReadAll(r.Body)
+				if err != nil {
+					return err
+				}
+				r.Body.Close()
+				bodyBytes = b
+				// Resume Body, subsequent requests sent normally
+				r.Body = io.NopCloser(bytes.NewReader(b))
+			}
+			req.SetContext(context.WithValue(req.Context(), HTTPBodyKey{}, bodyBytes))
+			return nil
+		},
+	)
 }
 func (tr *TaskService) parseRunResRaw(runRes *core.RunResult, tRes *taskRes) {
 	switch v := runRes.Res.Raw.(type) {
@@ -471,8 +558,8 @@ func (tr *TaskService) parseRunResRaw(runRes *core.RunResult, tRes *taskRes) {
 func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
 		// write txn
-		viewMeta := tRes.toMeta(taskID)
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyTaskResMeta), taskID[:], tRes.ResMeta.ID[:]), &viewMeta); err != nil {
+		resMeta := tRes.toMeta(taskID)
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyTaskResMeta), taskID[:], tRes.ResMeta.ID[:]), &resMeta); err != nil {
 			return err
 		}
 		if err := txn.Set(makeDBKey([]byte(dbKeyReqRes), tRes.ResMeta.Request.ID[:], tRes.ResMeta.ID[:]), nil); err != nil {
@@ -483,14 +570,14 @@ func (tr *TaskService) storeTaskRes(tRes taskRes, taskID ulid.ULID) error {
 		}
 
 		// to stream,emit to front
-		tr.resMetaCh <- &viewMeta
+		tr.resMetaCh <- &resMeta
 
 		return nil
 	})
 }
-func (tr *TaskService) storeTaskResTrace(trace protocol.Trace) error {
+func (tr *TaskService) storeTaskResTrace(trace *protocol.Trace) error {
 	return tr.db.getDB().Update(func(txn *badger.Txn) error {
-		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyResTraceView), trace.ResID[:], uid.Uint64ToBytes(trace.ID)), &trace); err != nil {
+		if err := dbTxnSet(txn, makeDBKey([]byte(dbKeyResTraceView), trace.ResID[:], uid.Uint64ToBytes(trace.ID)), trace); err != nil {
 			return err
 		}
 
