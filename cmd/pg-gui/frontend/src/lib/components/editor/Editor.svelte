@@ -337,19 +337,18 @@
 		<div>You have unsaved changes in this file.</div>
 		<div class="mt-4 flex justify-between">
 			<button
-				class="rounded-none btn btn-error p-2"
+				class="btn btn-error p-2"
 				onclick={() => {
 					eState.close();
 					modal.close();
 				}}>Not Save</button
 			>
 			<div class="flex gap-1">
-				<button
-					class="rounded-none btn btn-ghost p-2 hover:bg-base-content/30"
-					onclick={() => modal.close()}>Cancel</button
+				<button class="btn btn-ghost p-2 hover:bg-base-content/30" onclick={() => modal.close()}
+					>Cancel</button
 				>
 				<button
-					class="rounded-none btn btn-info p-2 hover:btn-success"
+					class="btn btn-info p-2 hover:btn-success"
 					onclick={() => {
 						const unregister = Events.Once(DataEvent.EditorSaved, () => {
 							eState.close();

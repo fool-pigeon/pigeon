@@ -385,7 +385,7 @@
 				<button
 					title={btn.label}
 					onclick={btn.handle}
-					class="btn btn-ghost rounded-none size-5 p-0 text-base-content"
+					class="btn btn-ghost size-5 p-0 text-base-content"
 				>
 					<btn.icon class="size-4" />
 				</button>
@@ -619,7 +619,7 @@
 {/snippet}
 {#snippet itemContextMenu()}
 	<ul
-		class="menu p-0 bg-base-100 border border-base-content/30 [&_li>*]:rounded-none"
+		class="menu p-0 bg-base-100 border border-base-content/30"
 		oncontextmenu={(e) => e.preventDefault()}
 	>
 		{const Labels = {

@@ -257,7 +257,7 @@
 
 {#snippet TaskContextMenu(id: string)}
 	<ul
-		class="menu p-0 bg-base-100 border border-base-content/30 [&_li>*]:rounded-none"
+		class="menu p-0 bg-base-100 border border-base-content/30"
 		oncontextmenu={(e) => e.preventDefault()}
 	>
 		{const Labels = {
