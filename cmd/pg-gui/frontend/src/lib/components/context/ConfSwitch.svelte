@@ -7,7 +7,7 @@
 
 <script lang="ts">
 	// Icons
-	import IconVariable from '@lucide/svelte/icons/variable';
+	import IconFileSliders from '@lucide/svelte/icons/file-sliders';
 
 	import { msgAlert } from '@comp/message/AlertNotify.svelte';
 	import { ReqCtxService, type FileMeta } from '@services';
@@ -41,14 +41,14 @@
 </script>
 
 <label class="flex items-center">
-	<IconVariable class="shrink-0 size-3 text-base-content" />
-	<span class="text-sm">Env:</span>
+	<IconFileSliders class="shrink-0 size-3 text-base-content" />
+	<span class="text-sm">Conf:</span>
 	<select
 		bind:value={current}
 		class="pl-1 select select-sm justify-center outline-none shadow-none"
 	>
 		{#if !current}
-			<option disabled selected value={undefined}>no env</option>
+			<option disabled selected value={undefined}>no conf</option>
 		{/if}
 		{#if loaded}
 			{#each options as option}
