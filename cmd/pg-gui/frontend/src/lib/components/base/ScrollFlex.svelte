@@ -8,14 +8,21 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	let { content = $bindable<Snippet>(), enableFlexCol = $bindable(false) } = $props();
+	let el: HTMLDivElement;
 </script>
 
 <div
+	bind:this={el}
 	class="flex {enableFlexCol ? 'flex-col' : 'flex-row'} overflow-auto custom-scrollbar"
 	onwheel={(e) => {
-		if (enableFlexCol) return;
+		if (e.currentTarget !== el) return;
 		e.preventDefault();
-		e.currentTarget.scrollLeft += e.deltaY;
+		const delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+		if (enableFlexCol) {
+			e.currentTarget.scrollTop += delta;
+		} else {
+			e.currentTarget.scrollLeft += delta;
+		}
 	}}
 >
 	{@render content()}

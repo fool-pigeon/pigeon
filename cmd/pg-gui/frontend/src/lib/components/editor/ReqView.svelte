@@ -36,7 +36,7 @@
 
 <script lang="ts">
 	import HttpReqURLBar from './HttpReqURLBar.svelte';
-	import type { Request } from '@pg/protocol';
+	import type { ConfGRPC, ConfREST, ConfWS, Request } from '@pg/protocol';
 
 	type Prop = {
 		openedFS: OpenedFS;
@@ -93,9 +93,19 @@
 		Promise.allSettled([
 			ReqFileService.Read(fs.id).then((v) => {
 				temp = v;
+				if (temp) {
+					if (!temp.confREST) temp.confREST = {} as ConfREST;
+					if (!temp.confGRPC) temp.confGRPC = {} as ConfGRPC;
+					if (!temp.confWS) temp.confWS = {} as ConfWS;
+				}
 			}),
 			ReqFileService.ReadOriginal(fs.id).then((v) => {
 				original = v;
+				if (original) {
+					if (!original.confREST) original.confREST = {} as ConfREST;
+					if (!original.confGRPC) original.confGRPC = {} as ConfGRPC;
+					if (!original.confWS) original.confWS = {} as ConfWS;
+				}
 			}),
 		])
 			.catch((err) => {

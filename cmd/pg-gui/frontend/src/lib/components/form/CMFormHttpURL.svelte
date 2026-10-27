@@ -13,13 +13,11 @@
 	import CMInput from './CMInput.svelte';
 	import equal from 'fast-deep-equal';
 	import { regex } from '@lib/utils/regex';
-	import { msgAlert } from '@comp/message/AlertNotify.svelte';
 	type UrlPart = {
 		uri: string;
 		query: KArr;
 	};
-	type Prop = { path: KV } & UrlPart;
-	// TODO: auto parse path params
+	type Prop = { path?: KV } & UrlPart;
 	let { uri = $bindable(), query = $bindable(), path = $bindable() }: Prop = $props();
 	let url = $state('');
 	onMount(() => (url = marshal({ uri, query })));
@@ -72,15 +70,17 @@
 			uri = data.uri;
 			query = data.query;
 			// refresh path params
-			const pathParams = Array.from(regex.urlPathParams(u));
-			if (pathParams.length <= 0) {
-				path = null;
-			} else {
-				const newPath: KV = {};
-				for (const p of pathParams) {
-					newPath[p] = path?.[p] ?? '';
+			if (path !== undefined) {
+				const pathParams = Array.from(regex.urlPathParams(u));
+				if (pathParams.length <= 0) {
+					path = null;
+				} else {
+					const newPath: KV = {};
+					for (const p of pathParams) {
+						newPath[p] = path?.[p] ?? '';
+					}
+					path = newPath;
 				}
-				path = newPath;
 			}
 		});
 	});

@@ -348,35 +348,47 @@ func getFileMode(b []byte) NodeMode {
 	res := FileMode
 	// parse if it is a request file
 	var req protocol.Request
-
 	if err := toml.Unmarshal(b, &req); err == nil {
 		// add Request flag
-		res |= Request
-		switch req.Protocol {
-		case protocol.ProtocolREST, protocol.ProtocolGQL:
-			// add HTTP flag
-			switch req.Method {
-			case protocol.MethodGet:
-				res |= HTTPGet
-			case protocol.MethodPost:
-				res |= HTTPPost
-			case protocol.MethodPut:
-				res |= HTTPPut
-			case protocol.MethodDelete:
-				res |= HTTPDelete
-			case protocol.MethodPatch:
-				res |= HTTPPatch
-			case protocol.MethodHead:
-				res |= HTTPHead
-			case protocol.MethodOptions:
-				res |= HTTPOptions
-			case protocol.MethodTrace:
-				res |= HTTPTrace
-			case protocol.MethodConnect:
-				res |= HTTPConnect
+		if req.Protocol != "" {
+			res |= Request
+			// add Req flag
+			switch req.Protocol {
+			case protocol.ProtocolREST:
+				res |= ReqREST
+			case protocol.ProtocolGQL:
+				res |= ReqGQL
+			case protocol.ProtocolGRPC:
+				res |= ReqGRPC
+			case protocol.ProtocolWS:
+				res |= ReqWS
 			}
+			switch req.Protocol {
+			case protocol.ProtocolREST, protocol.ProtocolGQL:
+				// add HTTP flag
+				switch req.Method {
+				case protocol.MethodGet:
+					res |= HTTPGet
+				case protocol.MethodPost:
+					res |= HTTPPost
+				case protocol.MethodPut:
+					res |= HTTPPut
+				case protocol.MethodDelete:
+					res |= HTTPDelete
+				case protocol.MethodPatch:
+					res |= HTTPPatch
+				case protocol.MethodHead:
+					res |= HTTPHead
+				case protocol.MethodOptions:
+					res |= HTTPOptions
+				case protocol.MethodTrace:
+					res |= HTTPTrace
+				case protocol.MethodConnect:
+					res |= HTTPConnect
+				}
+			}
+			return res
 		}
-		return res
 	}
 
 	return res
@@ -759,6 +771,16 @@ func createFile(path string, mode NodeMode) error {
 			return err
 		}
 		req := protocol.Request{ReqMeta: protocol.ReqMeta{ID: id}}
+		switch {
+		case m.Has(ReqREST):
+			req.Protocol = protocol.ProtocolREST
+		case m.Has(ReqGQL):
+			req.Protocol = protocol.ProtocolGQL
+		case m.Has(ReqGRPC):
+			req.Protocol = protocol.ProtocolGRPC
+		case m.Has(ReqWS):
+			req.Protocol = protocol.ProtocolWS
+		}
 		switch {
 		case m.Has(HTTPGet):
 			req.Method = protocol.MethodGet

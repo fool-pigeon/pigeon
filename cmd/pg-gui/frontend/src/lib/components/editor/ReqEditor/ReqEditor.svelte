@@ -10,6 +10,8 @@
 	import IconUser from '@lucide/svelte/icons/user';
 	import IconShield from '@lucide/svelte/icons/shield';
 	import IconTag from '@lucide/svelte/icons/tag';
+	import IconChevronDown from '@lucide/svelte/icons/chevron-down';
+	import IconChevronUp from '@lucide/svelte/icons/chevron-up';
 
 	import ScrollFlex from '@comp/base/ScrollFlex.svelte';
 	import CMFormHttpMultipart from '@comp/form/CMFormHttpMultipart.svelte';
@@ -20,6 +22,7 @@
 	import { AuthKind, BodyKind, ProtocolKind, type Request } from '@pg/protocol';
 	import PwdInput from '@comp/form/PwdInput.svelte';
 	import TextInput from '@comp/form/TextInput.svelte';
+	import CMJson from '@comp/form/CMJson.svelte';
 
 	const Part = {
 		Desc: 'Desc',
@@ -57,13 +60,13 @@
 
 	type Prop = { temp: Request | null };
 	let { temp = $bindable() }: Prop = $props();
+	let curPart = $state<Part>(Part.Payload);
 </script>
 
 <div class="w-full h-full flex flex-col gap-1">
 	{#if !temp}
 		<div class="text-error">temp value is null:{temp}</div>
 	{:else}
-		{let curPart = $state<Part>(Part.Payload)}
 		{let parts = $derived.by(() => {
 			switch (temp.protocol) {
 				case ProtocolKind.ProtocolGRPC:
@@ -79,37 +82,27 @@
 			<ScrollFlex>
 				{#snippet content()}
 					{#each parts as p (p)}
-						<button
-							class="p-1 cursor-pointer text-base-content/50
-							{p === curPart ? 'text-primary-content bg-primary' : 'hover:text-base-content'}"
-							onclick={() => (curPart = p)}
+						<div
+							class="[&>button]:btn [&>button]:outline-none [&>button]:border-none
+							[&>button]:p-0 [&>button]:pl-4 [&>button]:pr-4
+							{p === curPart
+								? '[&>button]:btn-primary'
+								: '[&>button]:btn-ghost [&>button]:text-base-content/50 [&>button]:hover:text-base-content'}"
 						>
-							{#if p === 'Payload'}
+							{#if p === Part.Payload}
 								{#if temp.protocol === ProtocolKind.ProtocolGRPC || temp.protocol === ProtocolKind.ProtocolWS}
-									Message
+									<button onclick={() => (curPart = p)}>Message</button>
 								{:else}
-									<!-- TODO selector for body kind -->
-									Body
+									{@render RESTBodyKindSelector()}
 								{/if}
-							{:else if p === 'Auth'}
-								{const authKindName = {
-									[AuthKind.AuthNone]: 'No Auth',
-									[AuthKind.AuthInherited]: 'Inherited',
-									[AuthKind.AuthBasic]: 'Basic',
-									[AuthKind.AuthDigest]: 'Digest',
-									[AuthKind.AuthToken]: 'Token',
-								} as const}
-								<select bind:value={temp.auth.kind} class="select">
-									{#each Object.values(AuthKind) as ak}
-										<option value={ak}>{authKindName[ak]}</option>
-									{/each}
-								</select>
-							{:else if p === 'Header' && temp.protocol === ProtocolKind.ProtocolGRPC}
-								Metadata
+							{:else if p === Part.Auth}
+								{@render AuthKindSelector()}
+							{:else if p === Part.Header && temp.protocol === ProtocolKind.ProtocolGRPC}
+								<button onclick={() => (curPart = p)}>Metadata</button>
 							{:else}
-								{p}
+								<button onclick={() => (curPart = p)}>{p}</button>
 							{/if}
-						</button>
+						</div>
 					{/each}
 				{/snippet}
 			</ScrollFlex>
@@ -161,15 +154,137 @@
 				<!-- TODO Settings page -->
 				<div></div>
 			{:else if curPart === Part.Payload}
-				<select
-					class="w-48 select select-sm select-primary focus:outline-none text-center [text-align-last:center]"
-					bind:value={temp.payloadREST.kind}
-				>
-					{#each Object.values(BodyKind) as b (b)}
-						<option value={b}>{b}</option>
-					{/each}
-				</select>
+				{let bkind = $derived(temp.payloadREST.kind)}
+				{#if bkind === BodyKind.BodyURLEncoded}
+					<CMFormKArr bind:value={temp.payloadREST.urlEncoded} />
+				{:else if bkind === BodyKind.BodyMultipart}
+					<CMFormHttpMultipart bind:multipart={temp.payloadREST.multipart} />
+				{:else if bkind === BodyKind.BodyGQL}
+					<CMTextArea bind:value={temp.payloadREST.raw} />
+				{:else if bkind === BodyKind.BodyJSON}
+					<CMJson bind:value={temp.payloadREST.raw} />
+				{:else if bkind === BodyKind.BodyXML}
+					<CMTextArea bind:value={temp.payloadREST.raw} />
+				{:else if bkind === BodyKind.BodyRaw}
+					<CMTextArea bind:value={temp.payloadREST.raw} />
+				{:else if bkind === BodyKind.BodyBinary}
+					<FileSelector bind:path={temp.payloadREST.binaryPath} />
+				{:else if bkind === BodyKind.BodyNone}
+					<div class="w-full h-full flex justify-center items-center">No Body</div>
+				{/if}
 			{/if}
 		{/if}
 	{/if}
 </div>
+{#snippet RESTBodyKindSelector()}
+	{const bKindName = {
+		[BodyKind.BodyURLEncoded]: 'URL Encoded',
+		[BodyKind.BodyMultipart]: 'Multipart',
+		[BodyKind.BodyGQL]: 'GraphQL',
+		[BodyKind.BodyJSON]: 'JSON',
+		[BodyKind.BodyXML]: 'XML',
+		[BodyKind.BodyRaw]: 'Raw',
+		[BodyKind.BodyBinary]: 'Binary File',
+		[BodyKind.BodyNone]: 'No body',
+	}}
+	<button
+		popovertarget="rest-body-kind-popover-1"
+		style="anchor-name:--rest-body-kind-popover-1"
+		onclick={(e) => {
+			if (curPart !== Part.Payload) {
+				e.preventDefault();
+				curPart = Part.Payload;
+				return;
+			}
+		}}
+	>
+		<div class="flex items-center">
+			<span class="text-nowrap">{bKindName[temp!.payloadREST.kind]}</span>
+			<IconChevronDown class="size-4" />
+		</div>
+	</button>
+	<ul
+		class="dropdown menu max-h-[60vh] bg-base-100 overflow-auto"
+		onwheel={(e) => e.stopPropagation()}
+		popover
+		id="rest-body-kind-popover-1"
+		style="position-anchor:--rest-body-kind-popover-1"
+	>
+		{#snippet btn(k: BodyKind)}
+			<li>
+				<button
+					popovertarget="rest-body-kind-popover-1"
+					popovertargetaction="hide"
+					onclick={() => (temp!.payloadREST.kind = k)}
+				>
+					{bKindName[k]}
+				</button>
+			</li>
+		{/snippet}
+		{#snippet divider(s: string)}
+			<div class="divider divider-start m-0 p-0">{s}</div>
+		{/snippet}
+		{@render divider('Form')}
+		{@render btn(BodyKind.BodyURLEncoded)}
+		{@render btn(BodyKind.BodyMultipart)}
+		{@render divider('Text')}
+		{@render btn(BodyKind.BodyGQL)}
+		{@render btn(BodyKind.BodyJSON)}
+		{@render btn(BodyKind.BodyXML)}
+		{@render btn(BodyKind.BodyRaw)}
+		{@render divider('Other')}
+		{@render btn(BodyKind.BodyBinary)}
+		{@render btn(BodyKind.BodyNone)}
+	</ul>
+{/snippet}
+{#snippet AuthKindSelector()}
+	{const authKindName = {
+		[AuthKind.AuthNone]: 'No Auth',
+		[AuthKind.AuthInherited]: 'Inherited',
+		[AuthKind.AuthBasic]: 'Basic',
+		[AuthKind.AuthDigest]: 'Digest',
+		[AuthKind.AuthToken]: 'Token',
+	} as const}
+	<button
+		popovertarget="req-auth-kind-popover-1"
+		style="anchor-name:--req-auth-kind-popover-1"
+		onclick={(e) => {
+			if (curPart !== Part.Auth) {
+				e.preventDefault();
+				curPart = Part.Auth;
+				return;
+			}
+		}}
+	>
+		<div class="flex items-center">
+			<span class="text-nowrap">{authKindName[temp!.auth.kind]}</span>
+			<IconChevronDown class="size-4" />
+		</div>
+	</button>
+
+	<ul
+		class="dropdown menu max-h-[60vh] bg-base-100 overflow-auto"
+		onwheel={(e) => e.stopPropagation()}
+		popover
+		id="req-auth-kind-popover-1"
+		style="position-anchor:--req-auth-kind-popover-1"
+	>
+		{#snippet btn(k: AuthKind)}
+			<li>
+				<button
+					popovertarget="req-auth-kind-popover-1"
+					popovertargetaction="hide"
+					onclick={() => (temp!.auth.kind = k)}
+				>
+					{authKindName[k]}
+				</button>
+			</li>
+		{/snippet}
+		{@render btn(AuthKind.AuthBasic)}
+		{@render btn(AuthKind.AuthDigest)}
+		{@render btn(AuthKind.AuthToken)}
+		<div class="divider m-0 p-0 h-1"></div>
+		{@render btn(AuthKind.AuthInherited)}
+		{@render btn(AuthKind.AuthNone)}
+	</ul>
+{/snippet}

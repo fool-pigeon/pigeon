@@ -15,13 +15,13 @@
 
 	let cubCount = $state(2);
 	let panels = $state(Array.from({ length: 2 }, () => NewPanel(cubr)));
-	let direction = $state<'horizontal' | 'vertical'>('horizontal');
+	let direction = $state(true);
 	let minSize = $state(0);
 	$effect(() => {
 		if (!cubCount || cubCount < 0) {
 			return;
 		}
-		untrack(() => (panels = Array.from({ length: cubCount }, () => NewPanel(cubr, -1, minSize))));
+		untrack(() => (panels = Array.from({ length: cubCount }, () => NewPanel(cubr))));
 	});
 </script>
 
