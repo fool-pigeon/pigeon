@@ -23,6 +23,7 @@
 	import PwdInput from '@comp/form/PwdInput.svelte';
 	import TextInput from '@comp/form/TextInput.svelte';
 	import CMJson from '@comp/form/CMJson.svelte';
+	import SettingFieldWrapper, { FieldHeader } from '@comp/form/SettingFieldWrapper.svelte';
 
 	const Part = {
 		Desc: 'Desc',
@@ -154,8 +155,84 @@
 				<!-- TODO: pretty Tests form bindings -->
 				<CMFormKV bind:value={temp.confREST.tests} kHeader="name" vHeader="script" />
 			{:else if curPart === Part.Settings}
-				<!-- TODO Settings page -->
-				<div></div>
+				<div class="w-full h-full overflow-auto space-y-6 text-sm">
+					<SettingFieldWrapper>
+						{#snippet content()}
+							<div>
+								{@render FieldHeader('timeout', "request's timeout string,use unit ns|ms|s...")}
+								<input
+									class="max-w-full w-auto input input-sm"
+									bind:value={temp.timeout}
+									type="text"
+									placeholder="0ns"
+								/>
+							</div>
+							<div>
+								{@render FieldHeader('response body limit', 'if <=0,means no limit')}
+								<input
+									class="max-w-full w-auto input input-sm"
+									bind:value={temp.confREST!.responseBodyLimit}
+									type="text"
+								/>
+							</div>
+
+							<span class="text-base-content/60 text-[1rem]">Retry</span>
+							<div>
+								{@render FieldHeader('count', 'the retry max count')}
+								<input
+									class="max-w-full w-auto input input-sm"
+									bind:value={temp.confREST!.retry.count}
+									type="text"
+								/>
+							</div>
+							<div>
+								{@render FieldHeader('wait time', 'time of waiting single retry')}
+								<input
+									class="max-w-full w-auto input input-sm"
+									bind:value={temp.confREST!.retry.waitTime}
+									type="text"
+									placeholder="0ns"
+								/>
+							</div>
+							<div>
+								{@render FieldHeader('max wait time', 'max time of waiting single retry')}
+								<input
+									class="max-w-full w-auto input input-sm"
+									bind:value={temp.confREST!.retry.maxWaitTime}
+									type="text"
+									placeholder="0ns"
+								/>
+							</div>
+							<label class="cursor-pointer items-center">
+								{@render FieldHeader(
+									'allow non idempotent',
+									'allow retry method of non idempotent,such as POST',
+								)}
+								<input
+									class="toggle toggle-sm"
+									bind:checked={temp.confREST!.retry.isAllowNonIdempotent}
+									type="checkbox"
+								/>
+							</label>
+							<label class="cursor-pointer items-center">
+								<span class="text-base-content/70">unescape query</span>
+								<input
+									class="toggle toggle-sm"
+									bind:checked={temp.confREST!.unescapeQuery}
+									type="checkbox"
+								/>
+							</label>
+							<label class="cursor-pointer items-center">
+								<span class="text-base-content/70">unescape JSON</span>
+								<input
+									class="toggle toggle-sm"
+									bind:checked={temp.confREST!.unescapeJSON}
+									type="checkbox"
+								/>
+							</label>
+						{/snippet}
+					</SettingFieldWrapper>
+				</div>
 			{:else if curPart === Part.Payload}
 				{let bkind = $derived(temp.payloadREST.kind)}
 				{#if bkind === BodyKind.BodyURLEncoded}

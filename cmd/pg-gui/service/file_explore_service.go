@@ -357,7 +357,7 @@ func getFileMode(b []byte) NodeMode {
 			case protocol.ProtocolREST:
 				res |= ReqREST
 			case protocol.ProtocolGQL:
-				res |= ReqGQL
+				res |= ReqREST | ReqGQL
 			case protocol.ProtocolGRPC:
 				res |= ReqGRPC
 			case protocol.ProtocolWS:

@@ -13,7 +13,7 @@
 	import IconFolderOpenDot from '@lucide/svelte/icons/folder-open-dot';
 
 	import { PathSelectService, SettingsService, ThemeMode } from '@services';
-	import SettingFieldWrapper from '@comp/form/SettingFieldWrapper.svelte';
+	import SettingFieldWrapper, { FieldHeader } from '@comp/form/SettingFieldWrapper.svelte';
 	import { Events, WML } from '@wailsio/runtime';
 	import { onMount } from 'svelte';
 	import { settings } from '@comp/context/AppSettings.svelte';
@@ -71,8 +71,8 @@
 	type Part = (typeof Parts)[number]['label'];
 	let activedPart = $state<Part>('Info');
 	// for debug view
-	Events.Emit(MenuEvent.Preferences);
-	activedPart = 'Theme';
+	// Events.Emit(MenuEvent.Preferences);
+	// activedPart = 'Theme';
 </script>
 
 <div class="w-lvw h-lvh bg-base-100">
@@ -110,14 +110,7 @@
 		</div>
 	</div>
 </div>
-{#snippet FieldHeader(title: string, description: string)}
-	<span class="flex flex-col">
-		<span class="text-base-content/70 text-xs">{title}</span>
-		<span class="text-base-content/40 text-[0.6875rem] italic">
-			{description}
-		</span>
-	</span>
-{/snippet}
+
 {#snippet PartTitle(title: string)}
 	<div class="text-base-content/60 text-[1rem]">{title}</div>
 {/snippet}

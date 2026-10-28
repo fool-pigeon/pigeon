@@ -19,11 +19,11 @@
 	let showName = $state<string>('');
 </script>
 
-<div class="absolute bottom-2 w-full">
+<div class="absolute bottom-2">
 	<div class="drawer">
 		<input id="my-drawer-1" type="checkbox" class="drawer-toggle" />
 		<div class="drawer-content">
-			<div class="w-full flex justify-center">
+			<div class="w-auto">
 				<label for="my-drawer-1" class="btn">
 					<TestTubeDiagonal />
 				</label>

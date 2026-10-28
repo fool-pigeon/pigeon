@@ -754,7 +754,13 @@
 		{/if}
 		<!-- Icon for file -->
 	{:else if ModeContains(m, NodeMode.FileMode)}
-		{#if ModeContains(m, NodeMode.ReqREST)}
+		{#if ModeContains(m, NodeMode.ReqGQL)}
+			<span class="text-info">GQL</span>
+		{:else if ModeContains(m, NodeMode.ReqGRPC)}
+			<span class="text-info">GRPC</span>
+		{:else if ModeContains(m, NodeMode.ReqWS)}
+			<span class="text-warning">WS</span>
+		{:else if ModeContains(m, NodeMode.ReqREST)}
 			{#if ModeContains(m, NodeMode.HTTPGet)}
 				<span class="text-req-get">GET</span>
 			{:else if ModeContains(m, NodeMode.HTTPPost)}
@@ -776,12 +782,6 @@
 			{:else}
 				<span>REST</span>
 			{/if}
-		{:else if ModeContains(m, NodeMode.ReqGQL)}
-			<span class="text-info">GQL</span>
-		{:else if ModeContains(m, NodeMode.ReqGRPC)}
-			<span class="text-info">GRPC</span>
-		{:else if ModeContains(m, NodeMode.ReqWS)}
-			<span class="text-warning">WS</span>
 		{:else}
 			<IconFile class="size-4" strokeWidth={1} nonScalingStroke />
 		{/if}

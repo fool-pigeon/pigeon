@@ -13,7 +13,7 @@
 
 	import type { OpenedFS } from './Editor.svelte';
 	import { onMount } from 'svelte';
-	import { ReqCtxService, ReqFileService } from '@cmd-gui/service';
+	import { NodeMode, ReqCtxService, ReqFileService } from '@cmd-gui/service';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { Events } from '@wailsio/runtime';
 	import { MenuEvent } from '@cmd-gui/gui';
@@ -36,7 +36,14 @@
 
 <script lang="ts">
 	import HttpReqURLBar from './HttpReqURLBar.svelte';
-	import type { ConfGRPC, ConfREST, ConfWS, Request } from '@pg/protocol';
+	import {
+		BodyKind,
+		ProtocolKind,
+		type ConfGRPC,
+		type ConfREST,
+		type ConfWS,
+		type Request,
+	} from '@pg/protocol';
 
 	type Prop = {
 		openedFS: OpenedFS;
@@ -51,6 +58,24 @@
 	let loadStatus = $state<PageLoadStatus>({ loaded: false, err: null });
 	// default state of request's run results for result viewer
 	let resState = $state<HttpResState>({ loaded: false, isSending: false, history: [] });
+
+	// convert request protocol
+	$effect(() => {
+		if (temp) {
+			const p = temp.protocol;
+			const onm = openedFS.fs.additional ?? NodeMode.FileMode | NodeMode.Request;
+			if (p === ProtocolKind.ProtocolREST || p === ProtocolKind.ProtocolGQL) {
+				if (temp.payloadREST.kind === BodyKind.BodyGQL) {
+					temp.protocol = ProtocolKind.ProtocolGQL;
+					openedFS.fs.additional = onm | NodeMode.ReqGQL;
+				} else {
+					temp.protocol = ProtocolKind.ProtocolREST;
+					openedFS.fs.additional = onm & ~NodeMode.ReqGQL;
+				}
+			}
+		}
+	});
+
 	// Current Selected body part
 	function send() {
 		if (resState.isSending) {
