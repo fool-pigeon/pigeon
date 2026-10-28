@@ -84,7 +84,8 @@
 					{#each parts as p (p)}
 						<div
 							class="[&>button]:btn [&>button]:outline-none [&>button]:border-none
-							[&>button]:p-0 [&>button]:pl-4 [&>button]:pr-4
+							[&>button]:p-1 [&>button]:pl-4 [&>button]:pr-4
+							[&>button]:h-auto
 							{p === curPart
 								? '[&>button]:btn-primary'
 								: '[&>button]:btn-ghost [&>button]:text-base-content/50 [&>button]:hover:text-base-content'}"
