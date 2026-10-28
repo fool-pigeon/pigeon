@@ -148,6 +148,8 @@
 		{:else if temp.protocol === ProtocolKind.ProtocolREST || temp.protocol === ProtocolKind.ProtocolGQL}
 			{#if !temp.confREST}
 				<div class="text-error">nil</div>
+			{:else if curPart === Part.Path}
+				<CMFormKV bind:value={temp.confREST.path} />
 			{:else if curPart === Part.Tests}
 				<!-- TODO: pretty Tests form bindings -->
 				<CMFormKV bind:value={temp.confREST.tests} kHeader="name" vHeader="script" />

@@ -15,11 +15,11 @@
 	let { pwd = $bindable(), placeholder }: Prop = $props();
 </script>
 
-<div class="w-full flex">
+<label class="input">
 	{let isShow = $state(false)}
 	<IconKeyRound class="shrink-0 size-4" />
 	<input
-		class="grow input"
+		class="grow"
 		type={isShow ? 'text' : 'password'}
 		placeholder={placeholder ?? 'password'}
 		bind:value={pwd}
@@ -29,4 +29,4 @@
 		<IconEye class="swap-on size-4" />
 		<IconEyeClosed class="swap-off size-4" />
 	</label>
-</div>
+</label>

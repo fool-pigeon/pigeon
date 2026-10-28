@@ -14,9 +14,9 @@
 	let { val = $bindable(), placeholder, iconSnippet }: Prop = $props();
 </script>
 
-<div class="w-full flex">
+<label class="input">
 	{#if iconSnippet}
 		{@render iconSnippet()}
 	{/if}
-	<input class="grow input" type="text" {placeholder} bind:value={val} />
-</div>
+	<input class="grow" type="text" {placeholder} bind:value={val} />
+</label>
