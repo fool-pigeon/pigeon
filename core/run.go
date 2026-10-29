@@ -18,6 +18,7 @@ import (
 	"github.com/fool-pigeon/pigeon/fsx"
 	"github.com/fool-pigeon/pigeon/protocol"
 	"github.com/fool-pigeon/pigeon/uid"
+	"github.com/oklog/ulid/v2"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -65,11 +66,11 @@ func loadReq(ctx context.Context, path string, reqCtx *ReqCtx) (*protocol.Reques
 }
 
 type reqSendInput struct {
-	dispatcher  *dispatch.Dispatcher
-	traceHandle protocol.TraceHandler
-	reqCtx      *ReqCtx
-	start       string
-	path        string
+	dispatcher *dispatch.Dispatcher
+	handlers   RunHandlers
+	reqCtx     *ReqCtx
+	start      string
+	path       string
 }
 
 func sendReq(ctx context.Context, input reqSendInput) (*RunResult, error) {
@@ -102,11 +103,16 @@ func sendReq(ctx context.Context, input reqSendInput) (*RunResult, error) {
 		return nil, err
 	}
 
-	resID, err := uid.NewULIDMonotonic()
-	if err != nil {
-		return nil, err
+	var resID ulid.ULID
+	if resGen := input.handlers.ResIDGen; resGen != nil {
+		resID = resGen()
+	} else {
+		resID, err = uid.NewULIDMonotonic()
+		if err != nil {
+			return nil, err
+		}
 	}
-	response, err := input.dispatcher.Send(ctx, req, resID, uid.NewU64Gen(), input.traceHandle)
+	response, err := input.dispatcher.Send(ctx, req, resID, uid.NewU64Gen(), input.handlers.TraceHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +122,7 @@ func sendReq(ctx context.Context, input reqSendInput) (*RunResult, error) {
 }
 
 // the request will stop when ctx.Done()
-func sendReqWithStop(ctx context.Context, resHandle RunResultHandler, input reqSendInput) {
+func sendReqWithStop(ctx context.Context, input reqSendInput) {
 	done := make(chan struct{})
 	var res *RunResult
 	var err error
@@ -126,17 +132,14 @@ func sendReqWithStop(ctx context.Context, resHandle RunResultHandler, input reqS
 	}()
 
 	select {
+	case <-ctx.Done():
+		return
 	case <-done:
-		if ctx.Err() != nil {
-			return
-		}
 		if err != nil || res == nil {
 			res = &RunResult{RunMeta: RunMeta{Path: input.path}}
 		}
-		resHandle(res, err)
+		input.handlers.ResultHandler(res, err)
 
-	case <-ctx.Done():
-		return
 	}
 }
 
@@ -151,18 +154,20 @@ type RunResult struct {
 }
 type RunResultHandler func(res *RunResult, err error)
 
+type RunHandlers struct {
+	ResIDGen      func() ulid.ULID
+	ResultHandler RunResultHandler
+	TraceHandler  protocol.TraceHandler
+}
+
 // paths params for run needed
 type RunInput struct {
 	// root dir's abs path
 	Start string
 	// file for directly and directory for walk
-	Tasks []string
-
-	RootConf RootConf
-
-	ResultHandler RunResultHandler
-	TraceHandler  protocol.TraceHandler
-
+	Tasks      []string
+	RootConf   RootConf
+	Handlers   RunHandlers
 	ClientInit func(client *protocol.ActualClient)
 }
 
@@ -208,12 +213,12 @@ func Run(ctx context.Context, rp RunInput) error {
 				sem <- struct{}{}
 				defer func() { <-sem }()
 			}
-			sendReqWithStop(ctx, rp.ResultHandler, reqSendInput{
-				dispatcher:  dispatcher,
-				traceHandle: rp.TraceHandler,
-				reqCtx:      reqCtx,
-				start:       rp.Start,
-				path:        path,
+			sendReqWithStop(ctx, reqSendInput{
+				dispatcher: dispatcher,
+				handlers:   rp.Handlers,
+				reqCtx:     reqCtx,
+				start:      rp.Start,
+				path:       path,
 			})
 		})
 	}
@@ -223,7 +228,7 @@ func Run(ctx context.Context, rp RunInput) error {
 		info, err := os.Lstat(taskPath)
 		if err != nil {
 			go func() {
-				rp.ResultHandler(&RunResult{RunMeta: RunMeta{Path: taskPath}}, err)
+				rp.Handlers.ResultHandler(&RunResult{RunMeta: RunMeta{Path: taskPath}}, err)
 			}()
 			continue
 		}

@@ -13,25 +13,24 @@
 
 	import type { OpenedFS } from './Editor.svelte';
 	import { onMount } from 'svelte';
-	import { NodeMode, ReqCtxService, ReqFileService } from '@cmd-gui/service';
+	import {
+		NodeMode,
+		ReqCtxService,
+		ReqFileService,
+		TaskService,
+		TaskSEvent,
+		type FileMeta,
+		type TaskResView,
+	} from '@cmd-gui/service';
 	import { msgAlert } from '../message/AlertNotify.svelte';
 	import { Events } from '@wailsio/runtime';
 	import { MenuEvent } from '@cmd-gui/gui';
 	import equal from 'fast-deep-equal';
 	import { DataEvent } from '@lib/enum/events';
 	import DynamicJoin, { NewPanel } from '../base/DynamicJoin.svelte';
-	import CMFromHttpURL from '@comp/form/CMFormHttpURL.svelte';
 	import type { PageLoadStatus } from '@type/page';
-	import HttpResViewer from './HttpResViewer.svelte';
+	import ResViewer from './ResViewer.svelte';
 	import ReqEditor from './ReqEditor/ReqEditor.svelte';
-
-	export type HttpResState = {
-		loaded: boolean;
-		isSending: boolean;
-		current?: TaskResHttp;
-		history: TaskResHttp[];
-		err?: unknown;
-	};
 </script>
 
 <script lang="ts">
@@ -44,12 +43,15 @@
 		type ConfWS,
 		type Request,
 	} from '@pg/protocol';
+	import { reqCtx } from '@comp/context/ReqCtx.svelte';
+	import type { ULID } from '@bindings/github.com/oklog/ulid/v2';
 
 	type Prop = {
 		openedFS: OpenedFS;
 		isFlexRow: boolean;
 	};
 	let { openedFS, isFlexRow = $bindable() }: Prop = $props();
+	const cur = { ...(() => openedFS)() };
 	// original http request content
 	let original = $state<Request | null>(null);
 	// current http request content
@@ -57,20 +59,26 @@
 	// load status for this page
 	let loadStatus = $state<PageLoadStatus>({ loaded: false, err: null });
 	// default state of request's run results for result viewer
-	let resState = $state<HttpResState>({ loaded: false, isSending: false, history: [] });
-
+	let resState = $state<{
+		isSending: boolean;
+		val?: TaskResView | null;
+		resID?: ULID;
+		err?: string;
+	}>({
+		isSending: false,
+	});
 	// convert request protocol
 	$effect(() => {
 		if (temp) {
 			const p = temp.protocol;
-			const onm = openedFS.fs.additional ?? NodeMode.FileMode | NodeMode.Request;
+			const onm = cur.fs.additional ?? NodeMode.FileMode | NodeMode.Request;
 			if (p === ProtocolKind.ProtocolREST || p === ProtocolKind.ProtocolGQL) {
 				if (temp.payloadREST.kind === BodyKind.BodyGQL) {
 					temp.protocol = ProtocolKind.ProtocolGQL;
-					openedFS.fs.additional = onm | NodeMode.ReqGQL;
+					cur.fs.additional = onm | NodeMode.ReqGQL;
 				} else {
 					temp.protocol = ProtocolKind.ProtocolREST;
-					openedFS.fs.additional = onm & ~NodeMode.ReqGQL;
+					cur.fs.additional = onm & ~NodeMode.ReqGQL;
 				}
 			}
 		}
@@ -84,10 +92,9 @@
 		resState.isSending = true;
 		resState.err = undefined;
 		const req = $state.snapshot(temp);
-		ReqCtxService.SendHttp(req)
+		TaskService.RunSingleReq(reqCtx.confFile?.path ?? '', cur.fs.id, req)
 			.then((v) => {
-				resState.current = v;
-				resState.history.push(v);
+				resState.val = v;
 			})
 			.catch((err) => {
 				resState.err = err;
@@ -95,26 +102,26 @@
 			})
 			.finally(() => {
 				resState.isSending = false;
-				resState.loaded = true;
 			});
 	}
 
 	onMount(() => {
-		const cur = { ...openedFS };
 		const fs = cur.fs;
-		const unregisterSave = Events.On(MenuEvent.Save, () => {
-			ReqFileService.Write(fs.id, temp)
-				.then((m) => {
-					fs.additional = m;
-					// original should be set to copy of temp
-					original = $state.snapshot(temp);
+		const cleanups: Array<() => void> = [
+			Events.On(MenuEvent.Save, () => {
+				ReqFileService.Write(fs.id, temp)
+					.then((m) => {
+						fs.additional = m;
+						// original should be set to copy of temp
+						original = $state.snapshot(temp);
 
-					Events.Emit(DataEvent.EditorSaved);
-					msgAlert.success(`Saved ${fs.name} Successfully`);
-				})
-				.catch(msgAlert.error);
-		});
-		const unregisterSend = Events.On(MenuEvent.RunRequest, () => send());
+						Events.Emit(DataEvent.EditorSaved);
+						msgAlert.success(`Saved ${fs.name} Successfully`);
+					})
+					.catch(msgAlert.error);
+			}),
+			Events.On(MenuEvent.RunRequest, () => send()),
+		];
 		Promise.allSettled([
 			ReqFileService.Read(fs.id).then((v) => {
 				temp = v;
@@ -140,11 +147,18 @@
 				loadStatus.loaded = true;
 			});
 		return async () => {
-			unregisterSave();
-			unregisterSend();
+			cleanups.forEach((fn) => fn());
 			// TODO: do not stage when editor's ofs not contains this
 			await ReqFileService.Stage(fs.id, temp);
 		};
+	});
+	$effect(() => {
+		if (temp) {
+			const unregister = Events.On(TaskSEvent.TaskSEResIDInitial + ':' + temp.id, (ev) => {
+				resState.resID = ev.data as ULID;
+			});
+			return unregister();
+		}
 	});
 	$effect(() => {
 		openedFS.saved = equal(original, temp);
@@ -177,14 +191,7 @@
 {/snippet}
 
 {#snippet respViewer()}
-	{#if resState.isSending}
-		<div class="w-full h-full flex flex-col gap-2 justify-center items-center">
-			<IconLoaderCircle class="size-20 animate-spin" strokeWidth={2} nonScalingStroke />
-			<button class="btn btn-soft btn-error" onclick={() => Events.Emit(MenuEvent.CancelRequest)}>
-				Cancel
-			</button>
-		</div>
-	{:else if !resState.loaded}
+	{#if resState.val === undefined}
 		<div class="w-full h-full flex flex-col gap-1 justify-center items-center">
 			<IconSend class="size-32 text-base-content/60" strokeWidth={3} nonScalingStroke />
 			<div class="inline-grid grid-cols-2 gap-x-2">
@@ -198,9 +205,9 @@
 		</div>
 	{:else if resState.err}
 		<div class="text-error">{resState.err}</div>
-	{:else if !resState.current}
+	{:else if !resState.val}
 		<p>current response result is nil</p>
 	{:else}
-		<HttpResViewer current={resState.current} history={resState.history} />
+		<ResViewer res={resState.val} protocol={temp?.protocol} resID={resState.resID} />
 	{/if}
 {/snippet}

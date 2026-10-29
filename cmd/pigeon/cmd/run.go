@@ -126,15 +126,17 @@ var runCmd = &cobra.Command{
 			RootConf: rootConf,
 			Start:    runPaths.Start,
 			Tasks:    runPaths.Tasks,
-			TraceHandler: func(t *protocol.Trace) {
-				pterm.Info.Println(t)
-			},
-			ResultHandler: func(res *core.RunResult, err error) {
-				taskResPrint(res, err)
-				taskTotal++
-				if err == nil && res.Res.Success {
-					taskPassed++
-				}
+			Handlers: core.RunHandlers{
+				TraceHandler: func(t *protocol.Trace) {
+					pterm.Info.Println(t)
+				},
+				ResultHandler: func(res *core.RunResult, err error) {
+					taskResPrint(res, err)
+					taskTotal++
+					if err == nil && res.Res.Success {
+						taskPassed++
+					}
+				},
 			},
 		}
 

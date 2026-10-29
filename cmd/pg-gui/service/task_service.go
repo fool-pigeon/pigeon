@@ -15,6 +15,7 @@ import (
 	"net/http/httputil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -48,6 +49,10 @@ const (
 	//
 	// it will cancel the single request sending whose request's id equals that
 	TaskSECancelSingle TaskSEvent = "task-service:cancel-single"
+	// send [protocol.Result.ID]
+	//
+	// it send resID to [TaskSEResIDInitial]:{reqID}
+	TaskSEResIDInitial TaskSEvent = "task-service:res-id-initial"
 )
 
 // [TaskService] Stream
@@ -110,10 +115,10 @@ func (h *TaskHTTPExt) toView() (*TaskHTTPExtView, error) {
 }
 
 type TaskResBody struct {
-	RunMeta core.RunMeta     `json:"runMeta"`
-	ResMeta protocol.ResMeta `json:"resMeta"`
-	ErrStr  string           `json:"errStr"`
-	Content []byte           `json:"content"`
+	core.RunMeta
+	protocol.ResMeta
+	ErrStr  string `json:"errStr"`
+	Content []byte `json:"content"`
 }
 type taskRes struct {
 	TaskResBody
@@ -122,9 +127,9 @@ type taskRes struct {
 }
 type TaskResMeta struct {
 	protocol.ResultCover
-	TaskID ulid.ULID
-	ResID  ulid.ULID
-	Path   string
+	TaskID ulid.ULID `json:"taskID"`
+	ResID  ulid.ULID `json:"resID"`
+	Path   string    `json:"path"`
 }
 type TaskResView struct {
 	TaskResBody
@@ -311,18 +316,32 @@ type resultInner struct {
 	err       error
 }
 
-func (tr *TaskService) RunSingleReq(rootConfPath string, reqPath string, request protocol.Request) (*TaskResView, error) {
+func (tr *TaskService) RunSingleReq(rootConfPath string, reqPath string, request *protocol.Request) (*TaskResView, error) {
+	if request == nil {
+		return nil, ErrNilValue
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if tr.evt != nil {
-		unregister := tr.evt.On(TaskSECancelSingle, func(event *application.CustomEvent) {
-			if cancelledID, ok := event.Data.(string); ok && cancelledID == request.ID.String() {
-				cancel()
-			}
-		})
-		defer unregister()
+	// register request cancel
+	unregister := tr.evt.On(TaskSECancelSingle, func(event *application.CustomEvent) {
+		if cancelledID, ok := event.Data.(string); ok && cancelledID == request.ID.String() {
+			cancel()
+		}
+	})
+	defer unregister()
+
+	// custom generate resID & send to front
+	resID, err := uid.NewULIDMonotonic()
+	if err != nil {
+		return nil, err
 	}
+	var sb strings.Builder
+	sb.WriteString(TaskSEResIDInitial)
+	sb.WriteByte(':')
+	sb.WriteString(request.ID.String())
+	tr.evt.Emit(sb.String(), resID.String())
 
 	var rootConf core.RootConf
 	if err := fsx.ReadToml(rootConfPath, &rootConf); err != nil {
@@ -354,26 +373,30 @@ func (tr *TaskService) RunSingleReq(rootConfPath string, reqPath string, request
 		Tasks:      []string{filepath.Clean(reqPath)},
 		RootConf:   rootConf,
 		ClientInit: tr.reqClientInit,
-		ResultHandler: func(res *core.RunResult, err error) {
-			inner.runResult = res
-			inner.err = err
-		},
-		TraceHandler: func(t *protocol.Trace) {
-			if t == nil {
-				return
-			}
-			select {
-			case <-ctx.Done():
-			case traceCh <- t:
-			}
+		Handlers: core.RunHandlers{
+			ResIDGen: func() ulid.ULID { return resID },
+			ResultHandler: func(res *core.RunResult, err error) {
+				inner.runResult = res
+				inner.err = err
+			},
+			TraceHandler: func(t *protocol.Trace) {
+				if t == nil {
+					return
+				}
+				select {
+				case <-ctx.Done():
+				case traceCh <- t:
+				}
+			},
 		},
 	}
 	if err := core.Run(ctx, input); err != nil {
 		return nil, err
 	}
 	// parse result
-	if inner.runResult == nil || inner.runResult.Res == nil {
-		return nil, fmt.Errorf("result of run:%w", ErrNilValue)
+	if inner.runResult.Res == nil {
+		alert.error(fmt.Sprint(inner.runResult.Path, ErrNilValue))
+		return nil, nil
 	}
 	tRes := taskRes{TaskResBody: TaskResBody{RunMeta: inner.runResult.RunMeta, ResMeta: inner.runResult.Res.ResMeta}}
 	if err := inner.err; err != nil {
@@ -467,22 +490,24 @@ func (tr *TaskService) run(ctx context.Context, task Task) error {
 		Tasks:      task.RunPaths.Tasks,
 		RootConf:   rootConf,
 		ClientInit: tr.reqClientInit,
-		ResultHandler: func(runResult *core.RunResult, err error) {
-			select {
-			case <-ctx.Done():
-			case innerCh <- resultInner{runResult, err}:
-			}
-		},
-		TraceHandler: func(t *protocol.Trace) {
-			if t == nil {
-				return
-			}
-			select {
-			case <-ctx.Done():
-			case traceCh <- t:
-			default:
-				alert.error("[task-service] run traceCh chan flood")
-			}
+		Handlers: core.RunHandlers{
+			ResultHandler: func(runResult *core.RunResult, err error) {
+				select {
+				case <-ctx.Done():
+				case innerCh <- resultInner{runResult, err}:
+				}
+			},
+			TraceHandler: func(t *protocol.Trace) {
+				if t == nil {
+					return
+				}
+				select {
+				case <-ctx.Done():
+				case traceCh <- t:
+				default:
+					alert.error("[task-service] run traceCh chan flood")
+				}
+			},
 		},
 	}
 	if err := core.Run(ctx, input); err != nil {

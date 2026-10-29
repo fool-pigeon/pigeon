@@ -6,6 +6,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,13 +51,16 @@ func (rootConf *RootConf) initReqCtx(startPath string) (*ReqCtx, error) {
 	for _, p := range paths {
 		confPath := filepath.Join(p, fsx.Conf)
 		info, err := os.Lstat(confPath)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
 		if info.Mode().Type().IsRegular() {
 			confBytes, err := fsx.ReadFile(confPath)
 			if err != nil {
-				return nil, err
+				continue
 			}
 			loadConf(confBytes, initialEnv, &initialConf)
 		}
