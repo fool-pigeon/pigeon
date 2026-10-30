@@ -32,7 +32,7 @@
 	import { ModeContains } from '@lib/utils/asserts';
 	import { NodeMode } from '@cmd-gui/service';
 	import FileView from './FileView.svelte';
-	import ReqView from './ReqView.svelte';
+	import ReqView from './ReqView/ReqView.svelte';
 
 	export const EditorEvent = {
 		Reload: 'editor:reload',

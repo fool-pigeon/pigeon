@@ -52,6 +52,7 @@
 	let rp = $derived(protocol ?? res?.request.protocol);
 	// result's id for viewing trace
 	let rid = $derived(resID ?? res?.id);
+	let isREST = $derived(rp === ProtocolKind.ProtocolREST || rp === ProtocolKind.ProtocolGQL);
 	let viewPart = $state<ViewPart>(ViewPart.ResBody);
 	let bodyView = $state<BodyView>(BodyView.JSON);
 
@@ -101,22 +102,20 @@
 	{:else}
 		<!-- content viewer -->
 		<div class="w-full grow min-h-0 overflow-hidden">
-			{#if rp === ProtocolKind.ProtocolREST || rp === ProtocolKind.ProtocolGQL}
-				{#if viewPart === ViewPart.ResBody}
-					{let body = $derived(res.httpResponse?.body ?? '')}
-					<!-- TODO:optional inject request URL 
+			{#if viewPart === ViewPart.ResBody && isREST}
+				{let body = $derived(res.httpResponse?.body ?? '')}
+				<!-- TODO:optional inject request URL 
 				for example: body.replace('<head>', `<head><base href="${current.URL}">`)
 				-->
+				{@render BodyViewer(body, bodyView, 'allow-scripts allow-forms  allow-popups')}
+			{:else if viewPart === ViewPart.ReqBody && isREST}
+				{let body = $derived(res.httpRequest?.body ?? '')}
+				{#if body === ''}
+					<div class="w-full h-full flex justify-center items-center text-base-content/70">
+						No body
+					</div>
+				{:else}
 					{@render BodyViewer(body, bodyView, 'allow-scripts allow-forms  allow-popups')}
-				{:else if viewPart === ViewPart.ReqBody}
-					{let body = $derived(res.httpRequest?.body ?? '')}
-					{#if body === ''}
-						<div class="w-full h-full flex justify-center items-center text-base-content/70">
-							No body
-						</div>
-					{:else}
-						{@render BodyViewer(body, bodyView, 'allow-scripts allow-forms  allow-popups')}
-					{/if}
 				{/if}
 			{:else if viewPart === ViewPart.Trace}
 				<div class="w-full h-full overflow-auto flex flex-col">

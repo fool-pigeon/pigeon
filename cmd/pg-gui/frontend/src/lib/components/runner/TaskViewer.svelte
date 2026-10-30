@@ -12,7 +12,7 @@
 	import { NodeMode, type TaskResHttp } from '@services';
 	import type { TaskResWrapper } from './TaskRunner.svelte';
 	import { ModeContains } from '@lib/utils/asserts';
-	import HttpResViewer from '@comp/editor/ResViewer.svelte';
+	import HttpResViewer from '@comp/editor/ReqView/ResViewer.svelte';
 	import { nodeModeIcon } from '@comp/navigation/FileExplorer.svelte';
 	import DynamicJoin, { NewPanel } from '@comp/base/DynamicJoin.svelte';
 	import VirtRowsWrapper from '@comp/base/VirtualList/VirtRowsWrapper.svelte';

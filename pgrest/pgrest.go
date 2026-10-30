@@ -88,7 +88,13 @@ func (s *RESTSender) Send(ctx context.Context, req *pcl.Request, resID ulid.ULID
 		for name, code := range req.ConfREST.Tests {
 			program, err := expr.Compile(code, expr.Env(env), expr.AsBool())
 			if err != nil {
-				return nil, err
+				result.Success = false
+				result.Tests = append(result.Tests, pcl.TestRes{
+					Name:   name,
+					Passed: false,
+					ErrStr: err.Error(),
+				})
+				continue
 			}
 			output, err := expr.Run(program, env)
 			if err != nil {
@@ -98,6 +104,7 @@ func (s *RESTSender) Send(ctx context.Context, req *pcl.Request, resID ulid.ULID
 					Passed: false,
 					ErrStr: err.Error(),
 				})
+				continue
 			}
 
 			passed := output.(bool)

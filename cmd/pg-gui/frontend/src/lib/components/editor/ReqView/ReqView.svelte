@@ -11,7 +11,7 @@
 	import IconLoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import IconSend from '@lucide/svelte/icons/send';
 
-	import type { OpenedFS } from './Editor.svelte';
+	import type { OpenedFS } from '../Editor.svelte';
 	import { onMount } from 'svelte';
 	import {
 		NodeMode,
@@ -22,15 +22,15 @@
 		type FileMeta,
 		type TaskResView,
 	} from '@cmd-gui/service';
-	import { msgAlert } from '../message/AlertNotify.svelte';
+	import { msgAlert } from '../../message/AlertNotify.svelte';
 	import { Events } from '@wailsio/runtime';
 	import { MenuEvent } from '@cmd-gui/gui';
 	import equal from 'fast-deep-equal';
 	import { DataEvent } from '@lib/enum/events';
-	import DynamicJoin, { NewPanel } from '../base/DynamicJoin.svelte';
+	import DynamicJoin, { NewPanel } from '../../base/DynamicJoin.svelte';
 	import type { PageLoadStatus } from '@type/page';
 	import ResViewer from './ResViewer.svelte';
-	import ReqEditor from './ReqEditor/ReqEditor.svelte';
+	import ReqEditor from './ReqEditor.svelte';
 </script>
 
 <script lang="ts">
