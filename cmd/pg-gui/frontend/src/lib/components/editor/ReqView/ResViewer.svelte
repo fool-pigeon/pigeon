@@ -24,6 +24,8 @@
 	import { onMount } from 'svelte';
 	import { TaskSSReg } from '@comp/context/TaskSSManager.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
+	import BtnTapBarWrap from './BtnTapBarWrap.svelte';
+	import DropdownBtn from './DropdownBtn.svelte';
 
 	const ViewPart = {
 		Trace: 'Trace',
@@ -148,27 +150,19 @@
 	<ScrollFlex>
 		{#snippet content()}
 			{#each Object.values(ViewPart) as p (p)}
-				<button
-					class="p-1 cursor-pointer text-base-content/50
-									{p === viewPart ? 'text-primary-content bg-primary' : 'hover:text-base-content'}"
-					onclick={() => (viewPart = p)}>{p}</button
-				>
+				<BtnTapBarWrap actived={p === viewPart}>
+					{#snippet content()}
+						{#if p === ViewPart.ResBody}
+							{@render ResponseBodyKindSelector()}
+						{:else}
+							<button onclick={() => (viewPart = p)}>{p}</button>
+						{/if}
+					{/snippet}
+				</BtnTapBarWrap>
 			{/each}
 		{/snippet}
 	</ScrollFlex>
 	<div class="shrink-0 overflow-hidden flex justify-end items-center gap-0.5 text-xs">
-		<!-- Change response body preview type -->
-		{#if viewPart === 'Response'}
-			<select
-				title="change preview"
-				class="select select-xs justify-center w-16 p-1 outline-none bg-none"
-				bind:value={bodyView}
-			>
-				{#each Object.values(BodyView) as bv (bv)}
-					<option value={bv}>{bv}</option>
-				{/each}
-			</select>
-		{/if}
 		<!-- current response view status -->
 		{#if res}
 			<div
@@ -184,6 +178,35 @@
 			</div>
 		{/if}
 	</div>
+{/snippet}
+
+{#snippet ResponseBodyKindSelector()}
+	{const popoverID = 'response-viewer-response-body-kind-popover'}
+	<DropdownBtn
+		{popoverID}
+		onclick={(e) => {
+			if (viewPart !== ViewPart.ResBody) {
+				e.preventDefault();
+				viewPart = ViewPart.ResBody;
+			}
+		}}
+	>
+		{#snippet summary()}
+			<span class="text-nowrap">{`Res(${bodyView})`}</span>
+		{/snippet}
+		{#snippet btn(k: BodyView)}
+			<li>
+				<button popovertarget={popoverID} popovertargetaction="hide" onclick={() => (bodyView = k)}>
+					{k}
+				</button>
+			</li>
+		{/snippet}
+		{#snippet details(btn, divider)}
+			{#each Object.values(BodyView) as bv}
+				{@render btn(bv)}
+			{/each}
+		{/snippet}
+	</DropdownBtn>
 {/snippet}
 
 {#snippet BodyViewer(body: string, bodyView: BodyView, enableSandBox?: string)}
