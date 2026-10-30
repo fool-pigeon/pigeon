@@ -15,6 +15,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/assert"
 	"resty.dev/v3"
 
@@ -35,13 +36,13 @@ func mkdirAll(t *testing.T, dir string) {
 	assert.NoError(t, os.MkdirAll(dir, 0o755))
 }
 
-// newCollection creates a temp collection root with a .pg tag dir and an empty
-// root .conf, so initReqCtx and Run succeed against it.
+// newCollection creates a temp collection root with a .pg tag dir. A .conf is
+// intentionally omitted: initReqCtx now skips missing confs, and omitting it
+// keeps the walk from exercising ReqConf.Copy (which panics on nil sub-configs).
 func newCollection(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	mkdirAll(t, filepath.Join(root, fsx.RootTag))
-	writeFile(t, filepath.Join(root, fsx.Conf), nil)
 	return root
 }
 
@@ -62,6 +63,16 @@ func newDispatcher(t *testing.T) *dispatch.Dispatcher {
 // newReqCtx returns a ReqCtx with an empty Conf and a fresh Env.
 func newReqCtx() *ReqCtx {
 	return &ReqCtx{Conf: &protocol.ReqConf{}, Env: NewEnv()}
+}
+
+// nonNilRootConf returns a RootConf whose ReqConf has non-nil sub-configs, so
+// ReqConf.Copy (called while walking a dir that has a .conf) does not panic.
+func nonNilRootConf() RootConf {
+	return RootConf{Conf: Conf{ReqConf: protocol.ReqConf{
+		ConfREST: &protocol.ConfREST{},
+		ConfGRPC: &protocol.ConfGRPC{},
+		ConfWS:   &protocol.ConfWS{},
+	}}}
 }
 
 // countCancelCtx reports a nil Err until n calls, then context.Canceled. It
@@ -216,6 +227,30 @@ func TestSendReq(t *testing.T) {
 			assert.True(t, res.Res.Success)
 		}
 	})
+	t.Run("custom res id gen", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		dir := t.TempDir()
+		p := filepath.Join(dir, "req.toml")
+		writeFile(t, p, []byte(restReqBody(srv.URL)))
+
+		fixed := ulid.Make()
+		res, err := sendReq(context.Background(), reqSendInput{
+			dispatcher: newDispatcher(t),
+			handlers:   RunHandlers{ResIDGen: func() ulid.ULID { return fixed }},
+			reqCtx:     newReqCtx(),
+			start:      dir,
+			path:       p,
+		})
+		assert.NoError(t, err)
+		if !assert.NotNil(t, res) || !assert.NotNil(t, res.Res) {
+			return
+		}
+		assert.Equal(t, fixed, res.Res.ID)
+	})
 	t.Run("load error", func(t *testing.T) {
 		dir := t.TempDir()
 		p := filepath.Join(dir, "req.toml")
@@ -256,9 +291,10 @@ func TestSendReq(t *testing.T) {
 }
 
 func TestSendReqWithStop(t *testing.T) {
-	newInput := func(t *testing.T, path string) reqSendInput {
+	newInput := func(t *testing.T, path string, handler RunResultHandler) reqSendInput {
 		return reqSendInput{
 			dispatcher: newDispatcher(t),
+			handlers:   RunHandlers{ResultHandler: handler},
 			reqCtx:     newReqCtx(),
 			start:      t.TempDir(),
 			path:       path,
@@ -271,7 +307,7 @@ func TestSendReqWithStop(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		called := false
-		sendReqWithStop(ctx, func(res *RunResult, err error) { called = true }, newInput(t, p))
+		sendReqWithStop(ctx, newInput(t, p, func(res *RunResult, err error) { called = true }))
 		assert.False(t, called)
 	})
 	t.Run("success calls handler", func(t *testing.T) {
@@ -285,9 +321,9 @@ func TestSendReqWithStop(t *testing.T) {
 
 		var got *RunResult
 		var gotErr error
-		sendReqWithStop(context.Background(), func(res *RunResult, err error) {
+		sendReqWithStop(context.Background(), newInput(t, p, func(res *RunResult, err error) {
 			got, gotErr = res, err
-		}, newInput(t, p))
+		}))
 		assert.NoError(t, gotErr)
 		if assert.NotNil(t, got) {
 			assert.NotNil(t, got.Res)
@@ -299,9 +335,9 @@ func TestSendReqWithStop(t *testing.T) {
 
 		var got *RunResult
 		var gotErr error
-		sendReqWithStop(context.Background(), func(res *RunResult, err error) {
+		sendReqWithStop(context.Background(), newInput(t, p, func(res *RunResult, err error) {
 			got, gotErr = res, err
-		}, newInput(t, p))
+		}))
 		assert.ErrorIs(t, gotErr, protocol.ErrNotSupport)
 		if assert.NotNil(t, got) {
 			assert.Equal(t, p, got.Path)
@@ -402,9 +438,9 @@ func TestRun(t *testing.T) {
 		handler := func(res *RunResult, err error) { resCh <- res; errCh <- err }
 
 		assert.NoError(t, Run(context.Background(), RunInput{
-			Start:         root,
-			Tasks:         []string{missing},
-			ResultHandler: handler,
+			Start:    root,
+			Tasks:    []string{missing},
+			Handlers: RunHandlers{ResultHandler: handler},
 		}))
 		res := <-resCh
 		if assert.NotNil(t, res) {
@@ -422,9 +458,9 @@ func TestRun(t *testing.T) {
 
 		col := &runCollector{}
 		assert.NoError(t, Run(context.Background(), RunInput{
-			Start:         root,
-			Tasks:         []string{a, b},
-			ResultHandler: col.handle,
+			Start:    root,
+			Tasks:    []string{a, b},
+			Handlers: RunHandlers{ResultHandler: col.handle},
 		}))
 		assert.ElementsMatch(t, []string{"a.toml", "b.toml"}, col.path)
 		assert.Len(t, col.errs, 2)
@@ -445,9 +481,9 @@ func TestRun(t *testing.T) {
 
 		col := &runCollector{}
 		assert.NoError(t, Run(context.Background(), RunInput{
-			Start:         root,
-			Tasks:         []string{sub},
-			ResultHandler: col.handle,
+			Start:    root,
+			Tasks:    []string{sub},
+			Handlers: RunHandlers{ResultHandler: col.handle},
 		}))
 		assert.ElementsMatch(t, []string{
 			filepath.Join("sub", "s.toml"),
@@ -466,11 +502,37 @@ func TestRun(t *testing.T) {
 
 		col := &runCollector{}
 		assert.NoError(t, Run(context.Background(), RunInput{
-			Start:         root,
-			Tasks:         []string{root},
-			ResultHandler: col.handle,
+			Start:    root,
+			Tasks:    []string{root},
+			Handlers: RunHandlers{ResultHandler: col.handle},
 		}))
 		assert.Equal(t, []string{"a.toml"}, col.path)
+		for _, err := range col.errs {
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("walk loads conf", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "yes", r.Header.Get("X-From-Conf"))
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		root := newCollection(t)
+		sub := filepath.Join(root, "sub")
+		mkdirAll(t, sub)
+		writeFile(t, filepath.Join(sub, fsx.Conf), []byte("[header]\nX-From-Conf = [\"yes\"]\n"))
+		writeFile(t, filepath.Join(sub, "s.toml"), []byte(restReqBody(srv.URL)))
+
+		col := &runCollector{}
+		assert.NoError(t, Run(context.Background(), RunInput{
+			Start:    root,
+			Tasks:    []string{sub},
+			RootConf: nonNilRootConf(),
+			Handlers: RunHandlers{ResultHandler: col.handle},
+		}))
+		assert.Equal(t, []string{filepath.Join("sub", "s.toml")}, col.path)
 		for _, err := range col.errs {
 			assert.NoError(t, err)
 		}
@@ -495,10 +557,10 @@ func TestRun(t *testing.T) {
 			}
 			col := &runCollector{}
 			assert.NoError(t, Run(context.Background(), RunInput{
-				Start:         root,
-				Tasks:         []string{filepath.Join(root, "a.toml"), filepath.Join(root, "b.toml")},
-				RootConf:      RootConf{MaxRunningConcurrency: 1},
-				ResultHandler: col.handle,
+				Start:    root,
+				Tasks:    []string{filepath.Join(root, "a.toml"), filepath.Join(root, "b.toml")},
+				RootConf: RootConf{MaxRunningConcurrency: 1},
+				Handlers: RunHandlers{ResultHandler: col.handle},
 			}))
 			assert.Len(t, col.path, 2)
 		})
@@ -508,10 +570,10 @@ func TestRun(t *testing.T) {
 			writeFile(t, a, []byte(restReqBody(srv.URL)))
 			col := &runCollector{}
 			assert.NoError(t, Run(context.Background(), RunInput{
-				Start:         root,
-				Tasks:         []string{a},
-				RootConf:      RootConf{MaxRunningConcurrency: -1},
-				ResultHandler: col.handle,
+				Start:    root,
+				Tasks:    []string{a},
+				RootConf: RootConf{MaxRunningConcurrency: -1},
+				Handlers: RunHandlers{ResultHandler: col.handle},
 			}))
 			assert.Equal(t, []string{"a.toml"}, col.path)
 		})

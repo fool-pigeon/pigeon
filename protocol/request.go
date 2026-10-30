@@ -83,9 +83,15 @@ func (r *ReqConf) Copy() *ReqConf {
 	dst.Query = cloneSliceMap(r.Query)
 	dst.Header = cloneSliceMap(r.Header)
 
-	dst.ConfREST = r.ConfREST.Copy()
-	dst.ConfGRPC = r.ConfGRPC.Copy()
-	dst.ConfWS = r.ConfWS.Copy()
+	if r.ConfREST != nil {
+		dst.ConfREST = r.ConfREST.Copy()
+	}
+	if r.ConfGRPC != nil {
+		dst.ConfGRPC = r.ConfGRPC.Copy()
+	}
+	if r.ConfWS != nil {
+		dst.ConfWS = r.ConfWS.Copy()
+	}
 
 	return &dst
 }

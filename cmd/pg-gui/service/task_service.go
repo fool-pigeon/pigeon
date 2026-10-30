@@ -368,11 +368,10 @@ func (tr *TaskService) RunSingleReq(rootConfPath string, reqPath string, request
 		}
 	}()
 	var inner resultInner
-	input := core.RunInput{
-		Start:      filepath.Dir(reqPath),
-		Tasks:      []string{filepath.Clean(reqPath)},
-		RootConf:   rootConf,
-		ClientInit: tr.reqClientInit,
+	input := core.RunSingleInput{
+		Path:     reqPath,
+		Request:  request,
+		RootConf: rootConf,
 		Handlers: core.RunHandlers{
 			ResIDGen: func() ulid.ULID { return resID },
 			ResultHandler: func(res *core.RunResult, err error) {
@@ -390,15 +389,14 @@ func (tr *TaskService) RunSingleReq(rootConfPath string, reqPath string, request
 			},
 		},
 	}
-	if err := core.Run(ctx, input); err != nil {
+	if err := core.RunSingle(ctx, input); err != nil {
 		return nil, err
 	}
-	// parse result
-	if inner.runResult.Res == nil {
-		alert.error(fmt.Sprint(inner.runResult.Path, ErrNilValue))
-		return nil, nil
+
+	tRes := taskRes{TaskResBody: TaskResBody{RunMeta: inner.runResult.RunMeta}}
+	if inner.runResult.Res != nil {
+		tRes.ResMeta = inner.runResult.Res.ResMeta
 	}
-	tRes := taskRes{TaskResBody: TaskResBody{RunMeta: inner.runResult.RunMeta, ResMeta: inner.runResult.Res.ResMeta}}
 	if err := inner.err; err != nil {
 		tRes.ErrStr = err.Error()
 	} else {

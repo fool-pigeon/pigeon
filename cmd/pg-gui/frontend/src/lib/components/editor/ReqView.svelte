@@ -95,6 +95,7 @@
 		TaskService.RunSingleReq(reqCtx.confFile?.path ?? '', cur.fs.id, req)
 			.then((v) => {
 				resState.val = v;
+				console.log(v);
 			})
 			.catch((err) => {
 				resState.err = err;

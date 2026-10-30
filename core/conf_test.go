@@ -59,19 +59,19 @@ HOST = "example.com"
 func TestInitReqCtx(t *testing.T) {
 	t.Run("nil receiver", func(t *testing.T) {
 		var rc *RootConf
-		_, err := rc.initReqCtx(t.TempDir())
+		_, err := rc.InitReqCtx(t.TempDir())
 		assert.ErrorIs(t, err, ErrNilValue)
 	})
 
 	t.Run("missing conf errors", func(t *testing.T) {
 		_, _, leaf := setupRoot(t, nil)
-		_, err := (&RootConf{}).initReqCtx(leaf)
+		_, err := (&RootConf{}).InitReqCtx(leaf)
 		assert.Error(t, err)
 	})
 
 	t.Run("partial confs error", func(t *testing.T) {
 		_, _, leaf := setupRoot(t, map[string]string{"root": ""})
-		_, err := (&RootConf{}).initReqCtx(leaf)
+		_, err := (&RootConf{}).InitReqCtx(leaf)
 		assert.Error(t, err)
 	})
 
@@ -81,7 +81,7 @@ func TestInitReqCtx(t *testing.T) {
 			"mid":  "",
 			"leaf": "",
 		})
-		ctx, err := (&RootConf{}).initReqCtx(leaf)
+		ctx, err := (&RootConf{}).InitReqCtx(leaf)
 		require.NoError(t, err)
 		assert.NotNil(t, ctx)
 	})

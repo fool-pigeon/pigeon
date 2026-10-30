@@ -25,7 +25,7 @@ type RootConf struct {
 	Conf   Conf            `toml:"conf"`
 }
 
-func (rootConf *RootConf) initReqCtx(startPath string) (*ReqCtx, error) {
+func (rootConf *RootConf) InitReqCtx(startPath string) (*ReqCtx, error) {
 
 	if rootConf == nil {
 		return nil, fmt.Errorf("initialReqCtx rootConf:%w", ErrNilValue)

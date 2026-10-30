@@ -160,7 +160,8 @@ func (s *RESTSender) Instance(ctx context.Context, r *pcl.Request) (*ActualReque
 		return nil, fmt.Errorf("rest client:%w", protocol.ErrNilValue)
 	}
 	if r.ConfREST == nil {
-		return nil, fmt.Errorf("request config rest:%w", protocol.ErrNilValue)
+		// return nil, fmt.Errorf("request config rest:%w", protocol.ErrNilValue)
+		r.ConfREST = &protocol.ConfREST{}
 	}
 	if r.Protocol != pcl.ProtocolREST && r.Protocol != pcl.ProtocolGQL {
 		return nil, fmt.Errorf("%s:%w", r.Protocol, protocol.ErrNotSupport)

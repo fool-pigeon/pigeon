@@ -104,8 +104,8 @@ func sendReq(ctx context.Context, input reqSendInput) (*RunResult, error) {
 	}
 
 	var resID ulid.ULID
-	if resGen := input.handlers.ResIDGen; resGen != nil {
-		resID = resGen()
+	if resIDGen := input.handlers.ResIDGen; resIDGen != nil {
+		resID = resIDGen()
 	} else {
 		resID, err = uid.NewULIDMonotonic()
 		if err != nil {
@@ -171,6 +171,78 @@ type RunInput struct {
 	ClientInit func(client *protocol.ActualClient)
 }
 
+type RunSingleInput struct {
+	// path of request content file
+	Path       string
+	Request    *protocol.Request
+	RootConf   RootConf
+	Handlers   RunHandlers
+	ClientInit func(client *protocol.ActualClient)
+}
+
+func RunSingle(ctx context.Context, rp RunSingleInput) error {
+	if rp.Request == nil {
+		return fmt.Errorf("core run single - input request:%w", ErrNilValue)
+	}
+	// set dispather to send request
+	rootConf := rp.RootConf
+	client, err := rootConf.Client.InstancedClient()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	if rp.ClientInit != nil {
+		rp.ClientInit(client)
+	}
+	dispatcher := dispatch.New(client)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	// set the ReqCtx
+	reqCtx, err := rootConf.InitReqCtx(filepath.Dir(rp.Path))
+	if err != nil {
+		return err
+	}
+	if reqCtx == nil || reqCtx.Env == nil || reqCtx.Conf == nil {
+		return fmt.Errorf("core run single - load reqCtx:%w", ErrNilValue)
+	}
+
+	// load request
+	// Expand Env
+	b, err := toml.Marshal(rp.Request)
+	if err != nil {
+		return err
+	}
+	if err := toml.Unmarshal([]byte(reqCtx.Env.Expand(string(b))), rp.Request); err != nil {
+		return err
+	}
+	rp.Request.Merge(reqCtx.Conf)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	// run task
+	var res RunResult
+	res.AbsPath = rp.Path
+	res.Path = rp.Path
+
+	var resID ulid.ULID
+	if resIDGen := rp.Handlers.ResIDGen; resIDGen != nil {
+		resID = resIDGen()
+	} else {
+		resID, err = uid.NewULIDMonotonic()
+		if err != nil {
+			return err
+		}
+	}
+	response, err := dispatcher.Send(ctx, rp.Request, resID, uid.NewU64Gen(), rp.Handlers.TraceHandler)
+	res.Res = response
+	rp.Handlers.ResultHandler(&res, err)
+
+	return nil
+}
+
 func Run(ctx context.Context, rp RunInput) error {
 
 	maxConcurrency := rp.RootConf.MaxRunningConcurrency
@@ -195,7 +267,7 @@ func Run(ctx context.Context, rp RunInput) error {
 	dispatcher := dispatch.New(client)
 
 	// set the ReqCtx
-	initialReqCtx, err := rootConf.initReqCtx(rp.Start)
+	initialReqCtx, err := rootConf.InitReqCtx(rp.Start)
 	if err != nil {
 		return err
 	}
